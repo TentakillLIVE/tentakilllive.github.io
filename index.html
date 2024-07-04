@@ -9,10 +9,12 @@
                 <meta name="robots" content="index,follow">
                 <link rel="stylesheet" href="./css/style.css">
               </head>
-              <body id="iw5hig"><div id="ifqsdl" class="gjs-grid-row"><div class="gjs-grid-column"></div></div><div id="i6buey" class="gjs-grid-row"><div id="ifg83k" class="gjs-grid-column"><div id="imehiy" class="gjs-grid-row"><div id="iwoehp" class="gjs-grid-column"><a href="/" id="i0966c" class="gjs-link-box"><img src="assets/tenta_pfp500.png" id="ix3dju"/></a></div><div id="iqux6o" class="gjs-grid-column"><div id="iwhh5q" class="gjs-grid-row"><div id="i548ug" class="gjs-grid-column"><a href="./index.html" id="iy2q6p" class="gjs-link">Home<br/></a><a href="./bot_commands.html" id="itmdcx" class="gjs-link">Tentakill Bot<br/></a><a href="./links.html" id="ixzfm5" class="gjs-link">Links<br/></a></div></div></div><div id="iuhf8l" class="gjs-grid-column gjs-link-box"><a href="#top" id="iq3p2f" class="gjs-link-box"><img src="assets/up_arrow_png_clipart.png" id="iaxpgn"/></a></div></div></div></div><div id="i5dbqu" class="gjs-grid-row"><div id="itlyg1" class="gjs-grid-column"><h1 id="i724dl" class="gjs-heading">Welcome!<span id="itgixo" class="gjs-text-blue"><br/></span></h1><img src="assets/tenta2_2022cropped.png" id="i1imhy"/><h1 id="irxzqj" class="gjs-heading">This site is a <span id="irmd9f">Work In Progress.</span><br/></h1></div></div><section id="ibduxj" class="gjs-section"><div class="gjs-container"><div class="gjs-custom-code" id="igxxye"><span><script src= "https://player.twitch.tv/js/embed/v1.js"></script>
-  <div id="twitch" class="hide">
-  </div>
-  <script type="text/javascript">
+              <body id="iw5hig"><div id="ifqsdl" class="gjs-grid-row"><div class="gjs-grid-column"></div></div><div id="i6buey" class="gjs-grid-row"><div id="ifg83k" class="gjs-grid-column"><div id="imehiy" class="gjs-grid-row"><div id="iwoehp" class="gjs-grid-column"><a href="/" id="i0966c" class="gjs-link-box"><img src="assets/tenta_pfp500.png" id="ix3dju"/></a></div><div id="iqux6o" class="gjs-grid-column"><div id="iwhh5q" class="gjs-grid-row"><div id="i548ug" class="gjs-grid-column"><a href="./index.html" id="iy2q6p" class="gjs-link">Home<br/></a><a href="./bot_commands.html" id="itmdcx" class="gjs-link">Tentakill Bot<br/></a><a href="./links.html" id="ixzfm5" class="gjs-link">Links<br/></a></div></div></div><div id="iuhf8l" class="gjs-grid-column gjs-link-box"><a href="#top" id="iq3p2f" class="gjs-link-box"><img src="assets/up_arrow_png_clipart.png" id="iaxpgn"/></a></div></div></div></div><div id="i5dbqu" class="gjs-grid-row"><div id="itlyg1" class="gjs-grid-column"><h1 id="i724dl" class="gjs-heading">Welcome!<span id="itgixo" class="gjs-text-blue"><br/></span></h1><img src="assets/tenta2_2022cropped.png" id="i1imhy"/><h1 id="irxzqj" class="gjs-heading">This site is a <span id="irmd9f">Work In Progress.</span><br/></h1></div></div><section id="ibduxj" class="gjs-section"><div class="gjs-container"><div class="gjs-custom-code" id="igxxye"><span>
+			  
+			  <script src= "https://player.twitch.tv/js/embed/v1.js"></script>
+				<div id="twitch" class="hide">
+				</div>
+				<script type="text/javascript">
     var options = {
       channel: "Sarah_Digitally", // TODO: Change this to the streams username you want to embed
       width: 640,
@@ -38,6 +40,41 @@
       player.addEventListener(Twitch.Player.ONLINE, handleOnline);
       player.setMuted(true);
     }
-  </script></span></div></div></section></body>
+  </script>
+  </span></div>
+  <div class="gjs-custom-code" id="igxxye"><span>
+			  
+			  <script src= "https://player.twitch.tv/js/embed/v1.js"></script>
+				<div id="twitch2" class="hide">
+				</div>
+				<script type="text/javascript">
+    var options = {
+      channel: "Tentakill", // TODO: Change this to the streams username you want to embed
+      width: 640,
+      height: 360,
+      parent: ["tentakill.com", "tentakilllive.github.io"]
+    };
+    var player = new Twitch.Player("twitch2", options);
+    player.addEventListener(Twitch.Player.READY, initiate)
+    function initiate() {
+      player.addEventListener(Twitch.Player.ONLINE, handleOnline);
+      player.addEventListener(Twitch.Player.OFFLINE, handleOffline);
+      player.removeEventListener(Twitch.Player.READY, initiate);
+    }
+    function handleOnline() {
+      document.getElementById("twitch2").classList.remove('hide');
+      player.removeEventListener(Twitch.Player.ONLINE, handleOnline);
+      player.addEventListener(Twitch.Player.OFFLINE, handleOffline);
+      player.setMuted(false);
+    }
+    function handleOffline() {
+      document.getElementById("twitch2").classList.add('hide');
+      player.removeEventListener(Twitch.Player.OFFLINE, handleOffline);
+      player.addEventListener(Twitch.Player.ONLINE, handleOnline);
+      player.setMuted(true);
+    }
+  </script>
+  </span></div>
+  </div></section></body>
             </html>
           
