@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three Iframes Layout with Adjustable Divider</title>
+    <title>Sarah Digitally Livestream</title> <!-- Updated title -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet"> <!-- Font weight 600 -->
     <style>
         body {
             margin: 0;
             display: flex;
             height: 100vh;
+            position: relative; /* Allow absolute positioning of the button */
         }
         .iframe-container {
             display: flex;
@@ -42,6 +44,32 @@
             background-color: #c296fa; /* Divider color */
             height: 100%;
         }
+        /* Styling for the subscribe button */
+        .subscribe-button {
+            position: absolute;
+            top: 10px;
+            background-color: #c296fa;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600; /* Set to bold weight 600 */
+            font-family: 'Inter', sans-serif; /* Use Inter font */
+            opacity: 0; /* Default opacity set to 0% (invisible by default) */
+            pointer-events: all; /* Make button clickable */
+            display: flex;
+            align-items: center; /* Align text and image vertically */
+            transition: opacity 0.3s ease; /* Smooth transition for opacity */
+        }
+        /* Styling for the Twitch logo inside the button */
+        .subscribe-button img {
+            width: 18px; /* Set logo size */
+            margin-right: 8px; /* Space between logo and text */
+        }
+        /* Styling for button when hovered */
+        .subscribe-button:hover {
+            opacity: 1; /* 100% opacity when moused over */
+        }
     </style>
 </head>
 <body>
@@ -53,15 +81,22 @@
         
         <div class="right-section" id="rightSection">
             <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
-            <!-- Disable scrolling on the logo iframe -->
             <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
         </div>
     </div>
+
+    <!-- Subscribe button overlaying the entire webpage -->
+    <a href="https://www.twitch.tv/sarah_digitally/subscribe" target="_blank" class="subscribe-button">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo"> <!-- Updated image source -->
+        Subscribe
+    </a>
 
     <script>
         const divider = document.getElementById('divider');
         const youtubeIframe = document.getElementById('youtubeIframe');
         const rightSection = document.getElementById('rightSection');
+        const subscribeButton = document.querySelector('.subscribe-button');
+        const iframeContainer = document.querySelector('.iframe-container');
 
         let isResizing = false;
 
@@ -69,6 +104,12 @@
         let initialWidth = 85;
         youtubeIframe.style.width = initialWidth + '%';
         rightSection.style.width = (100 - initialWidth) + '%';
+
+        // Position the subscribe button based on divider's position
+        function updateButtonPosition() {
+            const dividerPosition = divider.offsetLeft; // Get the current position of the divider
+            subscribeButton.style.left = (dividerPosition - subscribeButton.offsetWidth - 10) + 'px'; // Move button 10px to the left of the divider
+        }
 
         // Mouse down event to start resizing
         divider.addEventListener('mousedown', (e) => {
@@ -88,8 +129,36 @@
                 newWidth = Math.min(Math.max(newWidth, 55), 90); // Set limits to 55% and 90%
                 youtubeIframe.style.width = newWidth + '%';
                 rightSection.style.width = (100 - newWidth) + '%';
+                updateButtonPosition(); // Update button position when divider moves
             }
         }
+
+        // Initial update of the subscribe button position
+        updateButtonPosition();
+
+        // Mouse over YouTube iframe to make the button 50% opacity
+        youtubeIframe.addEventListener('mouseover', () => {
+            subscribeButton.style.opacity = 0.5; // Set opacity to 50%
+        });
+
+        // Mouse out of YouTube iframe to revert button opacity to default
+        youtubeIframe.addEventListener('mouseout', () => {
+            subscribeButton.style.opacity = 0; // Revert opacity to 0% when not hovering
+        });
+
+        // Mouse over the subscribe button to set opacity to 100%
+        subscribeButton.addEventListener('mouseover', () => {
+            subscribeButton.style.opacity = 1; // Set opacity to 100% when button is hovered
+        });
+
+        // Mouse out of the subscribe button to set opacity back to default when not hovered
+        subscribeButton.addEventListener('mouseout', () => {
+            if (youtubeIframe.matches(':hover')) {
+                subscribeButton.style.opacity = 0.5; // Keep it 50% when mousing over the YouTube iframe
+            } else {
+                subscribeButton.style.opacity = 0; // Default opacity when not hovering
+            }
+        });
     </script>
 </body>
 </html>

@@ -9,6 +9,7 @@
             padding: 0;
             display: flex;
             justify-content: center;
+			background-color: black;
         }
 
         .image-container {
@@ -19,14 +20,21 @@
 
         .image-container a {
             width: 25%; /* Each link (containing the image) will take 25% of the container width */
+            transition: opacity 0.3s ease; /* Smooth transition for fading */
         }
 
         .image-container img {
             width: 100%; /* Make the image take full width of its parent (the link) */
             height: auto; /* Maintain aspect ratio */
+            opacity: 0.5; /* Default faded state */
+            transition: opacity 0.3s ease; /* Smooth transition for opacity */
+        }
+
+        .image-container img:hover {
+            opacity: 1; /* Clear image on hover */
         }
     </style>
-    <title>Responsive Square Image Links</title>
+    <title>Responsive Faded Image Links</title>
 </head>
 <body>
     <div class="image-container">
