@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Ultimate Viewing Experience</title>
+    <title>Sarah Digitally Livestream</title>
     <style>
         body {
             margin: 0;
@@ -13,23 +13,36 @@
         .iframe-container {
             display: flex;
             width: 100%;
-        }
-        .iframe-container iframe {
-            border: none;
+            height: 100vh;
         }
         .youtube {
-            width: 85%;
+            width: 80%;
+            height: 100%;
+            border: none;
+        }
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            width: 20%;
         }
         .twitch-chat {
-            width: 15%;
-			background-color: 18181b;
+            flex-grow: 1;
+            border: none;
+        }
+        .logo-section {
+            width: 100%;
+            aspect-ratio: 4 / 1; /* Ensures the height is 1/4 of the width */
+            border: none;
         }
     </style>
 </head>
 <body>
     <div class="iframe-container">
         <iframe class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
-        <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
+        <div class="right-section">
+            <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
+            <iframe class="logo-section" src="socials.html"></iframe>
+        </div>
     </div>
 </body>
 </html>

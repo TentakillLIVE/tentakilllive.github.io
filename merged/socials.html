@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .image-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .image-container a {
+            width: 25%; /* Each link (containing the image) will take 25% of the container width */
+        }
+
+        .image-container img {
+            width: 100%; /* Make the image take full width of its parent (the link) */
+            height: auto; /* Maintain aspect ratio */
+        }
+    </style>
+    <title>Responsive Square Image Links</title>
+</head>
+<body>
+    <div class="image-container">
+        <a href="https://twitch.tv/Sarah_Digitally" target="_blank">
+            <img src="twitch.png" alt="Image 1">
+        </a>
+        <a href="https://youtube.com/@sarah_digitally" target="_blank">
+            <img src="youtube.png" alt="Image 2">
+        </a>
+        <a href="https://tentakill.com/sarah-discord" target="_blank">
+            <img src="discord.png" alt="Image 3">
+        </a>
+        <a href="https://bsky.app/profile/sarah.tentakill.com" target="_blank">
+            <img src="bsky.png" alt="Image 4">
+        </a>
+    </div>
+</body>
+</html>
