@@ -1,1 +1,25 @@
-<iframe width="100%" height="100%" src="https://www.youtube.com/live_chat?v=BD9mTWMG2CU&embed_domain=tentakill.com" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="100%" height="100%" src="https://www.youtube.com/live_chat?v=BD9mTWMG2CU&embed_domain=tentakill.com" style="border:none;"<script>
+async function getLiveVideoID(username) {
+    const response = await fetch(`https://www.youtube.com/${username}/live`);
+    const text = await response.text();
+
+    // Search for the video ID in the page's HTML
+    const videoIdMatch = text.match(/"videoId":"(.*?)"/);
+    if (videoIdMatch && videoIdMatch[1]) {
+        return videoIdMatch[1];
+    } else {
+        console.error('No live video found.');
+        return null;
+    }
+}
+
+getLiveVideoID('@CohhCarnage').then(videoId => {
+    if (videoId) {
+        console.log('Live Video ID:', videoId);
+        // Now you can dynamically embed the live chat with the video ID
+        document.getElementById('liveChatIframe').src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=yourdomain.com`;
+    }
+});
+</script>
+
+<iframe id="liveChatIframe" width="400" height="600" frameborder="0" allowfullscreen></iframe>></iframe>
