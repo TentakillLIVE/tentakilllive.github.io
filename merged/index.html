@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sarah Digitally Livestream</title>
+    <title>Three Iframes Layout with Adjustable Divider</title>
     <style>
         body {
             margin: 0;
@@ -16,14 +16,14 @@
             height: 100vh;
         }
         .youtube {
-            width: 85%;
             height: 100%;
             border: none;
+            width: 85%; /* Default width set to 85% */
         }
         .right-section {
             display: flex;
             flex-direction: column;
-            width: 15%;
+            width: 15%; /* Default to 15% (100% - 85%) */
         }
         .twitch-chat {
             flex-grow: 1;
@@ -31,18 +31,65 @@
         }
         .logo-section {
             width: 100%;
-            aspect-ratio: 4 / 1; /* Ensures the height is 1/4 of the width */
+            aspect-ratio: 4 / 1;
             border: none;
+            overflow: hidden; /* Disable scrolling */
+        }
+        /* Styling for the draggable divider */
+        .divider {
+            width: 7px; /* Updated width to 7px */
+            cursor: ew-resize;
+            background-color: #c296fa; /* Divider color */
+            height: 100%;
         }
     </style>
 </head>
 <body>
     <div class="iframe-container">
-        <iframe class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
-        <div class="right-section">
+        <iframe id="youtubeIframe" class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
+        
+        <!-- Draggable Divider -->
+        <div class="divider" id="divider"></div>
+        
+        <div class="right-section" id="rightSection">
             <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
-            <iframe class="logo-section" src="socials.html"></iframe>
+            <!-- Disable scrolling on the logo iframe -->
+            <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
         </div>
     </div>
+
+    <script>
+        const divider = document.getElementById('divider');
+        const youtubeIframe = document.getElementById('youtubeIframe');
+        const rightSection = document.getElementById('rightSection');
+
+        let isResizing = false;
+
+        // Set the default initial width for the first iframe and right section
+        let initialWidth = 85;
+        youtubeIframe.style.width = initialWidth + '%';
+        rightSection.style.width = (100 - initialWidth) + '%';
+
+        // Mouse down event to start resizing
+        divider.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+            });
+        });
+
+        // Handle the mouse move event to resize
+        function handleMouseMove(e) {
+            if (isResizing) {
+                const containerWidth = document.body.clientWidth;
+                let newWidth = (e.clientX / containerWidth) * 100; // Calculate the percentage of the new width
+                newWidth = Math.min(Math.max(newWidth, 55), 90); // Set limits to 55% and 90%
+                youtubeIframe.style.width = newWidth + '%';
+                rightSection.style.width = (100 - newWidth) + '%';
+            }
+        }
+    </script>
 </body>
 </html>
