@@ -1,4 +1,4 @@
-<iframe width="100%" height="100%" src="https://www.youtube.com/live_chat?v=BD9mTWMG2CU&embed_domain=tentakill.com" style="border:none;"<script>
+<script>
 async function getLiveVideoID(username) {
     const response = await fetch(`https://www.youtube.com/${username}/live`);
     const text = await response.text();
@@ -22,4 +22,4 @@ getLiveVideoID('@CohhCarnage').then(videoId => {
 });
 </script>
 
-<iframe id="liveChatIframe" width="400" height="600" frameborder="0" allowfullscreen></iframe>></iframe>
+<iframe id="liveChatIframe" width="400" height="600" frameborder="0" allowfullscreen></iframe>
