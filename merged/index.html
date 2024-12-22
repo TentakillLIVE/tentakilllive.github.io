@@ -3,48 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sarah Digitally Livestream</title> <!-- Updated title -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet"> <!-- Font weight 600 -->
+    <title>Sarah Digitally Livestream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             display: flex;
             height: 100vh;
-            position: relative; /* Allow absolute positioning of the button */
+            position: relative;
         }
         .iframe-container {
             display: flex;
             width: 100%;
             height: 100vh;
+			-webkit-backface-visibility: hidden;
         }
         .youtube {
             height: 100%;
             border: none;
-            width: 85%; /* Default width set to 85% */
+            width: 85%;
         }
         .right-section {
             display: flex;
             flex-direction: column;
-            width: 15%; /* Default to 15% (100% - 85%) */
+            width: 15%;
+			-webkit-backface-visibility: hidden;
         }
         .twitch-chat {
             flex-grow: 1;
             border: none;
+			-webkit-backface-visibility: hidden;
         }
         .logo-section {
             width: 100%;
-            aspect-ratio: 4 / 1;
+            aspect-ratio: 8 / 1; /* Default aspect ratio */
             border: none;
-            overflow: hidden; /* Disable scrolling */
+            overflow: hidden;
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            transition: aspect-ratio 0.3s ease; /* Smooth transition for aspect-ratio change */
+			-webkit-backface-visibility: hidden;
         }
-        /* Styling for the draggable divider */
+        .logo-section.expand {
+            aspect-ratio: 4 / 1; /* Expand on hover */
+        }
         .divider {
-            width: 7px; /* Updated width to 7px */
+            width: 7px;
             cursor: ew-resize;
-            background-color: #c296fa; /* Divider color */
+            background-color: #c296fa;
             height: 100%;
         }
-        /* Styling for the subscribe button */
         .subscribe-button {
             position: absolute;
             top: 10px;
@@ -53,43 +62,71 @@
             padding: 8px 10px;
             border-radius: 5px;
             text-decoration: none;
-			font-size: 14px;
-			letter-spacing: 1px;
-            font-weight: 600; /* Set to bold weight 600 */
-            font-family: 'Inter', sans-serif; /* Use Inter font */
-            opacity: 0; /* Default opacity set to 0% (invisible by default) */
-            pointer-events: all; /* Make button clickable */
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            opacity: 0;
+            pointer-events: all;
             display: flex;
-            align-items: center; /* Align text and image vertically */
-            transition: opacity 0.3s ease; /* Smooth transition for opacity */
+            align-items: center;
+            font-size: 14px;
+            letter-spacing: 1px;
+            transition: opacity 0.3s ease;
         }
-        /* Styling for the Twitch logo inside the button */
         .subscribe-button img {
-            width: 16px; /* Set logo size */
-            margin-right: 8px; /* Space between logo and text */
+            width: 16px;
+            margin-right: 8px;
         }
-        /* Styling for button when hovered */
         .subscribe-button:hover {
-            opacity: 1; /* 100% opacity when moused over */
+            opacity: 1;
+        }
+
+        /* Styling for the modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            width: 80%;
+            height: 80%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .modal iframe {
+            width: 100%;
+            height: 100%;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background-color: #c296fa;
+            padding: 8px 10px;
+            border-radius: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div class="iframe-container">
         <iframe id="youtubeIframe" class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
-        
-        <!-- Draggable Divider -->
         <div class="divider" id="divider"></div>
-        
         <div class="right-section" id="rightSection">
             <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
             <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
         </div>
     </div>
 
-    <!-- Subscribe button overlaying the entire webpage -->
-    <a href="https://www.twitch.tv/sarah_digitally/subscribe" target="_blank" class="subscribe-button">
-        <img src="TwitchGlitchWhite.png" alt="Twitch Logo"> <!-- Updated image source -->
+    <a href="https://www.twitch.tv/sarah_digitally/subscribe" class="subscribe-button" target="_blank" id="subscribeButton">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo">
         Subscribe
     </a>
 
@@ -97,23 +134,18 @@
         const divider = document.getElementById('divider');
         const youtubeIframe = document.getElementById('youtubeIframe');
         const rightSection = document.getElementById('rightSection');
-        const subscribeButton = document.querySelector('.subscribe-button');
-        const iframeContainer = document.querySelector('.iframe-container');
+        const subscribeButton = document.getElementById('subscribeButton');
 
         let isResizing = false;
-
-        // Set the default initial width for the first iframe and right section
         let initialWidth = 85;
         youtubeIframe.style.width = initialWidth + '%';
         rightSection.style.width = (100 - initialWidth) + '%';
 
-        // Position the subscribe button based on divider's position
-        function updateButtonPosition() {
-            const dividerPosition = divider.offsetLeft; // Get the current position of the divider
-            subscribeButton.style.left = (dividerPosition - subscribeButton.offsetWidth - 10) + 'px'; // Move button 10px to the left of the divider
-        }
+        let updateButtonPosition = () => {
+            const dividerPosition = divider.offsetLeft;
+            subscribeButton.style.left = (dividerPosition - subscribeButton.offsetWidth - 10) + 'px';
+        };
 
-        // Mouse down event to start resizing
         divider.addEventListener('mousedown', (e) => {
             isResizing = true;
             document.addEventListener('mousemove', handleMouseMove);
@@ -123,43 +155,47 @@
             });
         });
 
-        // Handle the mouse move event to resize
         function handleMouseMove(e) {
             if (isResizing) {
                 const containerWidth = document.body.clientWidth;
-                let newWidth = (e.clientX / containerWidth) * 100; // Calculate the percentage of the new width
-                newWidth = Math.min(Math.max(newWidth, 55), 90); // Set limits to 55% and 90%
+                let newWidth = (e.clientX / containerWidth) * 100;
+                newWidth = Math.min(Math.max(newWidth, 55), 90);
                 youtubeIframe.style.width = newWidth + '%';
                 rightSection.style.width = (100 - newWidth) + '%';
-                updateButtonPosition(); // Update button position when divider moves
+                updateButtonPosition();
             }
         }
 
-        // Initial update of the subscribe button position
         updateButtonPosition();
 
-        // Mouse over YouTube iframe to make the button 50% opacity
         youtubeIframe.addEventListener('mouseover', () => {
-            subscribeButton.style.opacity = 0.5; // Set opacity to 50%
+            subscribeButton.style.opacity = 0.5;
         });
 
-        // Mouse out of YouTube iframe to revert button opacity to default
         youtubeIframe.addEventListener('mouseout', () => {
-            subscribeButton.style.opacity = 0; // Revert opacity to 0% when not hovering
+            subscribeButton.style.opacity = 0;
         });
 
-        // Mouse over the subscribe button to set opacity to 100%
         subscribeButton.addEventListener('mouseover', () => {
-            subscribeButton.style.opacity = 1; // Set opacity to 100% when button is hovered
+            subscribeButton.style.opacity = 1;
         });
 
-        // Mouse out of the subscribe button to set opacity back to default when not hovered
         subscribeButton.addEventListener('mouseout', () => {
             if (youtubeIframe.matches(':hover')) {
-                subscribeButton.style.opacity = 0.5; // Keep it 50% when mousing over the YouTube iframe
+                subscribeButton.style.opacity = 0.5;
             } else {
-                subscribeButton.style.opacity = 0; // Default opacity when not hovering
+                subscribeButton.style.opacity = 0;
             }
+        });
+
+        // Add event listeners for hover effect on logo-section iframe
+        const logoSection = document.querySelector('.logo-section');
+        logoSection.addEventListener('mouseover', () => {
+            logoSection.classList.add('expand'); // Expands when mouse is over
+        });
+
+        logoSection.addEventListener('mouseout', () => {
+            logoSection.classList.remove('expand'); // Resets when mouse leaves
         });
     </script>
 </body>
