@@ -45,14 +45,14 @@ async function fetchLiveVideoID(channelId, apiKey) {
 }
 
 // Use the function to fetch live video ID
-const channelId = "UCabc123"; // Replace with the actual channel ID
-const apiKey = "YOUR_API_KEY"; // Replace with your actual API key
+const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
+const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
 
 fetchLiveVideoID(channelId, apiKey).then(videoId => {
     if (videoId) {
         // Dynamically set the live chat iframe's src
         const iframe = document.getElementById("liveChatIframe");
-        iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=yourdomain.com`;
+        iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
     } else {
         console.log("Unable to retrieve live or past video ID.");
     }
