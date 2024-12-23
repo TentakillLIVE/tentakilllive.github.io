@@ -1,63 +1,63 @@
-<script>
-// Function to fetch the live video ID
-async function fetchLiveVideoID(channelId, apiKey) {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream</title>
+</head>
+<body>
 
-    try {
-        console.log(`Fetching live video data from YouTube API for channel: ${channelId}`);
+    <!-- Your iframe for live chat -->
+    <iframe id="youtubeChat" allowfullscreen></iframe>
 
-        const response = await fetch(url);
-        const data = await response.json();
+    <script>
+        // Function to fetch live video ID
+        async function fetchLiveVideoID(channelId, apiKey) {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`;
 
-        // Log the API response for debugging purposes
-        console.log('API Response:', data);
+            try {
+                console.log(`Fetching live video data from YouTube API for channel: ${channelId}`);
 
-        if (data.items && data.items.length > 0) {
-            // If there's a live video, return the video ID of the current live stream
-            const videoId = data.items[0].id.videoId;
-            console.log('Found live video:', videoId);
-            return videoId;
-        } else {
-            console.log("No live video found. Falling back to the last live stream.");
+                const response = await fetch(url);
+                const data = await response.json();
 
-            // If no live video is found, fetch the most recent past live video by modifying the request
-            const pastUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=completed&order=date&key=${apiKey}`;
-            const pastResponse = await fetch(pastUrl);
-            const pastData = await pastResponse.json();
+                // Log the API response for debugging purposes
+                console.log('API Response:', data);
 
-            // Log the past API response for debugging
-            console.log('Past API Response:', pastData);
+                if (data.items && data.items.length > 0) {
+                    // If there's a live video, return the video ID of the current live stream
+                    const videoId = data.items[0].id.videoId;
+                    console.log('Found live video:', videoId);
+                    return videoId;
+                } else {
+                    console.log("No live video found.");
 
-            // If a past live stream is found, return its video ID
-            if (pastData.items && pastData.items.length > 0) {
-                const videoId = pastData.items[0].id.videoId;
-                console.log('Using past live video:', videoId);
-                return videoId;
-            } else {
-                console.error("No past live video found.");
+                    // If no live video is found, set the iframe src to "ytnotlive.html"
+                    const iframe = document.getElementById("youtubeChat");
+                    iframe.src = "ytnotlive.html";
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error accessing YouTube API:", error);
                 return null;
             }
         }
-    } catch (error) {
-        console.error("Error accessing YouTube API:", error);
-        return null;
-    }
-}
 
-// Use the function to fetch live video ID
-const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
-const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
+        // Use the function to fetch live video ID
+        const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
+        const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
 
-fetchLiveVideoID(channelId, apiKey).then(videoId => {
-    if (videoId) {
-        // Dynamically set the live chat iframe's src
-        const iframe = document.getElementById("liveChatIframe");
-        iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
-    } else {
-        console.log("Unable to retrieve live or past video ID.");
-    }
-});
-</script>
+        fetchLiveVideoID(channelId, apiKey).then(videoId => {
+            if (videoId) {
+                // If live video is found, dynamically set the live chat iframe's src
+                const iframe = document.getElementById("youtubeChat");
+                iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
+            } else {
+                // If no live video found, the iframe will already have the src set to "ytnotlive.html"
+                console.log("Displaying 'No live stream' page.");
+            }
+        });
+    </script>
 
-<!-- Your iframe for live chat -->
-<iframe id="liveChatIframe" width="400" height="600" frameborder="0" allowfullscreen></iframe>
+</body>
+</html>

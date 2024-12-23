@@ -16,7 +16,6 @@
             display: flex;
             width: 100%;
             height: 100vh;
-			-webkit-backface-visibility: hidden;
         }
         .youtube {
             height: 100%;
@@ -27,12 +26,10 @@
             display: flex;
             flex-direction: column;
             width: 15%;
-			-webkit-backface-visibility: hidden;
         }
         .twitch-chat {
             flex-grow: 1;
             border: none;
-			-webkit-backface-visibility: hidden;
         }
         .logo-section {
             width: 100%;
@@ -43,7 +40,6 @@
             justify-content: center; /* Center horizontally */
             align-items: center; /* Center vertically */
             transition: aspect-ratio 0.3s ease; /* Smooth transition for aspect-ratio change */
-			-webkit-backface-visibility: hidden;
         }
         .logo-section.expand {
             aspect-ratio: 4 / 1; /* Expand on hover */
@@ -79,7 +75,23 @@
         .subscribe-button:hover {
             opacity: 1;
         }
-
+        /* Toggle Button styling */
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background-color: #c296fa;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
         /* Styling for the modal */
         .modal {
             display: none;
@@ -120,7 +132,7 @@
         <iframe id="youtubeIframe" class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
         <div class="divider" id="divider"></div>
         <div class="right-section" id="rightSection">
-            <iframe class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
+            <iframe id="chatIframe" class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
             <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
         </div>
     </div>
@@ -130,11 +142,16 @@
         Subscribe
     </a>
 
+    <!-- Toggle button to switch chat source -->
+    <button class="toggle-button" id="toggleChat">Switch to YouTube Chat</button>
+
     <script>
         const divider = document.getElementById('divider');
         const youtubeIframe = document.getElementById('youtubeIframe');
         const rightSection = document.getElementById('rightSection');
         const subscribeButton = document.getElementById('subscribeButton');
+        const chatIframe = document.getElementById('chatIframe');
+        const toggleChatButton = document.getElementById('toggleChat');
 
         let isResizing = false;
         let initialWidth = 85;
@@ -191,11 +208,25 @@
         // Add event listeners for hover effect on logo-section iframe
         const logoSection = document.querySelector('.logo-section');
         logoSection.addEventListener('mouseover', () => {
-            logoSection.classList.add('expand'); // Expands when mouse is over
+            logoSection.classList.add('expand');
         });
 
         logoSection.addEventListener('mouseout', () => {
-            logoSection.classList.remove('expand'); // Resets when mouse leaves
+            logoSection.classList.remove('expand');
+        });
+
+        // Toggle button functionality to switch chat iframe source
+        let isTwitchChat = true;
+
+        toggleChatButton.addEventListener('click', () => {
+            if (isTwitchChat) {
+                chatIframe.src = "https://www.youtube.com/live_chat?v=OL8D4iG5cXc&embed_domain=tentakill.com";
+                toggleChatButton.textContent = "Switch to Twitch Chat";
+            } else {
+                chatIframe.src = "https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com";
+                toggleChatButton.textContent = "Switch to YouTube Chat";
+            }
+            isTwitchChat = !isTwitchChat;
         });
     </script>
 </body>

@@ -105,7 +105,7 @@
 </head>
 <body>
     <div class="iframe-container">
-        <iframe id="youtubeIframe" class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
+        <iframe id="youtubeIframe" class="youtube" allowfullscreen></iframe>
         
         <!-- Draggable Divider -->
         <div class="divider" id="divider"></div>
@@ -113,7 +113,7 @@
         <div class="right-section" id="rightSection">
             <!-- Twitch and YouTube chat iframes -->
             <iframe class="twitch-chat active" id="twitchChat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
-            <iframe class="youtube-chat" id="youtubeChat" src="https://www.youtube.com/live_chat?v=OL8D4iG5cXc&embed_domain=tentakill.com"></iframe>
+            <iframe class="youtube-chat" id="youtubeChat" allowfullscreen></iframe>
             <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
         </div>
     </div>
@@ -205,5 +205,91 @@
             subscribeButton.style.opacity = '0.5';
         });
     </script>
+	
+	<script>
+        // Function to fetch live video ID
+        async function fetchLiveVideoID(channelId, apiKey) {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`;
+
+            try {
+                console.log(`Fetching live video data from YouTube API for channel: ${channelId}`);
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Log the API response for debugging purposes
+                console.log('API Response:', data);
+
+                if (data.items && data.items.length > 0) {
+                    // If there's a live video, return the video ID of the current live stream
+                    const videoId = data.items[0].id.videoId;
+                    console.log('Found live video:', videoId);
+                    return videoId;
+                } else {
+                    console.log("No live video found.");
+
+                    // If no live video is found, set the iframe src to "ytnotlive.html"
+                    const iframe = document.getElementById("youtubeChat");
+                    iframe.src = "ytnotlive.html";
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error accessing YouTube API:", error);
+                return null;
+            }
+        }
+
+        // Use the function to fetch live video ID
+        const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
+        const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
+
+        fetchLiveVideoID(channelId, apiKey).then(videoId => {
+            if (videoId) {
+                // If live video is found, dynamically set the live chat iframe's src
+                const iframe = document.getElementById("youtubeChat");
+                iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
+            } else {
+                // If no live video found, the iframe will already have the src set to "ytnotlive.html"
+                console.log("Displaying 'No live stream' page.");
+            }
+        });
+    </script>
+	
+	<script>
+        // API Key and Channel ID
+        const apiKey2 = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM";
+        const channelId2 = "UCTJPDJmjH0NWZULSujAsxow";
+
+        // YouTube iframe element
+        const youtubeIframe2 = document.getElementById('youtubeIframe');
+
+        // Function to check if there is an active livestream
+        function checkLivestreamStatus() {
+            const url2 = `https://www.googleapis.com/youtube/v3/search?key=${apiKey2}&channelId2=${channelId}&eventType=live&part=snippet`;
+
+            fetch(url2)
+                .then(response => response.json())
+                .then(data => {
+                    // Check if the data has items (indicating an active livestream)
+                    if (data.items && data.items.length > 0) {
+                        // There's an active livestream, set the iframe to the live stream URL
+                        const liveStreamUrl = `https://www.youtube.com/embed/live_stream?channel=${channelId}`;
+                        youtubeIframe.src = liveStreamUrl;
+                    } else {
+                        // No active livestream, set the iframe to the fallback page
+                        youtubeIframe2.src = "ytnotlive.html";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching livestream status:", error);
+                    // In case of an error, set the iframe to the fallback page
+                    youtubeIframe2.src = "ytnotlive.html";
+                });
+        }
+
+        // Call the function to check the livestream status when the page loads
+        checkLivestreamStatus();
+    </script>
+	
 </body>
 </html>
