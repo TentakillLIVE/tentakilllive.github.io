@@ -2,29 +2,59 @@
 // Function to fetch the live video ID
 async function fetchLiveVideoID(channelId, apiKey) {
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.items && data.items.length > 0) {
-        // Get the video ID of the live video
-        const videoId = data.items[0].id.videoId;
-        return videoId;
-    } else {
-        console.error("No live video found.");
+
+    try {
+        console.log(`Fetching live video data from YouTube API for channel: ${channelId}`);
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Log the API response for debugging purposes
+        console.log('API Response:', data);
+
+        if (data.items && data.items.length > 0) {
+            // If there's a live video, return the video ID of the current live stream
+            const videoId = data.items[0].id.videoId;
+            console.log('Found live video:', videoId);
+            return videoId;
+        } else {
+            console.log("No live video found. Falling back to the last live stream.");
+
+            // If no live video is found, fetch the most recent past live video by modifying the request
+            const pastUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=completed&order=date&key=${apiKey}`;
+            const pastResponse = await fetch(pastUrl);
+            const pastData = await pastResponse.json();
+
+            // Log the past API response for debugging
+            console.log('Past API Response:', pastData);
+
+            // If a past live stream is found, return its video ID
+            if (pastData.items && pastData.items.length > 0) {
+                const videoId = pastData.items[0].id.videoId;
+                console.log('Using past live video:', videoId);
+                return videoId;
+            } else {
+                console.error("No past live video found.");
+                return null;
+            }
+        }
+    } catch (error) {
+        console.error("Error accessing YouTube API:", error);
         return null;
     }
 }
 
 // Use the function to fetch live video ID
-const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
-const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
+const channelId = "UCabc123"; // Replace with the actual channel ID
+const apiKey = "YOUR_API_KEY"; // Replace with your actual API key
 
 fetchLiveVideoID(channelId, apiKey).then(videoId => {
     if (videoId) {
         // Dynamically set the live chat iframe's src
         const iframe = document.getElementById("liveChatIframe");
-        iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
+        iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=yourdomain.com`;
+    } else {
+        console.log("Unable to retrieve live or past video ID.");
     }
 });
 </script>
