@@ -48,12 +48,13 @@
             cursor: ew-resize;
             background-color: #c296fa; /* Divider color */
             height: 100%;
+            position: relative;
         }
         /* Toggle button styling */
         .toggle-button {
             position: absolute;
-            top: 10px;
-            right: 20px;
+            top: 10px; /* Position relative to the subscribe button */
+			right: calc(15% - 50px);
             width: 40px;
             height: 40px;
             border: none;
@@ -63,6 +64,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transition: opacity 0.3s;
         }
         .toggle-button img {
             width: 24px; /* Default size for logos */
@@ -70,6 +72,34 @@
         /* Specific styling for the Twitch logo */
         .toggle-button .twitch-logo {
             width: 18px; /* Reduced size for Twitch logo */
+        }
+
+        /* Subscribe button styling */
+        .subscribe-button {
+            position: absolute;
+            top: 10px;
+            right: calc(15% + 17px); /* Position based on divider, with a 10px gap */
+            background-color: #c296fa;
+            color: white;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: opacity 0.3s;
+            opacity: 0; /* Initially invisible */
+        }
+        .subscribe-button img {
+            width: 16px;
+            margin-right: 8px;
+        }
+        .subscribe-button:hover {
+            opacity: 1 !important; /* Fully visible on hover */
         }
     </style>
 </head>
@@ -88,6 +118,12 @@
         </div>
     </div>
 
+    <!-- Subscribe Button -->
+    <button class="subscribe-button" id="subscribeButton" onclick="window.open('https://www.twitch.tv/sarah_digitally/subscribe', '_blank')">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo">
+        Subscribe
+    </button>
+
     <!-- Toggle Button for switching chats -->
     <button class="toggle-button" id="toggleChat">
         <img src="TwitchGlitchWhite.png" alt="Twitch Logo" class="twitch-logo">
@@ -100,6 +136,7 @@
         const twitchChatIframe = document.getElementById('twitchChat');
         const youtubeChatIframe = document.getElementById('youtubeChat');
         const toggleChatButton = document.getElementById('toggleChat');
+        const subscribeButton = document.getElementById('subscribeButton');
 
         let isResizing = false;
         let isTwitchChatActive = true; // Track which chat is active
@@ -127,6 +164,10 @@
                 newWidth = Math.min(Math.max(newWidth, 55), 90); // Set limits to 55% and 90%
                 youtubeIframe.style.width = newWidth + '%';
                 rightSection.style.width = (100 - newWidth) + '%';
+
+                // Adjust the position of the Subscribe button and Toggle button
+                subscribeButton.style.right = `calc(${(100 - newWidth)}% + 17px)`;
+                toggleChatButton.style.right = `calc(${(100 - newWidth)}% - 50px)`; // Position to the left of the divider
             }
         }
 
@@ -146,6 +187,22 @@
                 toggleChatButton.querySelector('img').classList.add('twitch-logo'); // Add Twitch-specific class
             }
             isTwitchChatActive = !isTwitchChatActive;
+        });
+
+        // Event listener to change opacity when hovering over the YouTube iframe
+        youtubeIframe.addEventListener('mouseenter', () => {
+            subscribeButton.style.opacity = '0.5';
+        });
+        youtubeIframe.addEventListener('mouseleave', () => {
+            subscribeButton.style.opacity = '0';
+        });
+
+        // Ensure the button is 100% visible when hovered directly
+        subscribeButton.addEventListener('mouseenter', () => {
+            subscribeButton.style.opacity = '1';
+        });
+        subscribeButton.addEventListener('mouseleave', () => {
+            subscribeButton.style.opacity = '0.5';
         });
     </script>
 </body>
