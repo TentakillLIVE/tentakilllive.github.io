@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarah Digitally Livestream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        .iframe-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .youtube {
+            height: 100%;
+            border: none;
+            width: 85%;
+        }
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            width: 15%;
+        }
+        .twitch-chat {
+            flex-grow: 1;
+            border: none;
+        }
+        .logo-section {
+            width: 100%;
+            aspect-ratio: 8 / 1; /* Default aspect ratio */
+            border: none;
+            overflow: hidden;
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            transition: aspect-ratio 0.3s ease; /* Smooth transition for aspect-ratio change */
+        }
+        .logo-section.expand {
+            aspect-ratio: 4 / 1; /* Expand on hover */
+        }
+        .divider {
+            width: 7px;
+            cursor: ew-resize;
+            background-color: #c296fa;
+            height: 100%;
+        }
+        .subscribe-button {
+            position: absolute;
+            top: 10px;
+            background-color: #c296fa;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            opacity: 0;
+            pointer-events: all;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            letter-spacing: 1px;
+            transition: opacity 0.3s ease;
+        }
+        .subscribe-button img {
+            width: 16px;
+            margin-right: 8px;
+        }
+        .subscribe-button:hover {
+            opacity: 1;
+        }
+        /* Toggle Button styling */
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background-color: #c296fa;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+        /* Styling for the modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            width: 80%;
+            height: 80%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .modal iframe {
+            width: 100%;
+            height: 100%;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background-color: #c296fa;
+            padding: 8px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="iframe-container">
+        <iframe id="youtubeIframe" class="youtube" src="https://www.youtube.com/embed/live_stream?channel=UCTJPDJmjH0NWZULSujAsxow" allowfullscreen></iframe>
+        <div class="divider" id="divider"></div>
+        <div class="right-section" id="rightSection">
+            <iframe id="chatIframe" class="twitch-chat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
+            <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
+        </div>
+    </div>
+
+    <a href="https://www.twitch.tv/sarah_digitally/subscribe" class="subscribe-button" target="_blank" id="subscribeButton">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo">
+        Subscribe
+    </a>
+
+    <!-- Toggle button to switch chat source -->
+    <button class="toggle-button" id="toggleChat">Switch to YouTube Chat</button>
+
+    <script>
+        const divider = document.getElementById('divider');
+        const youtubeIframe = document.getElementById('youtubeIframe');
+        const rightSection = document.getElementById('rightSection');
+        const subscribeButton = document.getElementById('subscribeButton');
+        const chatIframe = document.getElementById('chatIframe');
+        const toggleChatButton = document.getElementById('toggleChat');
+
+        let isResizing = false;
+        let initialWidth = 85;
+        youtubeIframe.style.width = initialWidth + '%';
+        rightSection.style.width = (100 - initialWidth) + '%';
+
+        let updateButtonPosition = () => {
+            const dividerPosition = divider.offsetLeft;
+            subscribeButton.style.left = (dividerPosition - subscribeButton.offsetWidth - 10) + 'px';
+        };
+
+        divider.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+            });
+        });
+
+        function handleMouseMove(e) {
+            if (isResizing) {
+                const containerWidth = document.body.clientWidth;
+                let newWidth = (e.clientX / containerWidth) * 100;
+                newWidth = Math.min(Math.max(newWidth, 55), 90);
+                youtubeIframe.style.width = newWidth + '%';
+                rightSection.style.width = (100 - newWidth) + '%';
+                updateButtonPosition();
+            }
+        }
+
+        updateButtonPosition();
+
+        youtubeIframe.addEventListener('mouseover', () => {
+            subscribeButton.style.opacity = 0.5;
+        });
+
+        youtubeIframe.addEventListener('mouseout', () => {
+            subscribeButton.style.opacity = 0;
+        });
+
+        subscribeButton.addEventListener('mouseover', () => {
+            subscribeButton.style.opacity = 1;
+        });
+
+        subscribeButton.addEventListener('mouseout', () => {
+            if (youtubeIframe.matches(':hover')) {
+                subscribeButton.style.opacity = 0.5;
+            } else {
+                subscribeButton.style.opacity = 0;
+            }
+        });
+
+        // Add event listeners for hover effect on logo-section iframe
+        const logoSection = document.querySelector('.logo-section');
+        logoSection.addEventListener('mouseover', () => {
+            logoSection.classList.add('expand');
+        });
+
+        logoSection.addEventListener('mouseout', () => {
+            logoSection.classList.remove('expand');
+        });
+
+        // Toggle button functionality to switch chat iframe source
+        let isTwitchChat = true;
+
+        toggleChatButton.addEventListener('click', () => {
+            if (isTwitchChat) {
+                chatIframe.src = "https://www.youtube.com/live_chat?v=OL8D4iG5cXc&embed_domain=tentakill.com";
+                toggleChatButton.textContent = "Switch to Twitch Chat";
+            } else {
+                chatIframe.src = "https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com";
+                toggleChatButton.textContent = "Switch to YouTube Chat";
+            }
+            isTwitchChat = !isTwitchChat;
+        });
+    </script>
+</body>
+</html>
