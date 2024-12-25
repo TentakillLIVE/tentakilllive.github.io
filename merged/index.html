@@ -52,19 +52,21 @@
         }
         /* Toggle button styling */
         .toggle-button {
-            position: absolute;
-            top: 60px; /* Position relative to the subscribe button */
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 50%;
-            background-color: #9145ff; /* Default to Twitch purple */
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 0.3s;
-        }
+			position: absolute;
+			top: 10px; /* Position relative to the subscribe button */
+			right: calc(15% - 50px); /* Adjusted to position the button correctly */
+			width: 40px;
+			height: 40px;
+			border: none;
+			border-radius: 50%;
+			background-color: #9145ff; /* Default to Twitch purple */
+			cursor: pointer;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			transition: opacity 0.3s;
+}
+
         .toggle-button img {
             width: 24px; /* Default size for logos */
         }
@@ -166,7 +168,7 @@
 
                 // Adjust the position of the Subscribe button and Toggle button
                 subscribeButton.style.right = `calc(${(100 - newWidth)}% + 17px)`;
-                toggleChatButton.style.left = `calc(${(100 - newWidth)}% - 27px)`; // Position to the left of the divider
+                toggleChatButton.style.right = `calc(${(100 - newWidth)}% - 50px)`; // Position to the right of the divider
             }
         }
 
