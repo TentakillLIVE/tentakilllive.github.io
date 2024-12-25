@@ -256,40 +256,47 @@
     </script>
 	
 	<script>
-        // API Key and Channel ID
-        const apiKey2 = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM";
-        const channelId2 = "UCTJPDJmjH0NWZULSujAsxow";
+    // API Key and Channel ID
+    const apiKey2 = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM";
+    const channelId2 = "UCTJPDJmjH0NWZULSujAsxow";
 
-        // YouTube iframe element
-        const youtubeIframe2 = document.getElementById('youtubeIframe');
+    // YouTube iframe element
+    const youtubeIframe = document.getElementById('youtubeIframe');
 
-        // Function to check if there is an active livestream
-        function checkLivestreamStatus() {
-            const url2 = `https://www.googleapis.com/youtube/v3/search?key=${apiKey2}&channelId2=${channelId}&eventType=live&part=snippet`;
+    // Function to check if there is an active livestream
+    function checkLivestreamStatus() {
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId2}&type=video&eventType=live&key=${apiKey2}`;
 
-            fetch(url2)
-                .then(response => response.json())
-                .then(data => {
-                    // Check if the data has items (indicating an active livestream)
-                    if (data.items && data.items.length > 0) {
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.items && data.items.length > 0) {
+                    // Check if liveBroadcastContent is "live" (indicating a livestream in progress)
+                    const liveStream = data.items.find(item => item.snippet.liveBroadcastContent === 'live');
+                    if (liveStream) {
                         // There's an active livestream, set the iframe to the live stream URL
-                        const liveStreamUrl = `https://www.youtube.com/embed/live_stream?channel=${channelId}`;
+                        const liveStreamUrl = `https://www.youtube.com/embed/live_stream?channel=${channelId2}`;
                         youtubeIframe.src = liveStreamUrl;
                     } else {
                         // No active livestream, set the iframe to the fallback page
-                        youtubeIframe2.src = "ytnotlive.html";
+                        youtubeIframe.src = "ytnotlive.html";
                     }
-                })
-                .catch(error => {
-                    console.error("Error fetching livestream status:", error);
-                    // In case of an error, set the iframe to the fallback page
-                    youtubeIframe2.src = "ytnotlive.html";
-                });
-        }
+                } else {
+                    // No livestream data, set the iframe to the fallback page
+                    youtubeIframe.src = "ytnotlive.html";
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching livestream status:", error);
+                // In case of an error, set the iframe to the fallback page
+                youtubeIframe.src = "ytnotlive.html";
+            });
+    }
 
-        // Call the function to check the livestream status when the page loads
-        checkLivestreamStatus();
-    </script>
+    // Call the function to check the livestream status when the page loads
+    checkLivestreamStatus();
+</script>
+
 	
 </body>
 </html>
