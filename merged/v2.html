@@ -35,12 +35,16 @@
         }
         .logo-section {
             width: 100%;
-            aspect-ratio: 8 / 1;
+            aspect-ratio: 8 / 1; /* Default aspect ratio */
             border: none;
-            overflow: hidden; /* Disable scrolling */
+            overflow: hidden;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            transition: aspect-ratio 0.3s ease; /* Smooth transition for aspect-ratio change */
+        }
+        .logo-section.expand {
+            aspect-ratio: 4 / 1; /* Expand on hover */
         }
         /* Styling for the draggable divider */
         .divider {
@@ -137,6 +141,7 @@
         const youtubeChatIframe = document.getElementById('youtubeChat');
         const toggleChatButton = document.getElementById('toggleChat');
         const subscribeButton = document.getElementById('subscribeButton');
+        const logoSection = document.querySelector('.logo-section');
 
         let isResizing = false;
         let isTwitchChatActive = true; // Track which chat is active
@@ -203,6 +208,15 @@
         });
         subscribeButton.addEventListener('mouseleave', () => {
             subscribeButton.style.opacity = '0.5';
+        });
+		
+		// Add event listeners for hover effect on logo-section iframe
+		logoSection.addEventListener('mouseover', () => {
+            logoSection.classList.add('expand'); // Expands when mouse is over
+        });
+
+		logoSection.addEventListener('mouseout', () => {
+            logoSection.classList.remove('expand'); // Resets when mouse leaves
         });
     </script>
 	
