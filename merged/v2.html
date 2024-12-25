@@ -261,7 +261,7 @@
     const channelId2 = "UCTJPDJmjH0NWZULSujAsxow";
 
     // YouTube iframe element
-    const youtubeIframe = document.getElementById('youtubeIframe');
+    const youtubeIframe2 = document.getElementById('youtubeIframe');
 
     // Function to check if there is an active livestream
     function checkLivestreamStatus() {
@@ -276,20 +276,20 @@
                     if (liveStream) {
                         // There's an active livestream, set the iframe to the live stream URL
                         const liveStreamUrl = `https://www.youtube.com/embed/live_stream?channel=${channelId2}`;
-                        youtubeIframe.src = liveStreamUrl;
+                        youtubeIframe2.src = liveStreamUrl;
                     } else {
                         // No active livestream, set the iframe to the fallback page
-                        youtubeIframe.src = "ytnotlive.html";
+                        youtubeIframe2.src = "ytnotlive.html";
                     }
                 } else {
                     // No livestream data, set the iframe to the fallback page
-                    youtubeIframe.src = "ytnotlive.html";
+                    youtubeIframe2.src = "ytnotlive.html";
                 }
             })
             .catch(error => {
                 console.error("Error fetching livestream status:", error);
                 // In case of an error, set the iframe to the fallback page
-                youtubeIframe.src = "ytnotlive.html";
+                youtubeIframe2.src = "ytnotlive.html";
             });
     }
 
