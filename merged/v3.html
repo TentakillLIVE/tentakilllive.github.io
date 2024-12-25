@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarah Digitally Livestream</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+        .iframe-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .youtube {
+            height: 100%;
+            border: none;
+            width: 85%; /* Default width set to 85% */
+        }
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            width: 15%; /* Default to 15% (100% - 85%) */
+        }
+        .twitch-chat, .youtube-chat {
+            flex-grow: 1;
+            border: none;
+            display: none; /* Initially hidden */
+        }
+        .twitch-chat.active, .youtube-chat.active {
+            display: block; /* Show active chat */
+        }
+        .logo-section {
+            width: 100%;
+            aspect-ratio: 8 / 1; /* Default aspect ratio */
+            border: none;
+            overflow: hidden;
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            transition: aspect-ratio 0.3s ease; /* Smooth transition for aspect-ratio change */
+        }
+        .logo-section.expand {
+            aspect-ratio: 4 / 1; /* Expand on hover */
+        }
+        /* Styling for the draggable divider */
+        .divider {
+            width: 7px; /* Updated width to 7px */
+            cursor: ew-resize;
+            background-color: #c296fa; /* Divider color */
+            height: 100%;
+            position: relative;
+        }
+        /* Toggle button styling */
+        .toggle-button {
+            position: absolute;
+            top: 10px; /* Position relative to the subscribe button */
+			right: calc(15% - 50px);
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background-color: #9145ff; /* Default to Twitch purple */
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s;
+        }
+        .toggle-button img {
+            width: 24px; /* Default size for logos */
+        }
+        /* Specific styling for the Twitch logo */
+        .toggle-button .twitch-logo {
+            width: 18px; /* Reduced size for Twitch logo */
+        }
+
+        /* Subscribe button styling */
+        .subscribe-button {
+            position: absolute;
+            top: 10px;
+            right: calc(15% + 17px); /* Position based on divider, with a 10px gap */
+            background-color: #c296fa;
+            color: white;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: opacity 0.3s;
+            opacity: 0; /* Initially invisible */
+        }
+        .subscribe-button img {
+            width: 16px;
+            margin-right: 8px;
+        }
+        .subscribe-button:hover {
+            opacity: 1 !important; /* Fully visible on hover */
+        }
+    </style>
+	<script src="https://www.youtube.com/iframe_api"></script>
+	
+</head>
+<body>
+
+
+    <div class="iframe-container">
+        <iframe id="youtubeIframe" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        
+        <!-- Draggable Divider -->
+        <div class="divider" id="divider"></div>
+        
+        <div class="right-section" id="rightSection">
+            <!-- Twitch and YouTube chat iframes -->
+            <iframe class="twitch-chat active" id="twitchChat" src="https://www.twitch.tv/embed/Sarah_Digitally/chat?darkpopout&parent=tentakill.com"></iframe>
+            <iframe class="youtube-chat" id="youtubeChat" allowfullscreen></iframe>
+            <iframe class="logo-section" src="socials.html" scrolling="no"></iframe>
+        </div>
+    </div>
+
+    <!-- Subscribe Button -->
+    <button class="subscribe-button" id="subscribeButton" onclick="window.open('https://www.twitch.tv/sarah_digitally/subscribe', '_blank')">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo">
+        Subscribe
+    </button>
+
+    <!-- Toggle Button for switching chats -->
+    <button class="toggle-button" id="toggleChat">
+        <img src="TwitchGlitchWhite.png" alt="Twitch Logo" class="twitch-logo">
+    </button>
+
+    <script>
+        const divider = document.getElementById('divider');
+        const youtubeIframe = document.getElementById('youtubeIframe');
+        const rightSection = document.getElementById('rightSection');
+        const twitchChatIframe = document.getElementById('twitchChat');
+        const youtubeChatIframe = document.getElementById('youtubeChat');
+        const toggleChatButton = document.getElementById('toggleChat');
+        const subscribeButton = document.getElementById('subscribeButton');
+        const logoSection = document.querySelector('.logo-section');
+
+        let isResizing = false;
+        let isTwitchChatActive = true; // Track which chat is active
+
+        // Set the default initial width for the first iframe and right section
+        let initialWidth = 85;
+        youtubeIframe.style.width = initialWidth + '%';
+        rightSection.style.width = (100 - initialWidth) + '%';
+
+        // Mouse down event to start resizing
+        divider.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+            });
+        });
+
+        // Handle the mouse move event to resize
+        function handleMouseMove(e) {
+            if (isResizing) {
+                const containerWidth = document.body.clientWidth;
+                let newWidth = (e.clientX / containerWidth) * 100; // Calculate the percentage of the new width
+                newWidth = Math.min(Math.max(newWidth, 55), 90); // Set limits to 55% and 90%
+                youtubeIframe.style.width = newWidth + '%';
+                rightSection.style.width = (100 - newWidth) + '%';
+
+                // Adjust the position of the Subscribe button and Toggle button
+                subscribeButton.style.right = `calc(${(100 - newWidth)}% + 17px)`;
+                toggleChatButton.style.right = `calc(${(100 - newWidth)}% - 50px)`; // Position to the left of the divider
+            }
+        }
+
+        // Handle chat source switching
+        toggleChatButton.addEventListener('click', () => {
+            if (isTwitchChatActive) {
+                twitchChatIframe.classList.remove('active');
+                youtubeChatIframe.classList.add('active');
+                toggleChatButton.style.backgroundColor = "#ff0000"; // YouTube red
+                toggleChatButton.querySelector('img').src = "YTIcon.png"; // Update to YouTube logo
+                toggleChatButton.querySelector('img').classList.remove('twitch-logo'); // Remove Twitch-specific class
+            } else {
+                youtubeChatIframe.classList.remove('active');
+                twitchChatIframe.classList.add('active');
+                toggleChatButton.style.backgroundColor = "#9145ff"; // Twitch purple
+                toggleChatButton.querySelector('img').src = "TwitchGlitchWhite.png"; // Update to Twitch logo
+                toggleChatButton.querySelector('img').classList.add('twitch-logo'); // Add Twitch-specific class
+            }
+            isTwitchChatActive = !isTwitchChatActive;
+        });
+
+        // Event listener to change opacity when hovering over the YouTube iframe
+        youtubeIframe.addEventListener('mouseenter', () => {
+            subscribeButton.style.opacity = '0.5';
+        });
+        youtubeIframe.addEventListener('mouseleave', () => {
+            subscribeButton.style.opacity = '0';
+        });
+
+        // Ensure the button is 100% visible when hovered directly
+        subscribeButton.addEventListener('mouseenter', () => {
+            subscribeButton.style.opacity = '1';
+        });
+        subscribeButton.addEventListener('mouseleave', () => {
+            subscribeButton.style.opacity = '0.5';
+        });
+		
+		// Add event listeners for hover effect on logo-section iframe
+		logoSection.addEventListener('mouseover', () => {
+            logoSection.classList.add('expand'); // Expands when mouse is over
+        });
+
+		logoSection.addEventListener('mouseout', () => {
+            logoSection.classList.remove('expand'); // Resets when mouse leaves
+        });
+    </script>
+	
+	<script>
+        // Function to fetch live video ID
+        async function fetchLiveVideoID(channelId, apiKey) {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&type=video&eventType=live&key=${apiKey}`;
+
+            try {
+                console.log(`Fetching live video data from YouTube API for channel: ${channelId}`);
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Log the API response for debugging purposes
+                console.log('API Response:', data);
+
+                if (data.items && data.items.length > 0) {
+                    // If there's a live video, return the video ID of the current live stream
+                    const videoId = data.items[0].id.videoId;
+                    console.log('Found live video:', videoId);
+                    return videoId;
+                } else {
+                    console.log("No live video found.");
+
+                    // If no live video is found, set the iframe src to "ytnotlive.html"
+                    const iframe = document.getElementById("youtubeChat");
+                    iframe.src = "ytnotlive.html";
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error accessing YouTube API:", error);
+                return null;
+            }
+        }
+
+        // Use the function to fetch live video ID
+        const channelId = "UCTJPDJmjH0NWZULSujAsxow"; // Replace with the actual channel ID
+        const apiKey = "AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM"; // Replace with your actual API key
+
+        fetchLiveVideoID(channelId, apiKey).then(videoId => {
+            if (videoId) {
+                // If live video is found, dynamically set the live chat iframe's src
+                const iframe = document.getElementById("youtubeChat");
+                iframe.src = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=tentakill.com`;
+            } else {
+                // If no live video found, the iframe will already have the src set to "ytnotlive.html"
+                console.log("Displaying 'No live stream' page.");
+            }
+        });
+    </script>
+	
+
+<script>
+  var player;
+
+  // Load the YouTube IFrame API
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('youtubeIframe', {
+      height: '100%',
+      width: '100%',
+      videoId: '', // Initially blank
+      playerVars: {
+        'autoplay': 1,
+        'controls': 1,
+        'mute': 1
+      },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  }
+
+  // When the player is ready, set the quality to the highest available
+  function onPlayerReady(event) {
+    player.setPlaybackQuality('highres'); // Requests the highest resolution available
+  }
+
+  // Handle player state changes (optional, for further control)
+  function onPlayerStateChange(event) {
+    if (event.data == YT.PlayerState.BUFFERING) {
+      player.setPlaybackQuality('highres'); // Re-set highest quality when buffering
+    }
+  }
+
+  // Function to check if the livestream is active
+  async function checkLiveStream() {
+    const apiKey2 = 'AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM';
+    const channelId2 = 'UCTJPDJmjH0NWZULSujAsxow';
+    const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId2}&eventType=live&type=video&key=${apiKey2}`;
+
+    try {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      if (data.items && data.items.length > 0) {
+        const videoId = data.items[0].id.videoId; // Get the live video ID
+        player.loadVideoById(videoId); // Load the live stream video
+      } else {
+        document.getElementById('youtubeIframe').src = 'ytnotlive.html'; // Fallback if no livestream is found
+      }
+    } catch (error) {
+      console.error('Error checking livestream:', error);
+    }
+  }
+
+  // Call checkLiveStream on page load
+  window.onload = function() {
+    checkLiveStream();
+  };
+</script>
+	
+</body>
+</html>
