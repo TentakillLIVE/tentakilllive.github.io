@@ -113,7 +113,7 @@
 
 
     <div class="iframe-container">
-        <iframe id="youtubeIframe" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <iframe id="youtubeIframe" type="text/html" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         
         <!-- Draggable Divider -->
         <div class="divider" id="divider"></div>
@@ -275,63 +275,61 @@
 	
 
 <script>
-  var player;
+        var player;
 
-  // Load the YouTube IFrame API
-  function onYouTubeIframeAPIReady() {
-    player = new YT.Player('youtubeIframe', {
-      height: '100%',
-      width: '100%',
-      videoId: '', // Initially blank
-      playerVars: {
-        'autoplay': 1,
-        'controls': 1,
-        'mute': 1
-      },
-      events: {
-        'onReady': onPlayerReady,
-        'onStateChange': onPlayerStateChange
-      }
-    });
-  }
+        // Function that runs once the YouTube IFrame API is ready
+        function onYouTubeIframeAPIReady() {
+            checkLiveStream(); // Check for live stream
+        }
 
-  // When the player is ready, set the quality to the highest available
-  function onPlayerReady(event) {
-    player.setPlaybackQuality('highres'); // Requests the highest resolution available
-  }
+        // Function to fetch the live stream details using YouTube Data API v3
+        function checkLiveStream() {
+            var apiKey2 = 'AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM';
+            var channelId2 = 'UCTJPDJmjH0NWZULSujAsxow';
+            var apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId2}&eventType=live&type=video&key=${apiKey2}`;
 
-  // Handle player state changes (optional, for further control)
-  function onPlayerStateChange(event) {
-    if (event.data == YT.PlayerState.BUFFERING) {
-      player.setPlaybackQuality('highres'); // Re-set highest quality when buffering
-    }
-  }
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.items && data.items.length > 0) {
+                        // Get the video ID of the live stream
+                        var liveVideoId = data.items[0].id.videoId;
+                        loadYouTubePlayer(liveVideoId);
+                    } else {
+                        // No live stream; load fallback content
+                        document.getElementById('youtubeIframe').src = 'ytnotlive.html';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching live stream data:', error);
+                    document.getElementById('youtubeIframe').src = 'ytnotlive.html'; // Fallback in case of error
+                });
+        }
 
-  // Function to check if the livestream is active
-  async function checkLiveStream() {
-    const apiKey2 = 'AIzaSyBsi7CLp9a8f_MgaF40ChlE9s-TotXmQdM';
-    const channelId2 = 'UCTJPDJmjH0NWZULSujAsxow';
-    const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId2}&eventType=live&type=video&key=${apiKey2}`;
+        // Function to load the YouTube Player with the fetched live video ID
+        function loadYouTubePlayer(videoId) {
+            player = new YT.Player('youtubeIframe', {
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 1,       // Automatically start the video
+                    'controls': 1,       // Show controls
+                    'rel': 0,            // Disable related videos
+                    'showinfo': 0,       // Hide video info
+                    'mute': 1,           // Mute the video
+                    'vq': 'hd1440'       // Set to 1440p quality
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
 
-    try {
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      if (data.items && data.items.length > 0) {
-        const videoId = data.items[0].id.videoId; // Get the live video ID
-        player.loadVideoById(videoId); // Load the live stream video
-      } else {
-        document.getElementById('youtubeIframe').src = 'ytnotlive.html'; // Fallback if no livestream is found
-      }
-    } catch (error) {
-      console.error('Error checking livestream:', error);
-    }
-  }
-
-  // Call checkLiveStream on page load
-  window.onload = function() {
-    checkLiveStream();
-  };
-</script>
+        // This function will run once the player is ready
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            event.target.setPlaybackQuality('hd1440'); // Set to highest quality (1440p)
+        }
+    </script>
 	
 </body>
 </html>
