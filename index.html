@@ -1,64 +1,187 @@
 <!doctype html>
-            <html lang="en">
-              <head>
-                <meta charset="utf-8">
-                <title>Home</title>
-                <meta name="generator" content="GrapesJS Studio">
-                <meta name="viewport" content="width=device-width,initial-scale=1">
-                <meta property="og:type" content="website">
-                <meta name="robots" content="index,follow">
-                <link rel="stylesheet" href="./css/style.css">
-				<style>
-    .hide { display:none; }
-
-    /* Optional: The following css just makes sure the twitch video stays responsive */
-    #twitch {
-      position: relative;
-      padding-bottom: 56.25%; /* 16:9 */
-      padding-top: 25px;
-      height: 0;
-    }
-    #twitch object, #twitch iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    </style>
-              </head>
-              <body id="iw5hig"><div id="ifqsdl" class="gjs-grid-row"><div class="gjs-grid-column"></div></div><div id="i6buey" class="gjs-grid-row"><div id="ifg83k" class="gjs-grid-column"><div id="imehiy" class="gjs-grid-row"><div id="iwoehp" class="gjs-grid-column"><a href="/" id="i0966c" class="gjs-link-box"><img src="assets/tenta_pfp500.png" id="ix3dju"/></a></div><div id="iqux6o" class="gjs-grid-column"><div id="iwhh5q" class="gjs-grid-row"><div id="i548ug" class="gjs-grid-column"><a href="./index.html" id="iy2q6p" class="gjs-link">Home<br/></a><a href="./bot_commands.html" id="itmdcx" class="gjs-link">Tentakill Bot<br/></a><a href="./links.html" id="ixzfm5" class="gjs-link">Links<br/></a></div></div></div><div id="iuhf8l" class="gjs-grid-column gjs-link-box"><a href="#top" id="iq3p2f" class="gjs-link-box"><img src="assets/up_arrow_png_clipart.png" id="iaxpgn"/></a></div></div></div></div><div id="i5dbqu" class="gjs-grid-row"><div id="itlyg1" class="gjs-grid-column"><h1 id="i724dl" class="gjs-heading">Welcome!<span id="itgixo" class="gjs-text-blue"><br/></span></h1><img src="assets/tenta2_2022cropped.png" id="i1imhy"/><h1 id="irxzqj" class="gjs-heading">This site is a <span id="irmd9f">Work In Progress.</span><br/></h1></div></div><section id="ibduxj" class="gjs-section"><div class="gjs-container"><div class="gjs-custom-code" id="igxxye"><span>
-			  
-			  <script src= "https://player.twitch.tv/js/embed/v1.js"></script>
-				<div id="twitch" class="hide">
-				</div>
-				<script type="text/javascript">
-    var options = {
-      channel: "Sarah_Digitally", // TODO: Change this to the streams username you want to embed
-      width: 640,
-      height: 360,
-      parent: ["tentakill.com", "tentakilllive.github.io"]
-    };
-    var player = new Twitch.Player("twitch", options);
-    player.addEventListener(Twitch.Player.READY, initiate)
-    function initiate() {
-      player.addEventListener(Twitch.Player.ONLINE, handleOnline);
-      player.addEventListener(Twitch.Player.OFFLINE, handleOffline);
-      player.removeEventListener(Twitch.Player.READY, initiate);
-    }
-    function handleOnline() {
-      document.getElementById("twitch").classList.remove('hide');
-      player.removeEventListener(Twitch.Player.ONLINE, handleOnline);
-      player.addEventListener(Twitch.Player.OFFLINE, handleOffline);
-      player.setMuted(false);
-    }
-    function handleOffline() {
-      document.getElementById("twitch").classList.add('hide');
-      player.removeEventListener(Twitch.Player.OFFLINE, handleOffline);
-      player.addEventListener(Twitch.Player.ONLINE, handleOnline);
-      player.setMuted(true);
-    }
-  </script>
-  </span></div></div></section></body>
-            </html>
-          
+<html lang="en">
+  <head>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="/assets/static/app_generated_index-6937cd5a.DPBFJbcX.css"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta property="og:url" content="https://url/" />
+    <title>Home</title>
+    <meta property="og:title" content="Home" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" />
+  </head>
+  <body class="w-body">
+    <nav
+      aria-label="Main"
+      data-orientation="horizontal"
+      dir="ltr"
+      class="w-navigation-menu cavd3zn c1cqu2xh"
+    >
+      <div style="position: relative">
+        <ul
+          data-orientation="horizontal"
+          class="w-menu-list cry9bxc c1fhkm63 cqeb86t c1asmb9r c34dwh1 c1qyy4dh ct02u4h ckr6thb czokz6d cgbme5g c1cf1dh7"
+          dir="ltr"
+        >
+          <li data-ws-index="0" class="w-menu-item">
+            <a
+              class="w-link csru8nn c1qyy4dh ct02u4h c1e7helk c9dia3q chby825 cj9cgi3 cmrkua2 chxr8al clh6saz cy1haag c1l1g1t0 c1pzicie c3whby9 c1dfajq9 c1yqh07t c135vpv5 cv81o44 chmyy6m cdtbwtz c1x2i9s7 c1q0jf93 cff9lwm cdoj399 cl3j0y4 c12043fe"
+              data-radix-collection-item=""
+              href="#"
+              >Home</a
+            >
+          </li>
+          <li data-ws-index="1" class="w-menu-item">
+            <button
+              type="submit"
+              class="w-button csru8nn c1qyy4dh ct02u4h c1e7helk c9dia3q chby825 cj9cgi3 cmrkua2 chxr8al clh6saz cy1haag c1l1g1t0 c1pzicie c3whby9 c1dfajq9 c1yqh07t ch11gwv chmyy6m cdtbwtz c1x2i9s7 c1q0jf93 cff9lwm cdoj399 cl3j0y4 c12043fe cgtgvco"
+              id="radix-:R6:-trigger-1"
+              data-state="closed"
+              aria-expanded="false"
+              aria-controls="radix-:R6:-content-1"
+              data-radix-collection-item=""
+            >
+              <div class="w-text">Socials</div>
+              <div
+                class="w-box c1d96gso c7ewoh2 c1y0z7zr cgu8egy clv8gve clkfa1i c1ovbu2i c1uc70qy crcvfbt c13zjl4p"
+              >
+                <div class="w-html-embed">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 16 16"
+                    width="100%"
+                    height="100%"
+                    style="display: block"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="m4 6 4 4 4-4"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          </li>
+          <li data-ws-index="2" class="w-menu-item">
+            <button
+              type="submit"
+              class="w-button csru8nn c1qyy4dh ct02u4h c1e7helk c9dia3q chby825 cj9cgi3 cmrkua2 chxr8al clh6saz cy1haag c1l1g1t0 c1pzicie c3whby9 c1dfajq9 c1yqh07t ch11gwv chmyy6m cdtbwtz c1x2i9s7 c1q0jf93 cff9lwm cdoj399 cl3j0y4 c12043fe cgtgvco"
+              id="radix-:R6:-trigger-2"
+              data-state="closed"
+              aria-expanded="false"
+              aria-controls="radix-:R6:-content-2"
+              data-radix-collection-item=""
+            >
+              <div class="w-text">Events</div>
+              <div
+                class="w-box c1d96gso c7ewoh2 c1y0z7zr cgu8egy clv8gve clkfa1i c1ovbu2i c1uc70qy crcvfbt c13zjl4p"
+              >
+                <div class="w-html-embed">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 16 16"
+                    width="100%"
+                    height="100%"
+                    style="display: block"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="m4 6 4 4 4-4"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div class="w-box cdwd3jx c1j77jp8 c1lzcxwg cry9bxc ct02u4h"></div>
+    </nav>
+    <section
+      class="w-box cna0hdz c1mzb2kd c1357293 c9jnjeu c1myzjic ckmmjuv czr2pxy c155uc7w"
+    >
+      <h1 class="w-heading c11nr3ex c11dowh9 c32myit cwrra4i">Craft</h1>
+      <div class="w-box cuoke4w c6oj68y">
+        <p class="w-paragraph">
+          <b class="w-bold-text"
+            >Craft is the standard guideline for building with Webstudio.</b
+          >
+        </p>
+        <p class="w-paragraph">
+          It contains a set of standards, CSS variables, and Tokens that make
+          building websites fast, maintainable, and reusable. It also enables
+          sharing Projects without mixing different naming conventions.
+        </p>
+        <p class="w-paragraph">
+          <a
+            href="https://open-props.style/"
+            target="_blank"
+            class="w-rich-text-link cio5jgl cld4m44 cl60rel c1ib9cr2"
+            >Open Props</a
+          >, an open source CSS variables library that helps accelerate adaptive
+          and consistent design, is part of Craft.
+        </p>
+        <a
+          href="https://docs.webstudio.is/university/craft"
+          target="_blank"
+          class="w-link c14yqvd4 cl8m66n c13b531o c1my01bv c14z1eqr c1ktl1y1 cgl7u82 crlid6h caoqbwa c1aguln c135vpv5 cqrpgto cl60rel c1ib9cr2"
+          >Docs</a
+        >
+      </div>
+    </section>
+    <script id="vike_pageContext" type="application/json">
+      {
+        "abortReason": "!undefined",
+        "_urlRewrite": null,
+        "_urlRedirect": "!undefined",
+        "abortStatusCode": "!undefined",
+        "_abortCall": "!undefined",
+        "_pageContextInitIsPassedToClient": "!undefined",
+        "pageId": "/pages/index",
+        "routeParams": {},
+        "data": {
+          "url": "https://url/",
+          "system": { "params": {}, "search": {}, "origin": "https://url" },
+          "resources": {},
+          "pageMeta": {
+            "title": "Home",
+            "description": "!undefined",
+            "excludePageFromSearch": "!undefined",
+            "language": "!undefined",
+            "socialImageAssetName": "craft-cover_6-d_66BVRzqkO3HYxEpa7.png",
+            "socialImageUrl": "!undefined",
+            "status": "!undefined",
+            "redirect": "!undefined",
+            "custom": []
+          }
+        }
+      }
+    </script>
+    <script
+      src="/assets/entries/entry-server-routing.CZKPM75E.js"
+      type="module"
+      async
+    ></script>
+    <link
+      rel="modulepreload"
+      href="/assets/entries/pages_index.BG-DUapY.js"
+      as="script"
+      type="text/javascript"
+    /><link
+      rel="modulepreload"
+      href="/assets/chunks/chunk-Dsmn9e1b.js"
+      as="script"
+      type="text/javascript"
+    />
+  </body>
+</html>
