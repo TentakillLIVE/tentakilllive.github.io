@@ -5,179 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pit Strategy</title>
     <style>
-        /* --- THEME VARIABLES --- */
+        /* --- CSS VARIABLES & THEME --- */
         :root {
-            /* Light Mode Defaults */
-            --bg: #f8fafc;
-            --surface: #ffffff;
-            --border: #e2e8f0;
-            --text: #0f172a;
-            --mute: #64748b;
-            --primary: #2563eb; 
-            --input-bg: #ffffff;
-            --th-bg: #f1f5f9;
-            --row-hover: #f8fafc;
-            
-            --success-bg: #dcfce7;
-            --success-text: #166534;
-            --fill-bg: #dbeafe;
-            --fill-text: #1e40af;
-            
-            --pit-row-bg: #fffbeb;
-            
-            --btn-bg: #ffffff;
-            --btn-border: #cbd5e1;
-            --btn-text: #0f172a;
+            --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0; --text: #0f172a; --mute: #64748b;
+            --primary: #2563eb; --input-bg: #ffffff; --th-bg: #f1f5f9; --row-hover: #f8fafc;
+            --success-bg: #dcfce7; --success-text: #166534; --fill-bg: #dbeafe; --fill-text: #1e40af;
+            --pit-row-bg: #fffbeb; --btn-bg: #ffffff; --btn-border: #cbd5e1; --btn-text: #0f172a;
+            --wait-text: #d97706; --gain-text: #16a34a; --pit-burn-text: #ea580c;
         }
-
         [data-theme="dark"] {
-            --bg: #0f172a;           
-            --surface: #1e293b;      
-            --border: #334155;       
-            --text: #f1f5f9;         
-            --mute: #94a3b8;         
-            --primary: #3b82f6;      
-            --input-bg: #020617;     
-            --th-bg: #0f172a;        
-            --row-hover: #1e293b;
-            
-            --success-bg: #064e3b;   
-            --success-text: #6ee7b7; 
-            --fill-bg: #1e3a8a;      
-            --fill-text: #93c5fd;    
-            
-            --pit-row-bg: #422006;   
-
-            --btn-bg: #1e293b;
-            --btn-border: #475569;
-            --btn-text: #f8fafc;
+            --bg: #0f172a; --surface: #1e293b; --border: #334155; --text: #f1f5f9; --mute: #94a3b8;
+            --primary: #3b82f6; --input-bg: #020617; --th-bg: #0f172a; --row-hover: #1e293b;
+            --success-bg: #064e3b; --success-text: #6ee7b7; --fill-bg: #1e3a8a; --fill-text: #93c5fd;
+            --pit-row-bg: #422006; --btn-bg: #1e293b; --btn-border: #475569; --btn-text: #f8fafc;
+            --wait-text: #fbbf24; --gain-text: #4ade80; --pit-burn-text: #fb923c;
         }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; transition: background 0.3s; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+        @media (max-width: 1200px) { .container { grid-template-columns: 1fr; } }
 
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; transition: background 0.3s, color 0.3s; }
-        .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; position: relative; }
+        /* --- UI ELEMENTS --- */
+        .top-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
+        .mode-switch { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .mode-btn { padding: 8px 16px; border: none; background: transparent; color: var(--mute); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .mode-btn.active { background: var(--primary); color: white; }
         
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
-
-        /* --- UI COMPONENTS --- */
-        
-        /* Header / Buttons Area */
-        .top-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-bottom: -10px; }
-        
-        .action-btn { 
-            background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--btn-text); 
-            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
-            display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-        }
-        .action-btn:hover { border-color: var(--primary); opacity: 0.9; }
+        .action-group { display: flex; gap: 10px; }
+        .action-btn { background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--btn-text); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .action-btn:hover { border-color: var(--primary); }
         .btn-danger:hover { border-color: #ef4444; color: #ef4444; }
-        .btn-primary { border-color: var(--primary); color: var(--primary); }
 
-        /* Card Styles */
         .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .card-header { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--mute); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; letter-spacing: 0.05em; }
+        .card-header { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--mute); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
 
-        /* Inputs */
         .config-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
         .field label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--mute); margin-bottom: 4px; }
-        .field input { 
-            width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; 
-            box-sizing: border-box; font-weight: 600; background: var(--input-bg); color: var(--text); 
-        }
+        .field input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); font-weight: 600; box-sizing: border-box; }
 
-        /* Table */
-        .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; min-width: 650px; }
+        /* TABLE */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: var(--th-bg); text-align: left; padding: 10px; font-size: 0.7rem; font-weight: 700; color: var(--mute); text-transform: uppercase; border-bottom: 1px solid var(--border); }
         td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        
-        input.grid-input { 
-            width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; 
-            font-variant-numeric: tabular-nums; background: var(--input-bg); color: var(--text); 
-        }
+        input.grid-input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); font-variant-numeric: tabular-nums; }
         input.grid-input:focus { outline: 2px solid var(--primary); border-color: transparent; }
 
-        /* Pit Styling */
-        .pit-check { width: 18px; height: 18px; accent-color: var(--primary); display: block; margin: 0 auto; cursor: pointer; }
-        tr.pit-active { background-color: var(--pit-row-bg); }
-        .pit-exit-box { display: none; }
-        tr.pit-active .pit-exit-box { display: block; }
-
-        /* Consumption Column */
-        .burn-total { font-weight: 700; font-family: monospace; font-size: 1rem; }
-        .burn-sub { font-size: 0.7rem; color: var(--mute); display: block; margin-top: 2px; }
-
-        /* Strategy List */
-        .strat-list { list-style: none; padding: 0; margin: 0; }
-        .strat-item { padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .strat-item:last-child { border-bottom: none; }
-        .tag { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        /* MODES VISIBILITY */
+        .precision-only { display: none; }
+        .checkbox-col { display: none; }
         
-        /* Tags adapt to theme */
-        .tag-fill { background: var(--fill-bg); color: var(--fill-text); }
-        .tag-finish { background: var(--success-bg); color: var(--success-text); }
+        body[data-mode="precision"] .precision-only { display: table-cell; }
+        body[data-mode="precision"] .checkbox-col { display: table-cell; }
+        
+        /* BURN COLUMNS */
+        .burn-cell { font-family: monospace; font-weight: 600; font-size: 0.9rem; }
+        .burn-pre { color: var(--text); }
+        .burn-pit { color: var(--pit-burn-text); }
+        .burn-post { color: var(--mute); }
+        .burn-total { font-weight: 800; color: var(--primary); }
+        .refuel-text { color: var(--gain-text); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; }
 
-        /* Big Metrics */
+        /* PIT STYLING */
+        .pit-check { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; display: block; margin: 0 auto; }
+        tr.pit-active { background-color: var(--pit-row-bg); }
+        
+        /* METRICS */
         .big-val { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text); }
         .big-lbl { font-size: 0.75rem; color: var(--mute); font-weight: 500; margin-top: 5px; text-transform: uppercase; }
-
-        /* Hidden File Input */
+        .strat-list { list-style: none; padding: 0; margin: 0; }
+        .strat-item { padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .tag { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .tag-fill { background: var(--fill-bg); color: var(--fill-text); }
+        .tag-finish { background: var(--success-bg); color: var(--success-text); }
         #fileInput { display: none; }
-
     </style>
 </head>
-<body>
+<body data-mode="simple">
 
 <div class="container">
     
     <div class="top-bar">
-        <input type="file" id="fileInput" accept=".json" onchange="importData(this)">
-        
-        <button class="action-btn btn-primary" onclick="exportData()">
-            ⬇️ Export
-        </button>
-        <button class="action-btn btn-primary" onclick="document.getElementById('fileInput').click()">
-            ⬆️ Import
-        </button>
-        <button class="action-btn btn-danger" onclick="clearAllData()">
-            🗑️ Reset
-        </button>
-        <button class="action-btn" onclick="toggleTheme()">
-            <span id="themeIcon">☀️</span> <span id="themeText">Light</span>
-        </button>
+        <div class="mode-switch">
+            <button class="mode-btn active" id="btnSimple" onclick="setMode('simple')">Simple</button>
+            <button class="mode-btn" id="btnPrecision" onclick="setMode('precision')">Precision</button>
+        </div>
+
+        <div class="action-group">
+            <input type="file" id="fileInput" accept=".json" onchange="importData(this)">
+            <button class="action-btn" onclick="exportData()">⬇️ Export</button>
+            <button class="action-btn" onclick="document.getElementById('fileInput').click()">⬆️ Import</button>
+            <button class="action-btn btn-danger" onclick="clearAllData()">🗑️ Reset</button>
+            <button class="action-btn" onclick="toggleTheme()">🌗 Theme</button>
+        </div>
     </div>
 
     <div style="display:flex; flex-direction:column; gap:20px;">
-        
         <div class="card">
-            <div class="card-header">Race Setup</div>
+            <div class="card-header">Race Configuration</div>
             <div class="config-row">
-                <div class="field">
-                    <label>Total Laps</label>
-                    <input type="number" id="cfgLaps" value="30" step="1" oninput="handleConfigChange()">
-                </div>
-                <div class="field">
-                    <label>Tank Size (L)</label>
-                    <input type="number" id="cfgTank" value="100" step="0.1" oninput="recalc()">
-                </div>
-                <div class="field">
-                    <label>Margin (L)</label>
-                    <input type="number" id="cfgMargin" value="1" step="0.1" oninput="recalc()">
-                </div>
+                <div class="field"><label>Total Laps</label><input type="number" id="cfgLaps" value="30" step="1" oninput="handleInput()"></div>
+                <div class="field"><label>Tank Size (L)</label><input type="number" id="cfgTank" value="50.0" step="0.1" oninput="recalc()"></div>
+                <div class="field"><label>Margin (L)</label><input type="number" id="cfgMargin" value="0.5" step="0.1" oninput="recalc()"></div>
             </div>
         </div>
 
         <div class="card" style="padding:0; overflow:hidden;">
             <div class="table-container">
-                <table>
+                <table id="mainTable">
                     <thead>
                         <tr>
-                            <th style="width:70px;">Lap</th>
-                            <th>Start Fuel</th>
-                            <th>Pit Entry Fuel</th>
-                            <th style="text-align:center; width:50px;">Pit?</th>
-                            <th>Pit Exit Fuel</th>
-                            <th>Lap Consumption</th>
+                            <th style="width:40px;">Lap</th>
+                            <th>Lap Start</th>
+                            <th>Pit Start</th>
+                            
+                            <th class="checkbox-col" style="text-align:center; width:40px;">Pit?</th>
+                            
+                            <th class="precision-only">Fueling Start</th>
+                            <th class="precision-only">Fueling End</th>
+                            <th class="precision-only">Pit Exit</th>
+                            
+                            <th>Pre Burn</th>
+                            <th class="precision-only">Pit Burn</th>
+                            <th>Post Burn</th>
+                            <th>Total Burn</th>
                         </tr>
                     </thead>
                     <tbody id="grid"></tbody>
@@ -187,221 +137,88 @@
     </div>
 
     <div style="display:flex; flex-direction:column; gap:20px;">
-        
         <div class="card">
-            <div class="card-header">Live Telemetry</div>
+            <div class="card-header">Telemetry</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div><div class="big-val" id="dispAvg">--</div><div class="big-lbl">Avg Total Burn</div></div>
+                <div><div class="big-val" id="dispFuel">--</div><div class="big-lbl">Current Fuel</div></div>
+            </div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px;">
-                <div>
-                    <div class="big-val" id="dispAvg">--</div>
-                    <div class="big-lbl">Full Lap Burn</div>
-                </div>
-                <div>
-                    <div class="big-val" id="dispOutLap">--</div>
-                    <div class="big-lbl">Out-Lap Burn</div>
-                </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px; padding-top:10px; border-top:1px solid var(--border);">
+                 <div><div class="big-val" id="dispTrackBurn">--</div><div class="big-lbl">Avg Pre Burn</div></div>
+                 <div><div class="big-val" id="dispPostBurn" style="color:var(--primary);">--</div><div class="big-lbl">Avg Post Burn</div></div>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <div class="big-val" id="dispFuel">--</div>
-                <div class="big-lbl">Current Fuel (L)</div>
+            <div id="precisionMetrics" style="display:none; margin-bottom:20px; padding-top:10px; border-top:1px solid var(--border);">
+                <div class="big-val" id="dispPitLaneBurn" style="color:var(--pit-burn-text);">--</div>
+                <div class="big-lbl">Avg Pit Burn (Lane)</div>
             </div>
 
-            <div>
-                <div class="big-val" id="dispRange">--</div>
-                <div class="big-lbl">Est. Laps Remaining</div>
-            </div>
+            <div><div class="big-val" id="dispRange">--</div><div class="big-lbl">Est. Laps Remaining</div></div>
         </div>
 
         <div class="card">
-            <div class="card-header">Projected Strategy</div>
+            <div class="card-header">Strategy</div>
             <ul class="strat-list" id="stratList">
-                <li class="strat-item" style="color:var(--mute); font-style:italic;">Awaiting Lap 1 Data...</li>
+                <li class="strat-item" style="color:var(--mute); font-style:italic;">Awaiting data...</li>
             </ul>
         </div>
-
     </div>
-
 </div>
 
 <script>
-    // --- THEME LOGIC ---
-    function initTheme() {
-        const saved = localStorage.getItem('raceTheme') || 'dark';
-        document.documentElement.setAttribute('data-theme', saved);
-        updateThemeBtn(saved);
-    }
-
-    function toggleTheme() {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('raceTheme', next);
-        updateThemeBtn(next);
-    }
-
-    function updateThemeBtn(theme) {
-        const icon = document.getElementById('themeIcon');
-        const text = document.getElementById('themeText');
-        if (theme === 'dark') {
-            icon.innerText = '☀️';
-            text.innerText = 'Light';
-        } else {
-            icon.innerText = '🌙';
-            text.innerText = 'Dark';
-        }
-    }
-
-    // --- DATA PERSISTENCE & IMPORT/EXPORT ---
-    
-    function collectData() {
-        // Gather Config
-        const cfg = {
-            laps: document.getElementById('cfgLaps').value,
-            tank: document.getElementById('cfgTank').value,
-            margin: document.getElementById('cfgMargin').value
-        };
-
-        // Gather Grid
-        const rows = [];
-        for (let i = 1; i <= maxRow; i++) {
-            const start = document.getElementById(`start-${i}`)?.value;
-            const end = document.getElementById(`end-${i}`)?.value;
-            const check = document.getElementById(`check-${i}`)?.checked;
-            const exit = document.getElementById(`exit-${i}`)?.value;
-            
-            if (i===1 || start || end || check || exit) {
-                rows.push({ i, start, end, check, exit });
-            }
-        }
-        return { cfg, rows, timestamp: new Date().toISOString() };
-    }
-
-    function saveData() {
-        const data = collectData();
-        localStorage.setItem('raceData', JSON.stringify(data));
-    }
-
-    function exportData() {
-        const data = collectData();
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `race_strategy_${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
-
-    function importData(input) {
-        const file = input.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                // Validate JSON parsing
-                const json = JSON.parse(e.target.result);
-                if(!json.cfg || !json.rows) throw new Error("Invalid Format");
-                
-                // Save to local storage and reload
-                localStorage.setItem('raceData', JSON.stringify(json));
-                location.reload();
-            } catch(err) {
-                alert("Error importing file: Invalid JSON structure.");
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    function loadData() {
-        const raw = localStorage.getItem('raceData');
-        if (!raw) {
-            spawnRow(1);
-            return;
-        }
-
-        const data = JSON.parse(raw);
-        
-        if(data.cfg) {
-            if(data.cfg.laps) document.getElementById('cfgLaps').value = data.cfg.laps;
-            if(data.cfg.tank) document.getElementById('cfgTank').value = data.cfg.tank;
-            if(data.cfg.margin) document.getElementById('cfgMargin').value = data.cfg.margin;
-        }
-
-        if(data.rows && data.rows.length > 0) {
-            data.rows.forEach(r => {
-                spawnRow(r.i);
-                if (document.getElementById(`start-${r.i}`)) document.getElementById(`start-${r.i}`).value = r.start || '';
-                if (document.getElementById(`end-${r.i}`)) document.getElementById(`end-${r.i}`).value = r.end || '';
-                if (document.getElementById(`exit-${r.i}`)) document.getElementById(`exit-${r.i}`).value = r.exit || '';
-                if (document.getElementById(`check-${r.i}`)) {
-                    document.getElementById(`check-${r.i}`).checked = r.check || false;
-                    togglePit(r.i); 
-                }
-            });
-            const last = data.rows[data.rows.length - 1];
-            handleInput(last.i); 
-        } else {
-            spawnRow(1);
-        }
-        recalc();
-    }
-
-    function clearAllData() {
-        if(confirm("Are you sure you want to reset all race data? This cannot be undone.")) {
-            localStorage.removeItem('raceData');
-            location.reload(); 
-        }
-    }
-
-    // --- INIT ---
+    // --- STATE & INIT ---
+    let currentMode = 'simple';
     const grid = document.getElementById('grid');
     let maxRow = 0;
 
     window.onload = () => {
         initTheme();
-        loadData();
+        loadData(); 
     };
 
-    function handleConfigChange() {
+    // --- MODE SWITCHING ---
+    function setMode(mode) {
+        currentMode = mode;
+        document.body.setAttribute('data-mode', mode);
+        
+        document.getElementById('btnSimple').className = mode === 'simple' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('btnPrecision').className = mode === 'precision' ? 'mode-btn active' : 'mode-btn';
+        
+        document.getElementById('precisionMetrics').style.display = mode === 'precision' ? 'block' : 'none';
+
         recalc();
         saveData();
     }
 
-    // --- GRID MANAGEMENT ---
+    // --- GRID GENERATION ---
     function spawnRow(lapNum) {
         if (document.getElementById(`row-${lapNum}`)) return;
-
-        const totalLaps = parseFloat(document.getElementById('cfgLaps').value) || 21;
-        
+        const totalLaps = parseFloat(document.getElementById('cfgLaps').value) || 30;
         if (lapNum > totalLaps + 1) return;
 
         let label = lapNum.toString();
-        let isFinish = false;
-        if (lapNum === totalLaps + 1) {
-            label = "🏁 Finish Line";
-            isFinish = true;
-        }
+        let isFinish = (lapNum === totalLaps + 1);
+        if (isFinish) label = "🏁 Finish";
 
         const tr = document.createElement('tr');
         tr.id = `row-${lapNum}`;
         tr.innerHTML = `
             <td id="label-${lapNum}" style="text-align:center; font-weight:bold; color:var(--mute); font-size:0.8rem;">${label}</td>
-            <td><input type="number" step="0.1" id="start-${lapNum}" class="grid-input" placeholder="Start" oninput="handleInput(${lapNum})"></td>
             
-            <td>${isFinish ? '' : `<input type="number" step="0.1" id="end-${lapNum}" class="grid-input" placeholder="End" oninput="handleInput(${lapNum})">`}</td>
-            <td>${isFinish ? '' : `<input type="checkbox" id="check-${lapNum}" class="pit-check" onchange="togglePit(${lapNum})">`}</td>
-            <td>
-                ${isFinish ? '' : `
-                <div class="pit-exit-box">
-                    <input type="number" step="0.1" id="exit-${lapNum}" class="grid-input" placeholder="Filled To" oninput="handleInput(${lapNum})">
-                </div>`}
-            </td>
-            <td id="burn-${lapNum}">-</td>
+            <td><input type="number" step="0.1" id="start-${lapNum}" class="grid-input" placeholder="Lap Start" oninput="handleInput(${lapNum})"></td>
+            <td>${isFinish ? '' : `<input type="number" step="0.1" id="pitstart-${lapNum}" class="grid-input" placeholder="Pit Start" oninput="handleInput(${lapNum})">`}</td>
+            
+            <td class="checkbox-col">${isFinish ? '' : `<input type="checkbox" id="check-${lapNum}" class="pit-check" onchange="togglePit(${lapNum})">`}</td>
+
+            <td class="precision-only"><div class="pit-input-box" style="display:none" id="box-fuelstart-${lapNum}"><input type="number" step="0.1" id="fuelstart-${lapNum}" class="grid-input" placeholder="At Pump" oninput="handleInput(${lapNum})"></div></td>
+            <td class="precision-only"><div class="pit-input-box" style="display:none" id="box-fuelend-${lapNum}"><input type="number" step="0.1" id="fuelend-${lapNum}" class="grid-input" placeholder="Filled" oninput="handleInput(${lapNum})"></div></td>
+            <td class="precision-only"><div class="pit-input-box" style="display:none" id="box-pitexit-${lapNum}"><input type="number" step="0.1" id="pitexit-${lapNum}" class="grid-input" placeholder="Exit Line" oninput="handleInput(${lapNum})"></div></td>
+
+            <td class="burn-cell burn-pre" id="burn-pre-${lapNum}">-</td>
+            <td class="burn-cell burn-pit precision-only" id="burn-pit-${lapNum}">-</td>
+            <td class="burn-cell burn-post" id="burn-post-${lapNum}">-</td>
+            <td class="burn-cell burn-total" id="burn-total-${lapNum}">-</td>
         `;
         grid.appendChild(tr);
         maxRow = lapNum;
@@ -410,219 +227,311 @@
     function togglePit(lapNum) {
         const row = document.getElementById(`row-${lapNum}`);
         const chk = document.getElementById(`check-${lapNum}`);
-        const exitInput = document.getElementById(`exit-${lapNum}`);
+        const isChecked = chk && chk.checked;
 
-        if (chk && chk.checked) {
+        if (isChecked) {
             row.classList.add('pit-active');
-            if(exitInput) exitInput.focus();
+            if(document.getElementById(`box-fuelstart-${lapNum}`)) {
+                ['fuelstart','fuelend','pitexit'].forEach(f => document.getElementById(`box-${f}-${lapNum}`).style.display = 'block');
+            }
         } else {
             row.classList.remove('pit-active');
-            if(exitInput) exitInput.value = '';
+            ['fuelstart','fuelend','pitexit'].forEach(f => {
+                const b = document.getElementById(`box-${f}-${lapNum}`);
+                const i = document.getElementById(`${f}-${lapNum}`);
+                if(b) b.style.display = 'none';
+                if(i) i.value = '';
+            });
         }
         recalc();
         saveData();
     }
 
     function handleInput(lapNum) {
-        const start = getVal(`start-${lapNum}`);
-        const end = getVal(`end-${lapNum}`);
-        const chk = document.getElementById(`check-${lapNum}`);
-        const isPit = chk ? chk.checked : false;
-        const exit = getVal(`exit-${lapNum}`);
-
-        let rowComplete = false;
-        
-        if (start !== null && end !== null) {
-            if (!isPit) rowComplete = true;
-            if (isPit && exit !== null) rowComplete = true;
+        if(lapNum) {
+            const start = getVal(`start-${lapNum}`);
+            const pStart = getVal(`pitstart-${lapNum}`);
+            const chk = document.getElementById(`check-${lapNum}`)?.checked;
+            
+            if (start !== null && pStart !== null) spawnRow(lapNum + 1);
+            if (chk) spawnRow(lapNum + 1);
         }
-
-        const totalLaps = parseFloat(document.getElementById('cfgLaps').value) || 21;
-        if (lapNum === totalLaps + 1 && start !== null) {
-            rowComplete = false; 
-        }
-
-        if (rowComplete) spawnRow(lapNum + 1);
         recalc();
         saveData();
     }
 
-    // --- CORE LOGIC ---
+    // --- CALCULATION ENGINE ---
     function recalc() {
-        const totalLaps = parseFloat(document.getElementById('cfgLaps').value) || 50;
-        const tankSize = parseFloat(document.getElementById('cfgTank').value) || 100;
-        const margin = parseFloat(document.getElementById('cfgMargin').value) || 0;
+        const totalLaps = parseFloat(document.getElementById('cfgLaps').value) || 30;
+        const tankSize = parseFloat(document.getElementById('cfgTank').value) || 50.0;
+        const margin = parseFloat(document.getElementById('cfgMargin').value) || 0.5;
         const finishLineIndex = totalLaps + 1;
 
-        // Label update
         for(let i=1; i<=maxRow; i++) {
             const lbl = document.getElementById(`label-${i}`);
-            if(lbl) {
-                if(i === finishLineIndex) lbl.innerText = "🏁 Finish Line";
-                else lbl.innerText = i;
-            }
+            if(lbl) lbl.innerText = (i === finishLineIndex) ? "🏁 Finish" : i;
         }
 
-        let sumFullLap = 0;
-        let countFullLap = 0;
-        let sumOutLap = 0;
-        let countOutLap = 0;
+        // Running Totals
+        let sumPre = 0; let countPre = 0;
+        let sumPit = 0; let countPit = 0;
+        let sumPost = 0; let countPost = 0;
+        let sumTotal = 0; let countTotal = 0;
+        
         let currentFuel = null;
         let currentLap = 0;
 
-        // 1. DATA COLLECTION
         for (let i = 1; i <= maxRow; i++) {
             const start = getVal(`start-${i}`);
-            const end = getVal(`end-${i}`);
-            const chk = document.getElementById(`check-${i}`);
-            const isPit = chk ? chk.checked : false;
-            const exit = getVal(`exit-${i}`);
+            const pitStart = getVal(`pitstart-${i}`);
             const nextStart = getVal(`start-${i+1}`);
+            const isPit = document.getElementById(`check-${i}`)?.checked;
             
-            const cell = document.getElementById(`burn-${i}`);
-            let displayHTML = "-";
+            const cellPre = document.getElementById(`burn-pre-${i}`);
+            const cellPit = document.getElementById(`burn-pit-${i}`);
+            const cellPost = document.getElementById(`burn-post-${i}`);
+            const cellTotal = document.getElementById(`burn-total-${i}`);
 
-            if (isPit) {
-                if (start !== null && end !== null && exit !== null && nextStart !== null) {
-                    const legIn = start - end; 
-                    const legOut = exit - nextStart; 
-                    const totalPitLap = legIn + legOut;
-                    
-                    if(legOut > 0) {
-                        sumOutLap += legOut;
-                        countOutLap++;
+            let valPre = null, valPit = null, valPost = null, valTotal = null;
+
+            // 1. PRE BURN (Start -> Pit Start)
+            if (start !== null && pitStart !== null) {
+                valPre = start - pitStart;
+                sumPre += valPre; countPre++;
+                if(cellPre) cellPre.innerText = valPre.toFixed(2);
+            } else { if(cellPre) cellPre.innerText = "-"; }
+
+            // 2. PIT BURN & POST BURN (Depends on Mode)
+            if (currentMode === 'precision') {
+                const fStart = getVal(`fuelstart-${i}`);
+                const fEnd = getVal(`fuelend-${i}`);
+                const pExit = getVal(`pitexit-${i}`);
+                
+                // Pit Burn Logic: (PitStart - FuelStart) + (FuelEnd - PitExit)
+                if (pitStart !== null && fStart !== null && fEnd !== null && pExit !== null) {
+                    const inLane = pitStart - fStart;
+                    const outLane = fEnd - pExit;
+                    valPit = inLane + outLane;
+                    if(valPit > 0) {
+                        sumPit += valPit; countPit++;
+                        if(cellPit) cellPit.innerText = valPit.toFixed(2);
                     }
-                    sumFullLap += totalPitLap;
-                    countFullLap++;
+                } else {
+                    if(cellPit) cellPit.innerText = isPit ? "..." : "-";
+                }
 
-                    displayHTML = `
-                        <div class="burn-total">${totalPitLap.toFixed(2)}</div>
-                        <span class="burn-sub">Out-Lap: ${legOut.toFixed(2)}</span>
-                    `;
+                // Post Burn Logic: PitExit - NextStart
+                if (pExit !== null && nextStart !== null) {
+                    valPost = pExit - nextStart;
+                    if (valPost > 0) {
+                        sumPost += valPost; countPost++;
+                        if(cellPost) cellPost.innerText = valPost.toFixed(2);
+                    }
+                } else if (!isPit && pitStart !== null && nextStart !== null) {
+                    // Fallback for non-pit laps in precision mode
+                    valPost = pitStart - nextStart;
+                    if(valPost >= 0) { sumPost += valPost; countPost++; if(cellPost) cellPost.innerText = valPost.toFixed(2); }
+                }
+
+                // Precision Current Fuel Update
+                if (start !== null) { currentFuel = start; currentLap = i; }
+                if (pitStart !== null) { currentFuel = pitStart; currentLap = i; }
+                if (fStart !== null) { currentFuel = fStart; currentLap = i; }
+                if (fEnd !== null) { currentFuel = fEnd; currentLap = i; }
+                if (pExit !== null) { currentFuel = pExit; currentLap = i; }
+
+            } else {
+                // SIMPLE MODE
+                // Post Burn = PitStart - NextStart
+                if (pitStart !== null && nextStart !== null) {
+                    valPost = pitStart - nextStart;
+                    if (valPost < 0) {
+                        if(cellPost) cellPost.innerHTML = `<span class="refuel-text">REFUEL</span>`;
+                    } else {
+                        sumPost += valPost; countPost++;
+                        if(cellPost) cellPost.innerText = valPost.toFixed(2);
+                    }
+                } else { if(cellPost) cellPost.innerText = "-"; }
+                
+                // Simple Current Fuel
+                if (start !== null) { currentFuel = start; currentLap = i; }
+                if (pitStart !== null) { currentFuel = pitStart; currentLap = i; }
+            }
+
+            // 3. TOTAL BURN CALCULATION
+            if (currentMode === 'precision' && isPit) {
+                // Precision Pit Lap Logic: Sum all 3 components
+                if (valPre !== null && valPit !== null && valPost !== null) {
+                    valTotal = valPre + valPit + valPost;
+                    sumTotal += valTotal; countTotal++;
+                    if(cellTotal) cellTotal.innerText = valTotal.toFixed(2);
+                } else {
+                    if(cellTotal) cellTotal.innerText = "...";
                 }
             } else {
+                // Standard Logic or Simple Mode
                 if (start !== null && nextStart !== null) {
-                    const burn = start - nextStart;
-                    if(burn > 0) {
-                        sumFullLap += burn;
-                        countFullLap++;
+                    valTotal = start - nextStart;
+                    // Only count if positive (valid consumption)
+                    if (valTotal > 0) {
+                        // In simple mode, don't count refueling laps
+                        if (currentMode === 'simple' && valPost === null) {
+                             // Wait for post data
+                        } else if (currentMode === 'simple' && valPost < 0) {
+                             // Refuel
+                             if(cellTotal) cellTotal.innerText = "PIT";
+                        } else {
+                             sumTotal += valTotal; countTotal++;
+                             if(cellTotal) cellTotal.innerText = valTotal.toFixed(2);
+                        }
                     }
-                    displayHTML = `<div class="burn-total" style="color:var(--text)">${burn.toFixed(2)}</div>`;
-                }
+                } else { if(cellTotal) cellTotal.innerText = "-"; }
             }
-            
-            if(cell) cell.innerHTML = displayHTML;
-
-            // Update Current Status
-            if (start !== null) { currentFuel = start; currentLap = i; }
-            if (end !== null) { currentFuel = end; currentLap = i; }
-            if (isPit && exit !== null) { currentFuel = exit; currentLap = i; }
         }
 
-        // 2. AVERAGES
-        let avgFull = 0;
-        if (countFullLap > 0) avgFull = sumFullLap / countFullLap;
+        // --- AVERAGES ---
+        let avgPre = countPre > 0 ? sumPre / countPre : 0;
+        let avgPit = countPit > 0 ? sumPit / countPit : 0.5; // Default pit burn estimate
+        let avgPost = countPost > 0 ? sumPost / countPost : 0;
+        let avgTotal = countTotal > 0 ? sumTotal / countTotal : 0;
 
-        let avgOut = 0;
-        if (countOutLap > 0) {
-            avgOut = sumOutLap / countOutLap;
-        } else {
-            avgOut = avgFull; 
+        // Fallback for Simple Mode Post Burn
+        if (avgPost === 0 && avgTotal > 0 && avgPre > 0 && currentMode === 'simple') {
+            avgPost = avgTotal - avgPre;
         }
+        
+        document.getElementById('dispAvg').innerText = avgTotal ? avgTotal.toFixed(2) : "--";
+        document.getElementById('dispTrackBurn').innerText = avgPre ? avgPre.toFixed(2) : "--";
+        document.getElementById('dispPostBurn').innerText = avgPost ? avgPost.toFixed(2) : "--";
+        document.getElementById('dispPitLaneBurn').innerText = avgPit ? avgPit.toFixed(2) : "--";
+        document.getElementById('dispFuel').innerText = (currentFuel !== null) ? currentFuel.toFixed(1) : "--";
 
-        document.getElementById('dispAvg').innerText = avgFull > 0 ? avgFull.toFixed(2) : "--";
-        document.getElementById('dispOutLap').innerText = countOutLap > 0 ? avgOut.toFixed(2) : "--";
-        document.getElementById('dispFuel').innerText = currentFuel !== null ? currentFuel.toFixed(1) : "--";
-
-        // 3. STRATEGY ENGINE
+        // --- STRATEGY ---
         const stratList = document.getElementById('stratList');
-
-        if (avgFull > 0 && currentFuel !== null) {
+        
+        if (avgTotal > 0 && currentFuel !== null) {
             const usable = currentFuel - margin;
-            const lapsRem = Math.floor(usable / avgFull);
-            const displayLapsRem = lapsRem < 0 ? 0 : lapsRem;
-
-            document.getElementById('dispRange').innerText = displayLapsRem;
-
-            const projectedEnd = currentLap + displayLapsRem;
+            const lapsRem = Math.floor(usable / avgTotal);
+            const dispLapsRem = Math.max(0, lapsRem);
             
-            // --- PROJECTION LOOP ---
+            document.getElementById('dispRange').innerText = dispLapsRem;
+
+            // Projection
             let simLap = currentLap;
-            let simRange = displayLapsRem;
+            let simRange = dispLapsRem;
             let html = "";
             let safety = 0;
 
             if (simLap >= finishLineIndex) {
-                stratList.innerHTML = `<li class="strat-item" style="justify-content:center; font-weight:bold; color:var(--success-text);">🏁 Race Finished 🏁</li>`;
+                stratList.innerHTML = `<li class="strat-item" style="justify-content:center; color:var(--success-text); font-weight:bold;">🏁 Race Finished</li>`;
                 return;
             }
 
             if (simLap + simRange >= finishLineIndex) {
-                 stratList.innerHTML = `<li class="strat-item" style="justify-content:center; color:var(--success-text); font-weight:bold;">No stops needed. Go to finish.</li>`;
-                 return;
+                stratList.innerHTML = `<li class="strat-item" style="justify-content:center; color:var(--success-text); font-weight:bold;">Go to Finish</li>`;
+                return;
             }
 
             while (simLap + simRange < finishLineIndex && safety < 10) {
                 safety++;
                 const pitLap = simLap + simRange;
-                const lapsLeftAfter = finishLineIndex - pitLap; 
-                const fullLapsNeeded = lapsLeftAfter - 1;
+                const lapsLeft = totalLaps - pitLap; 
                 
-                let fuelNeeded = 0;
-                if (fullLapsNeeded <= 0) {
-                    fuelNeeded = avgOut + margin;
-                } else {
-                    fuelNeeded = (fullLapsNeeded * avgFull) + avgOut + margin;
+                // Fuel Calculation
+                const remainingFullLaps = Math.max(0, lapsLeft); 
+                let fuelNeeded = (remainingFullLaps * avgTotal) + avgPost + margin;
+                
+                // If Precision, add Pit Lane Burn to required fuel (to get out of pits)
+                if (currentMode === 'precision') {
+                    // Estimate Out-Lane portion (50% of total pit burn)
+                    fuelNeeded += (avgPit * 0.5);
                 }
-                
+
                 let fillVal = 0;
-                let tagType = "";
-                let tagTxt = "";
+                let txt = "";
+                let cls = "";
 
                 if (fuelNeeded > tankSize) {
                     fillVal = tankSize;
-                    tagType = "tag-fill";
-                    tagTxt = "Max Fill";
+                    txt = "Max Fill";
+                    cls = "tag-fill";
                     simLap = pitLap;
-                    simRange = Math.floor((tankSize - margin) / avgFull);
+                    simRange = Math.floor((tankSize - margin) / avgTotal);
                 } else {
                     fillVal = fuelNeeded;
-                    tagType = "tag-finish";
-                    tagTxt = "To Finish";
+                    txt = "To Finish";
+                    cls = "tag-finish";
                     simLap = pitLap;
-                    simRange = totalLaps + 100;
+                    simRange = 999;
                 }
-
-                const safeFill = Math.ceil(fillVal * 10) / 10;
+                
+                fillVal = Math.ceil(fillVal * 10) / 10;
 
                 html += `
                     <li class="strat-item">
                         <div>
-                            <div style="font-weight:bold; font-size:1.1rem;">Lap ${pitLap}</div>
+                            <div style="font-weight:bold;">Lap ${pitLap}</div>
                             <div style="font-size:0.8rem; color:var(--mute);">Planned Stop</div>
                         </div>
                         <div style="text-align:right;">
-                            <span class="tag ${tagType}">${tagTxt}</span>
-                            <div style="font-size:0.9rem; margin-top:4px;">Add to: <strong>${safeFill.toFixed(1)}L</strong></div>
-                            ${tagTxt === "To Finish" ? `<div style="font-size:0.7rem; color:var(--mute);">(Using Out-Lap data)</div>` : ''}
+                            <span class="tag ${cls}">${txt}</span>
+                            <div style="font-size:0.9rem; margin-top:4px;">Add to: <strong>${fillVal.toFixed(1)}L</strong></div>
                         </div>
                     </li>
                 `;
             }
             stratList.innerHTML = html;
-
         } else {
             document.getElementById('dispRange').innerText = "--";
             stratList.innerHTML = `<li class="strat-item" style="color:var(--mute); font-style:italic;">Collect Lap 1 Data...</li>`;
         }
     }
 
-    function getVal(id) {
-        const el = document.getElementById(id);
-        if (!el || el.value === "") return null;
-        return parseFloat(el.value);
+    // --- UTILS & DATA ---
+    function getVal(id) { const el = document.getElementById(id); return (el && el.value !== "") ? parseFloat(el.value) : null; }
+    function collectData() {
+        const cfg = { laps: document.getElementById('cfgLaps').value, tank: document.getElementById('cfgTank').value, margin: document.getElementById('cfgMargin').value };
+        const rows = [];
+        for (let i = 1; i <= maxRow; i++) {
+            const r = { i, check: document.getElementById(`check-${i}`)?.checked };
+            ['start', 'pitstart', 'fuelstart', 'fuelend', 'pitexit'].forEach(k => r[k] = document.getElementById(`${k}-${i}`)?.value);
+            rows.push(r);
+        }
+        return { mode: currentMode, cfg, rows };
+    }
+    function saveData() { localStorage.setItem('raceDataV2', JSON.stringify(collectData())); }
+    function loadData() {
+        const raw = localStorage.getItem('raceDataV2');
+        if (!raw) { spawnRow(1); return; }
+        try {
+            const data = JSON.parse(raw);
+            if(data.mode) setMode(data.mode);
+            if(data.cfg) { document.getElementById('cfgLaps').value = data.cfg.laps||30; document.getElementById('cfgTank').value = data.cfg.tank||50; document.getElementById('cfgMargin').value = data.cfg.margin||0.5; }
+            if(data.rows) data.rows.forEach(r => {
+                spawnRow(r.i);
+                ['start', 'pitstart', 'fuelstart', 'fuelend', 'pitexit'].forEach(k => { if(document.getElementById(`${k}-${r.i}`)) document.getElementById(`${k}-${r.i}`).value = r[k]||''; });
+                if(document.getElementById(`check-${r.i}`)) { document.getElementById(`check-${r.i}`).checked = r.check||false; togglePit(r.i); }
+            });
+            recalc();
+        } catch(e) { spawnRow(1); }
+    }
+    function clearAllData() { if(confirm("Reset all data?")) { localStorage.removeItem('raceDataV2'); location.reload(); } }
+    function exportData() {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(collectData(), null, 2)], {type:'application/json'}));
+        a.download = `race_strategy_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+    function importData(input) {
+        const reader = new FileReader();
+        reader.onload = e => { localStorage.setItem('raceDataV2', e.target.result); location.reload(); };
+        reader.readAsText(input.files[0]);
+    }
+    function initTheme() { document.documentElement.setAttribute('data-theme', localStorage.getItem('raceTheme') || 'dark'); }
+    function toggleTheme() {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next); localStorage.setItem('raceTheme', next);
     }
 </script>
-
 </body>
 </html>
