@@ -27,6 +27,8 @@
         
         .is-hidden { visibility: hidden; pointer-events: none; opacity: 0 !important; }
         .is-tile-dragging { z-index: 100 !important; transition: none !important; }
+        /* Firefox fix: prevent iframe from stealing mouse events during drag */
+        .dragging-active iframe { pointer-events: none !important; }
 
         .icon-container { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
         .icon-container svg { width: 100%; height: 100%; display: block; }
@@ -41,7 +43,10 @@
 <body class="bg-zinc-950 text-zinc-100 font-sans overflow-hidden h-screen flex flex-col" 
       x-data="eightEyesManager()" 
       x-init="init()"
-      @click="showTooltip = false"> <div x-show="showError" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      @click="showTooltip = false"
+      :class="draggedId ? 'dragging-active' : ''">
+
+    <div x-show="showError" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 text-[#f95a1f] mb-4">
                 <div class="icon-container w-6 h-6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
@@ -63,7 +68,7 @@
                 <div class="bg-zinc-100 text-zinc-900 text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-zinc-200">
                     <div class="flex items-center gap-2">
                         <div class="icon-container w-4 h-4 text-[#f95a1f]"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
-                        <span>Rename a stream by clicking the Pencil icon. Useful for Youtube streams!</span>
+                        <span>YouTube streams are easier to find with **Custom Titles**. Click the pencil to rename!</span>
                     </div>
                     <button @click="showTooltip = false" class="bg-zinc-800 text-white px-2 py-1 rounded text-[10px] hover:bg-black transition-colors">Dismiss</button>
                 </div>
@@ -72,50 +77,44 @@
 
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap gap-4 items-center justify-between">
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
-                            <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
-                        </div>
-                        
-                        <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-zinc-800">
-                            <template x-for="tab in tabs" :key="tab.id">
-                                <div class="flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
-                                     :class="activeTabId === tab.id ? 'bg-zinc-800 border-zinc-700' : 'hover:bg-zinc-800/50'">
-                                    
-                                    <button @click="switchTab(tab.id)" class="px-4 py-1.5 text-xs font-bold transition-all flex items-center gap-2" :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
-                                        <span x-show="!tab.editingName" x-text="tab.name"></span>
-                                        <input x-show="tab.editingName" x-model="tab.name" @blur="tab.editingName = false; updateDocTitle(); updateUrl()" @keydown.enter="tab.editingName = false"
-                                               class="bg-transparent border-none outline-none w-20 text-white" x-init="$el.focus()">
-                                    </button>
-
-                                    <div class="flex items-center pr-1 gap-0.5 overflow-hidden transition-all" :class="activeTabId === tab.id ? 'max-w-[60px] opacity-100' : 'max-w-0 opacity-0'">
-                                        <button @click="tab.editingName = true" class="text-zinc-500 hover:text-blue-400 p-1">
-                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
-                                        </button>
-                                        <button @click="removeTab(tab.id)" x-show="tabs.length > 1" class="text-zinc-500 hover:text-red-500 p-1">
-                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
-                                        </button>
-                                    </div>
-                                </div>
-                            </template>
-                            <button @click="addTab()" class="p-2 text-zinc-500 hover:text-[#f95a1f] transition-colors">
-                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
-                            </button>
-                        </nav>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
+                        <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
                     </div>
+                    
+                    <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-zinc-800">
+                        <template x-for="tab in tabs" :key="tab.id">
+                            <div class="flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
+                                 :class="activeTabId === tab.id ? 'bg-zinc-800 border-zinc-700' : 'hover:bg-zinc-800/50'">
+                                <button @click="switchTab(tab.id)" class="px-4 py-1.5 text-xs font-bold transition-all flex items-center gap-2" :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
+                                    <span x-show="!tab.editingName" x-text="tab.name"></span>
+                                    <input x-show="tab.editingName" x-model="tab.name" @blur="tab.editingName = false; updateDocTitle(); updateUrl()" @keydown.enter="tab.editingName = false"
+                                           class="bg-transparent border-none outline-none w-20 text-white" x-init="$el.focus()">
+                                </button>
+                                <div class="flex items-center pr-1 gap-0.5 overflow-hidden transition-all" :class="activeTabId === tab.id ? 'max-w-[60px] opacity-100' : 'max-w-0 opacity-0'">
+                                    <button @click="tab.editingName = true" class="text-zinc-500 hover:text-blue-400 p-1"><div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div></button>
+                                    <button @click="removeTab(tab.id)" x-show="tabs.length > 1" class="text-zinc-500 hover:text-red-500 p-1"><div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div></button>
+                                </div>
+                            </div>
+                        </template>
+                        <button @click="addTab()" class="p-2 text-zinc-500 hover:text-[#f95a1f] transition-colors"><div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div></button>
+                    </nav>
 
-                    <div class="flex gap-4 items-center">
-                        <div class="flex max-w-sm gap-2">
-                            <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
-                            <button @click.stop="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
-                        </div>
+                    <div class="flex max-w-sm gap-2">
+                        <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
+                        <button @click.stop="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
                     </div>
                 </div>
 
-                <div x-show="getActiveTabStreams().length > 0" class="flex flex-wrap gap-2 pt-3 border-t border-zinc-800" x-cloak>
+                <div x-show="getActiveTabStreams().length > 0" 
+                     @dragover.prevent 
+                     class="flex flex-wrap gap-2 pt-3 border-t border-zinc-800" x-cloak>
                     <template x-for="stream in sortedActiveStreams()" :key="stream.id">
                         <div class="flex items-center gap-2 bg-zinc-800 border border-zinc-700 pl-2 pr-3 py-1.5 rounded-full text-xs transition-all group"
+                             draggable="true"
+                             @dragstart="startDrag($event, stream.id, 'chip')"
+                             @dragover.prevent="if(dragType==='chip') reorder(stream.vIdx)"
+                             @dragend="endDrag()"
                              :class="[stream.type === 't' ? 'chip-twitch' : 'chip-youtube', stream.editing ? 'ring-1 ring-[#f95a1f]' : 'cursor-move']">
                             
                             <div class="relative w-4 h-4 flex items-center justify-center">
@@ -132,8 +131,7 @@
                                 <span class="text-zinc-300 font-semibold" x-text="stream.label"></span>
                             </template>
                             <template x-if="stream.editing">
-                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop
-                                       class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
+                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
                             </template>
 
                             <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-blue-400">
@@ -152,7 +150,7 @@
     </div>
 
     <main class="flex-1 p-3 bg-black transition-all duration-500 flex flex-col" :style="headerVisible ? 'margin-top: 140px' : 'margin-top: 25px'">
-        <div x-ref="grid" class="grid-viewport">
+        <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport">
             <template x-for="stream in allStreams" :key="stream.id">
                 <div class="stream-card bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
                      :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
@@ -160,7 +158,7 @@
                     
                     <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
                         <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f]"
-                             draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @drag="handleDrag($event)" @dragend="endDrag()">
+                             draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
                             <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
                             <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
                         </div>
@@ -197,45 +195,23 @@
                 addStream() {
                     const url = this.newUrl.trim();
                     let type, val;
-
-                    if (url.includes('twitch.tv')) {
-                        val = url.split('/').filter(Boolean).pop().split('?')[0];
-                        type = 't';
-                    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                        if (url.includes('v=')) {
-                            val = url.split('v=')[1].split('&')[0];
-                        } else if (url.includes('youtu.be/')) {
-                            val = url.split('youtu.be/')[1].split('?')[0];
-                        }
-
-                        if (val) {
-                            type = 'y';
-                            if (!this.hasSeenTooltip) {
-                                this.showTooltip = true;
-                                this.hasSeenTooltip = true;
-                            }
-                        } else {
-                            this.showError = true; return;
-                        }
+                    if (url.includes('twitch.tv')) { val = url.split('/').filter(Boolean).pop().split('?')[0]; type = 't'; } 
+                    else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        if (url.includes('v=')) { val = url.split('v=')[1].split('&')[0]; } 
+                        else if (url.includes('youtu.be/')) { val = url.split('youtu.be/')[1].split('?')[0]; }
+                        if (val) { type = 'y'; if (!this.hasSeenTooltip) { this.showTooltip = true; this.hasSeenTooltip = true; } } 
+                        else { this.showError = true; return; }
                     }
 
                     if (val) {
-                        this.allStreams.push({ 
-                            id: Math.random(), tabId: this.activeTabId, type, val, label: val, 
-                            vIdx: this.getActiveTabStreams().length, style: '', editing: false, 
-                            tempLabel: '', embedUrl: this.generateEmbedUrl({type, val})
-                        });
-                        this.newUrl = '';
-                        this.updateUrl();
-                        this.$nextTick(() => this.updateLayout());
+                        this.allStreams.push({ id: Math.random(), tabId: this.activeTabId, type, val, label: val, vIdx: this.getActiveTabStreams().length, style: '', editing: false, tempLabel: '', embedUrl: this.generateEmbedUrl({type, val}) });
+                        this.newUrl = ''; this.updateUrl(); this.$nextTick(() => this.updateLayout());
                     }
                 },
 
                 generateEmbedUrl(s) {
                     const host = window.location.hostname || 'localhost';
-                    return s.type === 't' 
-                        ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` 
-                        : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
+                    return s.type === 't' ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
                 },
 
                 updateUrl() {
@@ -250,6 +226,7 @@
                     });
                     window.location.hash = params.join('&');
                 },
+
                 loadFromUrl() {
                     try {
                         const hash = window.location.hash.substring(1); if (!hash) return;
@@ -267,6 +244,7 @@
                         if (newTabs.length > 0) { this.tabs = newTabs; this.allStreams = newStreams; this.activeTabId = newTabs[0].id; }
                     } catch (e) { console.error(e); }
                 },
+
                 addTab() { const id = Date.now(); this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false }); this.switchTab(id); },
                 switchTab(id) { this.activeTabId = id; this.updateDocTitle(); this.updateUrl(); this.$nextTick(() => this.updateLayout()); },
                 removeTab(id) { if (this.tabs.length <= 1) return; this.allStreams = this.allStreams.filter(s => s.tabId !== id); this.tabs = this.tabs.filter(t => t.id !== id); if (this.activeTabId === id) this.switchTab(this.tabs[0].id); else this.updateUrl(); },
@@ -279,6 +257,7 @@
                 saveEdit(s) { s.label = s.tempLabel.trim() || s.val; s.editing = false; this.updateUrl(); },
                 toggleFocus(id) { const t = this.getActiveTab(); t.focusId = (t.focusId === id) ? null : id; this.updateLayout(); },
                 updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
+
                 updateLayout() {
                     const container = this.$refs.grid; if (!container) return;
                     const rect = container.getBoundingClientRect(); const activeStreams = this.getActiveTabStreams();
@@ -300,24 +279,54 @@
                         s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${width - 8}px; height: ${height - 8}px; opacity: 1;`;
                     });
                 },
-                startDrag(e, id, type) { this.draggedId = id; this.dragType = type; if (type === 'tile') { const cr = e.target.closest('.stream-card').getBoundingClientRect(); this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top }; e.dataTransfer.setDragImage(new Image(), 0, 0); } },
+
+                // DRAG LOGIC (Firefox Optimized)
+                startDrag(e, id, type) {
+                    this.draggedId = id;
+                    this.dragType = type;
+                    // Firefox Fix: Must set data to initialize drag
+                    e.dataTransfer.setData('text/plain', '');
+                    e.dataTransfer.effectAllowed = 'move';
+                    
+                    if (type === 'tile') {
+                        const cr = e.target.closest('.stream-card').getBoundingClientRect();
+                        this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top };
+                        // Chrome only: hide the ghost image
+                        if (e.dataTransfer.setDragImage) {
+                            const img = new Image();
+                            e.dataTransfer.setDragImage(img, 0, 0);
+                        }
+                    }
+                },
+
                 handleDrag(e) {
-                    if (!e.clientX || this.draggedId === null) return;
+                    if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return;
                     const cr = this.$refs.grid.getBoundingClientRect();
                     const mx = e.clientX - cr.left, my = e.clientY - cr.top;
                     const s = this.allStreams.find(st => st.id === this.draggedId);
-                    const w = parseFloat(s.style.match(/width: (.*?)px/)[1]), h = parseFloat(s.style.match(/height: (.*?)px/)[1]);
+                    
+                    // Match dimensions from existing style
+                    const wMatch = s.style.match(/width: (.*?)px/);
+                    const hMatch = s.style.match(/height: (.*?)px/);
+                    const w = wMatch ? parseFloat(wMatch[1]) : 300;
+                    const h = hMatch ? parseFloat(hMatch[1]) : 200;
+
                     s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`;
+                    
                     this.getActiveTabStreams().forEach(other => {
                         if (other.id === this.draggedId) return;
                         const om = other.style.match(/translate3d\((.*?)px, (.*?)px/);
+                        if (!om) return;
                         const ox = parseFloat(om[1]), oy = parseFloat(om[2]);
-                        const ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]);
+                        const ow = parseFloat(other.style.match(/width: (.*?)px/)[1]);
+                        const oh = parseFloat(other.style.match(/height: (.*?)px/)[1]);
                         if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx);
                     });
                 },
+
                 reorder(targetVIdx) {
                     const draggingStream = this.allStreams.find(s => s.id === this.draggedId);
+                    if (!draggingStream) return;
                     const activeStreams = this.getActiveTabStreams();
                     const currentVIdx = draggingStream.vIdx;
                     if (currentVIdx === targetVIdx) return;
@@ -328,7 +337,13 @@
                     });
                     this.updateLayout();
                 },
-                endDrag() { this.draggedId = null; this.updateUrl(); this.updateLayout(); }
+
+                endDrag() {
+                    this.draggedId = null;
+                    this.dragType = null;
+                    this.updateUrl();
+                    this.updateLayout();
+                }
             }
         }
     </script>
