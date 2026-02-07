@@ -11,10 +11,8 @@
         .header-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Updated Accent Colors */
         .chip-twitch:hover { border-color: #9146FF; box-shadow: 0 0 12px rgba(145, 70, 255, 0.3); }
         .chip-youtube:hover { border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.3); }
-        .accent-border:focus { border-color: #f95a1f; ring: 1px solid #f95a1f; }
 
         .grid-viewport { position: relative; width: 100%; height: 100%; min-height: 100px; }
         
@@ -32,14 +30,46 @@
 
         .icon-container { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
         .icon-container svg { width: 100%; height: 100%; display: block; }
+
+        @keyframes tooltip-slide {
+            0% { opacity: 0; transform: translateY(10px) translateX(-50%); }
+            100% { opacity: 1; transform: translateY(0) translateX(-50%); }
+        }
+        .animate-tooltip { animation: tooltip-slide 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 font-sans overflow-hidden h-screen flex flex-col" 
-      x-data="multiTabManager()" 
-      x-init="init()">
+      x-data="eightEyesManager()" 
+      x-init="init()"
+      @click="showTooltip = false"> <div x-show="showError" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
+            <div class="flex items-center gap-3 text-[#f95a1f] mb-4">
+                <div class="icon-container w-6 h-6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
+                <h3 class="text-lg font-bold">Invalid YouTube URL</h3>
+            </div>
+            <p class="text-zinc-400 text-sm mb-6">YouTube streams require a specific ID. Use these formats:<br>
+                <code class="text-zinc-200 block mt-2 bg-black/30 p-2 rounded">youtube.com/watch?v=ID</code>
+                <code class="text-zinc-200 block mt-1 bg-black/30 p-2 rounded">youtu.be/ID</code>
+            </p>
+            <button @click="showError = false" class="w-full bg-[#f95a1f] py-2 rounded-lg font-bold hover:brightness-110 transition-all">Got it</button>
+        </div>
+    </div>
 
     <div class="fixed top-0 left-0 w-full z-50 header-transition" :class="headerVisible ? 'translate-y-0' : '-translate-y-[calc(100%-12px)]'">
-        <header class="p-4 bg-zinc-900 border-b border-zinc-800 shadow-2xl">
+        <header class="p-4 bg-zinc-900 border-b border-zinc-800 shadow-2xl relative">
+            
+            <div x-show="showTooltip" x-cloak @click.stop
+                 class="absolute bottom-[-20px] left-1/2 z-[110] animate-tooltip">
+                <div class="bg-zinc-100 text-zinc-900 text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-zinc-200">
+                    <div class="flex items-center gap-2">
+                        <div class="icon-container w-4 h-4 text-[#f95a1f]"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
+                        <span>Rename a stream by clicking the Pencil icon. Useful for Youtube streams!</span>
+                    </div>
+                    <button @click="showTooltip = false" class="bg-zinc-800 text-white px-2 py-1 rounded text-[10px] hover:bg-black transition-colors">Dismiss</button>
+                </div>
+                <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-100 rotate-45 border-l border-t border-zinc-200"></div>
+            </div>
+
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap gap-4 items-center justify-between">
                     <div class="flex items-center gap-6">
@@ -61,7 +91,7 @@
 
                                     <div class="flex items-center pr-1 gap-0.5 overflow-hidden transition-all" :class="activeTabId === tab.id ? 'max-w-[60px] opacity-100' : 'max-w-0 opacity-0'">
                                         <button @click="tab.editingName = true" class="text-zinc-500 hover:text-blue-400 p-1">
-                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></div>
+                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
                                         </button>
                                         <button @click="removeTab(tab.id)" x-show="tabs.length > 1" class="text-zinc-500 hover:text-red-500 p-1">
                                             <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
@@ -77,14 +107,13 @@
 
                     <div class="flex gap-4 items-center">
                         <div class="flex max-w-sm gap-2">
-                            <input type="text" x-model="newUrl" @keydown.enter="addStream()" placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
-                            <button @click="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
+                            <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
+                            <button @click.stop="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
                         </div>
-                        <button @click="copyShareLink()" class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg text-sm hover:bg-zinc-700 whitespace-nowrap" x-text="copyText"></button>
                     </div>
                 </div>
 
-                <div x-show="getActiveTabStreams().length > 0" class="flex gap-2 overflow-x-auto no-scrollbar pt-3 border-t border-zinc-800" x-cloak>
+                <div x-show="getActiveTabStreams().length > 0" class="flex flex-wrap gap-2 pt-3 border-t border-zinc-800" x-cloak>
                     <template x-for="stream in sortedActiveStreams()" :key="stream.id">
                         <div class="flex items-center gap-2 bg-zinc-800 border border-zinc-700 pl-2 pr-3 py-1.5 rounded-full text-xs transition-all group"
                              :class="[stream.type === 't' ? 'chip-twitch' : 'chip-youtube', stream.editing ? 'ring-1 ring-[#f95a1f]' : 'cursor-move']">
@@ -103,12 +132,12 @@
                                 <span class="text-zinc-300 font-semibold" x-text="stream.label"></span>
                             </template>
                             <template x-if="stream.editing">
-                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)"
+                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop
                                        class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
                             </template>
 
                             <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-blue-400">
-                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></div>
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
                             </button>
                         </div>
                     </template>
@@ -116,7 +145,7 @@
             </div>
         </header>
         <div class="flex justify-center">
-            <button @click="headerVisible = !headerVisible" class="bg-zinc-800 border-x border-zinc-700 px-10 py-1 rounded-b-2xl group">
+            <button @click.stop="headerVisible = !headerVisible" class="bg-zinc-800 border-x border-zinc-700 px-10 py-1 rounded-b-2xl group">
                 <div class="w-12 h-1 bg-zinc-700 group-hover:bg-[#f95a1f] rounded-full mb-1 transition-colors"></div>
             </button>
         </div>
@@ -132,17 +161,15 @@
                     <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
                         <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f]"
                              draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @drag="handleDrag($event)" @dragend="endDrag()">
-                            <div class="icon-container">
-                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg>
-                            </div>
+                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
                             <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
                         </div>
-                        <button @click="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-xl">
+                        <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-xl">
                             <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
                         </button>
                     </div>
 
-                    <button @click="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
+                    <button @click.stop="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
                         <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                     </button>
 
@@ -153,138 +180,50 @@
     </main>
 
     <script>
-        function multiTabManager() {
+        function eightEyesManager() {
             return {
-                tabs: [],
-                activeTabId: null,
-                allStreams: [],
-                newUrl: '',
-                copyText: 'Share Link',
-                headerVisible: true,
-                draggedId: null,
-                dragType: null,
-                dragOffset: { x: 0, y: 0 },
+                tabs: [], activeTabId: null, allStreams: [], newUrl: '',
+                headerVisible: true, draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
+                showError: false, showTooltip: false, hasSeenTooltip: false,
 
                 init() {
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab();
-                    
                     const ro = new ResizeObserver(() => { this.updateLayout(); });
                     ro.observe(this.$refs.grid);
                     this.updateDocTitle();
                 },
 
-                updateUrl() {
-                    let params = [];
-                    this.tabs.forEach(tab => {
-                        params.push(`tab=${encodeURIComponent(tab.name)}`);
-                        const tabStreams = this.allStreams
-                            .filter(s => s.tabId === tab.id)
-                            .sort((a,b) => a.vIdx - b.vIdx);
-                        
-                        tabStreams.forEach(s => {
-                            let streamParam = `${s.type}=${encodeURIComponent(s.val)}`;
-                            // Only add label if it has been manually changed
-                            if (s.label !== s.val) streamParam += `=${encodeURIComponent(s.label)}`;
-                            params.push(streamParam);
-                        });
-                    });
-                    
-                    const newHash = params.join('&');
-                    if (window.location.hash !== '#' + newHash) {
-                        window.location.hash = newHash;
-                    }
-                },
-
-                loadFromUrl() {
-                    try {
-                        const hash = window.location.hash.substring(1);
-                        if (!hash) return;
-                        
-                        const parts = hash.split('&');
-                        const newTabs = [];
-                        const newStreams = [];
-                        let currentTabId = null;
-
-                        parts.forEach(part => {
-                            if (part.startsWith('tab=')) {
-                                currentTabId = Date.now() + Math.random();
-                                newTabs.push({ 
-                                    id: currentTabId, 
-                                    name: decodeURIComponent(part.split('=')[1]), 
-                                    focusId: null, 
-                                    editingName: false 
-                                });
-                            } else if (currentTabId && (part.startsWith('t=') || part.startsWith('y='))) {
-                                const segments = part.split('=');
-                                const type = segments[0];
-                                const val = decodeURIComponent(segments[1]);
-                                const label = segments[2] ? decodeURIComponent(segments[2]) : val;
-                                
-                                newStreams.push({
-                                    id: Math.random(),
-                                    tabId: currentTabId,
-                                    type: type,
-                                    val: val,
-                                    label: label,
-                                    vIdx: newStreams.filter(s => s.tabId === currentTabId).length,
-                                    style: '',
-                                    editing: false,
-                                    tempLabel: '',
-                                    embedUrl: this.generateEmbedUrl({type, val})
-                                });
-                            }
-                        });
-
-                        if (newTabs.length > 0) {
-                            this.tabs = newTabs;
-                            this.allStreams = newStreams;
-                            this.activeTabId = newTabs[0].id;
-                        }
-                    } catch (e) { console.error("URL Load Failed", e); }
-                },
-
-                addTab() {
-                    const id = Date.now();
-                    this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false });
-                    this.switchTab(id);
-                },
-
-                switchTab(id) {
-                    this.activeTabId = id;
-                    this.updateDocTitle();
-                    this.updateUrl();
-                    this.$nextTick(() => this.updateLayout());
-                },
-
-                removeTab(id) {
-                    if (this.tabs.length <= 1) return;
-                    this.allStreams = this.allStreams.filter(s => s.tabId !== id);
-                    this.tabs = this.tabs.filter(t => t.id !== id);
-                    if (this.activeTabId === id) this.switchTab(this.tabs[0].id);
-                    else this.updateUrl();
-                },
-
-                getActiveTab() { return this.tabs.find(t => t.id === this.activeTabId); },
-                getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
-                sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
-                isFocused(id) { return this.getActiveTab()?.focusId === id; },
-
                 addStream() {
                     const url = this.newUrl.trim();
                     let type, val;
+
                     if (url.includes('twitch.tv')) {
                         val = url.split('/').filter(Boolean).pop().split('?')[0];
                         type = 't';
                     } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                        val = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
-                        type = 'y';
+                        if (url.includes('v=')) {
+                            val = url.split('v=')[1].split('&')[0];
+                        } else if (url.includes('youtu.be/')) {
+                            val = url.split('youtu.be/')[1].split('?')[0];
+                        }
+
+                        if (val) {
+                            type = 'y';
+                            if (!this.hasSeenTooltip) {
+                                this.showTooltip = true;
+                                this.hasSeenTooltip = true;
+                            }
+                        } else {
+                            this.showError = true; return;
+                        }
                     }
+
                     if (val) {
                         this.allStreams.push({ 
                             id: Math.random(), tabId: this.activeTabId, type, val, label: val, 
-                            vIdx: this.getActiveTabStreams().length, style: '', editing: false, tempLabel: '',
-                            embedUrl: this.generateEmbedUrl({type, val})
+                            vIdx: this.getActiveTabStreams().length, style: '', editing: false, 
+                            tempLabel: '', embedUrl: this.generateEmbedUrl({type, val})
                         });
                         this.newUrl = '';
                         this.updateUrl();
@@ -292,80 +231,91 @@
                     }
                 },
 
-                removeStream(id) {
-                    this.allStreams = this.allStreams.filter(s => s.id !== id);
-                    this.getActiveTabStreams().forEach((s, i) => s.vIdx = i);
-                    this.updateUrl();
-                    this.updateLayout();
+                generateEmbedUrl(s) {
+                    const host = window.location.hostname || 'localhost';
+                    return s.type === 't' 
+                        ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` 
+                        : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
                 },
 
+                updateUrl() {
+                    let params = [];
+                    this.tabs.forEach(tab => {
+                        params.push(`tab=${encodeURIComponent(tab.name)}`);
+                        this.allStreams.filter(s => s.tabId === tab.id).sort((a,b) => a.vIdx - b.vIdx).forEach(s => {
+                            let p = `${s.type}=${encodeURIComponent(s.val)}`;
+                            if (s.label !== s.val) p += `=${encodeURIComponent(s.label)}`;
+                            params.push(p);
+                        });
+                    });
+                    window.location.hash = params.join('&');
+                },
+                loadFromUrl() {
+                    try {
+                        const hash = window.location.hash.substring(1); if (!hash) return;
+                        const parts = hash.split('&'); const newTabs = []; const newStreams = []; let currentTabId = null;
+                        parts.forEach(part => {
+                            if (part.startsWith('tab=')) {
+                                currentTabId = Date.now() + Math.random();
+                                newTabs.push({ id: currentTabId, name: decodeURIComponent(part.split('=')[1]), focusId: null, editingName: false });
+                            } else if (currentTabId && (part.startsWith('t=') || part.startsWith('y='))) {
+                                const s = part.split('='); const type = s[0]; const val = decodeURIComponent(s[1]);
+                                const label = s[2] ? decodeURIComponent(s[2]) : val;
+                                newStreams.push({ id: Math.random(), tabId: currentTabId, type, val, label, vIdx: newStreams.filter(st => st.tabId === currentTabId).length, style: '', editing: false, tempLabel: '', embedUrl: this.generateEmbedUrl({type, val}) });
+                            }
+                        });
+                        if (newTabs.length > 0) { this.tabs = newTabs; this.allStreams = newStreams; this.activeTabId = newTabs[0].id; }
+                    } catch (e) { console.error(e); }
+                },
+                addTab() { const id = Date.now(); this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false }); this.switchTab(id); },
+                switchTab(id) { this.activeTabId = id; this.updateDocTitle(); this.updateUrl(); this.$nextTick(() => this.updateLayout()); },
+                removeTab(id) { if (this.tabs.length <= 1) return; this.allStreams = this.allStreams.filter(s => s.tabId !== id); this.tabs = this.tabs.filter(t => t.id !== id); if (this.activeTabId === id) this.switchTab(this.tabs[0].id); else this.updateUrl(); },
+                getActiveTab() { return this.tabs.find(t => t.id === this.activeTabId); },
+                getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
+                sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
+                isFocused(id) { return this.getActiveTab()?.focusId === id; },
+                removeStream(id) { this.allStreams = this.allStreams.filter(s => s.id !== id); this.getActiveTabStreams().forEach((s, i) => s.vIdx = i); this.updateUrl(); this.updateLayout(); },
                 startEdit(s) { s.tempLabel = s.label; s.editing = true; },
                 saveEdit(s) { s.label = s.tempLabel.trim() || s.val; s.editing = false; this.updateUrl(); },
-
-                toggleFocus(id) {
-                    const tab = this.getActiveTab();
-                    tab.focusId = (tab.focusId === id) ? null : id;
-                    this.updateLayout();
-                },
-
+                toggleFocus(id) { const t = this.getActiveTab(); t.focusId = (t.focusId === id) ? null : id; this.updateLayout(); },
+                updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
                 updateLayout() {
-                    const container = this.$refs.grid;
-                    if (!container) return;
-                    const rect = container.getBoundingClientRect();
-                    const activeStreams = this.getActiveTabStreams();
-                    const count = activeStreams.length;
-                    const tab = this.getActiveTab();
-                    
+                    const container = this.$refs.grid; if (!container) return;
+                    const rect = container.getBoundingClientRect(); const activeStreams = this.getActiveTabStreams();
+                    const count = activeStreams.length; const tab = this.getActiveTab();
                     if (count === 0 || rect.width < 50) return;
-
                     let cols = count <= 1 ? 1 : (count <= 2 ? 2 : (count <= 4 ? 2 : 3));
                     let rows = count <= 2 ? 1 : 2;
                     if (tab.focusId) { cols = 4; rows = 2; }
                     const w = rect.width / cols, h = rect.height / rows;
-
                     activeStreams.forEach((s) => {
                         if (this.draggedId === s.id && this.dragType === 'tile') return;
                         let x, y, width, height;
                         if (tab.focusId && s.id === tab.focusId) { x = 0; y = 0; width = w * 3; height = h * 2; } 
                         else if (tab.focusId) {
-                            const activeItems = activeStreams.filter(st => st.id !== tab.focusId).sort((a,b) => a.vIdx - b.vIdx);
-                            const pos = activeItems.indexOf(s);
-                            x = w * 3; y = pos * (rect.height / (count - 1));
-                            width = w; height = rect.height / (count - 1);
-                        } else {
-                            x = (s.vIdx % cols) * w; y = Math.floor(s.vIdx / cols) * h;
-                            width = w; height = h;
-                        }
+                            const items = activeStreams.filter(st => st.id !== tab.focusId).sort((a,b) => a.vIdx - b.vIdx);
+                            const pos = items.indexOf(s);
+                            x = w * 3; y = pos * (rect.height / (count - 1)); width = w; height = rect.height / (count - 1);
+                        } else { x = (s.vIdx % cols) * w; y = Math.floor(s.vIdx / cols) * h; width = w; height = h; }
                         s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${width - 8}px; height: ${height - 8}px; opacity: 1;`;
                     });
                 },
-
-                startDrag(e, id, type) {
-                    this.draggedId = id; this.dragType = type;
-                    if (type === 'tile') {
-                        const cardRect = e.target.closest('.stream-card').getBoundingClientRect();
-                        this.dragOffset = { x: e.clientX - cardRect.left, y: e.clientY - cardRect.top };
-                        e.dataTransfer.setDragImage(new Image(), 0, 0);
-                    }
-                },
-
+                startDrag(e, id, type) { this.draggedId = id; this.dragType = type; if (type === 'tile') { const cr = e.target.closest('.stream-card').getBoundingClientRect(); this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top }; e.dataTransfer.setDragImage(new Image(), 0, 0); } },
                 handleDrag(e) {
                     if (!e.clientX || this.draggedId === null) return;
-                    const containerRect = this.$refs.grid.getBoundingClientRect();
-                    const mouseX = e.clientX - containerRect.left, mouseY = e.clientY - containerRect.top;
+                    const cr = this.$refs.grid.getBoundingClientRect();
+                    const mx = e.clientX - cr.left, my = e.clientY - cr.top;
                     const s = this.allStreams.find(st => st.id === this.draggedId);
                     const w = parseFloat(s.style.match(/width: (.*?)px/)[1]), h = parseFloat(s.style.match(/height: (.*?)px/)[1]);
-                    s.style = `transform: translate3d(${mouseX - this.dragOffset.x}px, ${mouseY - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`;
-
+                    s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`;
                     this.getActiveTabStreams().forEach(other => {
                         if (other.id === this.draggedId) return;
-                        const oMatch = other.style.match(/translate3d\((.*?)px, (.*?)px/);
-                        const ox = parseFloat(oMatch[1]), oy = parseFloat(oMatch[2]);
+                        const om = other.style.match(/translate3d\((.*?)px, (.*?)px/);
+                        const ox = parseFloat(om[1]), oy = parseFloat(om[2]);
                         const ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]);
-                        if (mouseX > ox && mouseX < ox + ow && mouseY > oy && mouseY < oy + oh) this.reorder(other.vIdx);
+                        if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx);
                     });
                 },
-
                 reorder(targetVIdx) {
                     const draggingStream = this.allStreams.find(s => s.id === this.draggedId);
                     const activeStreams = this.getActiveTabStreams();
@@ -378,22 +328,7 @@
                     });
                     this.updateLayout();
                 },
-
-                endDrag() { this.draggedId = null; this.updateUrl(); this.updateLayout(); },
-
-                generateEmbedUrl(s) {
-                    const host = window.location.hostname || 'localhost';
-                    return s.type === 't' 
-                        ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` 
-                        : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
-                },
-
-                updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
-                copyShareLink() {
-                    navigator.clipboard.writeText(window.location.href);
-                    this.copyText = 'Copied Link!';
-                    setTimeout(() => this.copyText = 'Share Link', 2000);
-                }
+                endDrag() { this.draggedId = null; this.updateUrl(); this.updateLayout(); }
             }
         }
     </script>
