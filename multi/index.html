@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EightEyes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .header-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Updated Accent Colors */
+        .chip-twitch:hover { border-color: #9146FF; box-shadow: 0 0 12px rgba(145, 70, 255, 0.3); }
+        .chip-youtube:hover { border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.3); }
+        .accent-border:focus { border-color: #f95a1f; ring: 1px solid #f95a1f; }
+
+        .grid-viewport { position: relative; width: 100%; height: 100%; min-height: 100px; }
+        
+        .stream-card { 
+            position: absolute; 
+            top: 0; left: 0;
+            width: 300px; height: 200px;
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), width 0.5s ease, height 0.5s ease, opacity 0.3s ease;
+            will-change: transform, width, height;
+            opacity: 0;
+        }
+        
+        .is-hidden { visibility: hidden; pointer-events: none; opacity: 0 !important; }
+        .is-tile-dragging { z-index: 100 !important; transition: none !important; }
+
+        .icon-container { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
+        .icon-container svg { width: 100%; height: 100%; display: block; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans overflow-hidden h-screen flex flex-col" 
+      x-data="multiTabManager()" 
+      x-init="init()">
+
+    <div class="fixed top-0 left-0 w-full z-50 header-transition" :class="headerVisible ? 'translate-y-0' : '-translate-y-[calc(100%-12px)]'">
+        <header class="p-4 bg-zinc-900 border-b border-zinc-800 shadow-2xl">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-wrap gap-4 items-center justify-between">
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
+                            <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
+                        </div>
+                        
+                        <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-zinc-800">
+                            <template x-for="tab in tabs" :key="tab.id">
+                                <div class="flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
+                                     :class="activeTabId === tab.id ? 'bg-zinc-800 border-zinc-700' : 'hover:bg-zinc-800/50'">
+                                    
+                                    <button @click="switchTab(tab.id)" class="px-4 py-1.5 text-xs font-bold transition-all flex items-center gap-2" :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
+                                        <span x-show="!tab.editingName" x-text="tab.name"></span>
+                                        <input x-show="tab.editingName" x-model="tab.name" @blur="tab.editingName = false; updateDocTitle(); updateUrl()" @keydown.enter="tab.editingName = false"
+                                               class="bg-transparent border-none outline-none w-20 text-white" x-init="$el.focus()">
+                                    </button>
+
+                                    <div class="flex items-center pr-1 gap-0.5 overflow-hidden transition-all" :class="activeTabId === tab.id ? 'max-w-[60px] opacity-100' : 'max-w-0 opacity-0'">
+                                        <button @click="tab.editingName = true" class="text-zinc-500 hover:text-blue-400 p-1">
+                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></div>
+                                        </button>
+                                        <button @click="removeTab(tab.id)" x-show="tabs.length > 1" class="text-zinc-500 hover:text-red-500 p-1">
+                                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                            <button @click="addTab()" class="p-2 text-zinc-500 hover:text-[#f95a1f] transition-colors">
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div>
+                            </button>
+                        </nav>
+                    </div>
+
+                    <div class="flex gap-4 items-center">
+                        <div class="flex max-w-sm gap-2">
+                            <input type="text" x-model="newUrl" @keydown.enter="addStream()" placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
+                            <button @click="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
+                        </div>
+                        <button @click="copyShareLink()" class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg text-sm hover:bg-zinc-700 whitespace-nowrap" x-text="copyText"></button>
+                    </div>
+                </div>
+
+                <div x-show="getActiveTabStreams().length > 0" class="flex gap-2 overflow-x-auto no-scrollbar pt-3 border-t border-zinc-800" x-cloak>
+                    <template x-for="stream in sortedActiveStreams()" :key="stream.id">
+                        <div class="flex items-center gap-2 bg-zinc-800 border border-zinc-700 pl-2 pr-3 py-1.5 rounded-full text-xs transition-all group"
+                             :class="[stream.type === 't' ? 'chip-twitch' : 'chip-youtube', stream.editing ? 'ring-1 ring-[#f95a1f]' : 'cursor-move']">
+                            
+                            <div class="relative w-4 h-4 flex items-center justify-center">
+                                <div class="group-hover:hidden flex items-center justify-center icon-container">
+                                    <template x-if="stream.type === 't'"><svg class="text-[#9146FF]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg></template>
+                                    <template x-if="stream.type === 'y'"><svg class="text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></template>
+                                </div>
+                                <button @click.stop="removeStream(stream.id)" class="hidden group-hover:flex items-center justify-center text-zinc-400 hover:text-red-500 icon-container">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+
+                            <template x-if="!stream.editing">
+                                <span class="text-zinc-300 font-semibold" x-text="stream.label"></span>
+                            </template>
+                            <template x-if="stream.editing">
+                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)"
+                                       class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
+                            </template>
+
+                            <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-blue-400">
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></div>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </header>
+        <div class="flex justify-center">
+            <button @click="headerVisible = !headerVisible" class="bg-zinc-800 border-x border-zinc-700 px-10 py-1 rounded-b-2xl group">
+                <div class="w-12 h-1 bg-zinc-700 group-hover:bg-[#f95a1f] rounded-full mb-1 transition-colors"></div>
+            </button>
+        </div>
+    </div>
+
+    <main class="flex-1 p-3 bg-black transition-all duration-500 flex flex-col" :style="headerVisible ? 'margin-top: 140px' : 'margin-top: 25px'">
+        <div x-ref="grid" class="grid-viewport">
+            <template x-for="stream in allStreams" :key="stream.id">
+                <div class="stream-card bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
+                     :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
+                     :style="stream.style">
+                    
+                    <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
+                        <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f]"
+                             draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @drag="handleDrag($event)" @dragend="endDrag()">
+                            <div class="icon-container">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
+                        </div>
+                        <button @click="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-xl">
+                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
+                        </button>
+                    </div>
+
+                    <button @click="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
+                        <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+                    </button>
+
+                    <iframe :src="stream.embedUrl" class="w-full h-full" frameborder="0" allowfullscreen="true"></iframe>
+                </div>
+            </template>
+        </div>
+    </main>
+
+    <script>
+        function multiTabManager() {
+            return {
+                tabs: [],
+                activeTabId: null,
+                allStreams: [],
+                newUrl: '',
+                copyText: 'Share Link',
+                headerVisible: true,
+                draggedId: null,
+                dragType: null,
+                dragOffset: { x: 0, y: 0 },
+
+                init() {
+                    this.loadFromUrl();
+                    if (this.tabs.length === 0) this.addTab();
+                    
+                    const ro = new ResizeObserver(() => { this.updateLayout(); });
+                    ro.observe(this.$refs.grid);
+                    this.updateDocTitle();
+                },
+
+                updateUrl() {
+                    let params = [];
+                    this.tabs.forEach(tab => {
+                        params.push(`tab=${encodeURIComponent(tab.name)}`);
+                        const tabStreams = this.allStreams
+                            .filter(s => s.tabId === tab.id)
+                            .sort((a,b) => a.vIdx - b.vIdx);
+                        
+                        tabStreams.forEach(s => {
+                            let streamParam = `${s.type}=${encodeURIComponent(s.val)}`;
+                            // Only add label if it has been manually changed
+                            if (s.label !== s.val) streamParam += `=${encodeURIComponent(s.label)}`;
+                            params.push(streamParam);
+                        });
+                    });
+                    
+                    const newHash = params.join('&');
+                    if (window.location.hash !== '#' + newHash) {
+                        window.location.hash = newHash;
+                    }
+                },
+
+                loadFromUrl() {
+                    try {
+                        const hash = window.location.hash.substring(1);
+                        if (!hash) return;
+                        
+                        const parts = hash.split('&');
+                        const newTabs = [];
+                        const newStreams = [];
+                        let currentTabId = null;
+
+                        parts.forEach(part => {
+                            if (part.startsWith('tab=')) {
+                                currentTabId = Date.now() + Math.random();
+                                newTabs.push({ 
+                                    id: currentTabId, 
+                                    name: decodeURIComponent(part.split('=')[1]), 
+                                    focusId: null, 
+                                    editingName: false 
+                                });
+                            } else if (currentTabId && (part.startsWith('t=') || part.startsWith('y='))) {
+                                const segments = part.split('=');
+                                const type = segments[0];
+                                const val = decodeURIComponent(segments[1]);
+                                const label = segments[2] ? decodeURIComponent(segments[2]) : val;
+                                
+                                newStreams.push({
+                                    id: Math.random(),
+                                    tabId: currentTabId,
+                                    type: type,
+                                    val: val,
+                                    label: label,
+                                    vIdx: newStreams.filter(s => s.tabId === currentTabId).length,
+                                    style: '',
+                                    editing: false,
+                                    tempLabel: '',
+                                    embedUrl: this.generateEmbedUrl({type, val})
+                                });
+                            }
+                        });
+
+                        if (newTabs.length > 0) {
+                            this.tabs = newTabs;
+                            this.allStreams = newStreams;
+                            this.activeTabId = newTabs[0].id;
+                        }
+                    } catch (e) { console.error("URL Load Failed", e); }
+                },
+
+                addTab() {
+                    const id = Date.now();
+                    this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false });
+                    this.switchTab(id);
+                },
+
+                switchTab(id) {
+                    this.activeTabId = id;
+                    this.updateDocTitle();
+                    this.updateUrl();
+                    this.$nextTick(() => this.updateLayout());
+                },
+
+                removeTab(id) {
+                    if (this.tabs.length <= 1) return;
+                    this.allStreams = this.allStreams.filter(s => s.tabId !== id);
+                    this.tabs = this.tabs.filter(t => t.id !== id);
+                    if (this.activeTabId === id) this.switchTab(this.tabs[0].id);
+                    else this.updateUrl();
+                },
+
+                getActiveTab() { return this.tabs.find(t => t.id === this.activeTabId); },
+                getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
+                sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
+                isFocused(id) { return this.getActiveTab()?.focusId === id; },
+
+                addStream() {
+                    const url = this.newUrl.trim();
+                    let type, val;
+                    if (url.includes('twitch.tv')) {
+                        val = url.split('/').filter(Boolean).pop().split('?')[0];
+                        type = 't';
+                    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        val = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
+                        type = 'y';
+                    }
+                    if (val) {
+                        this.allStreams.push({ 
+                            id: Math.random(), tabId: this.activeTabId, type, val, label: val, 
+                            vIdx: this.getActiveTabStreams().length, style: '', editing: false, tempLabel: '',
+                            embedUrl: this.generateEmbedUrl({type, val})
+                        });
+                        this.newUrl = '';
+                        this.updateUrl();
+                        this.$nextTick(() => this.updateLayout());
+                    }
+                },
+
+                removeStream(id) {
+                    this.allStreams = this.allStreams.filter(s => s.id !== id);
+                    this.getActiveTabStreams().forEach((s, i) => s.vIdx = i);
+                    this.updateUrl();
+                    this.updateLayout();
+                },
+
+                startEdit(s) { s.tempLabel = s.label; s.editing = true; },
+                saveEdit(s) { s.label = s.tempLabel.trim() || s.val; s.editing = false; this.updateUrl(); },
+
+                toggleFocus(id) {
+                    const tab = this.getActiveTab();
+                    tab.focusId = (tab.focusId === id) ? null : id;
+                    this.updateLayout();
+                },
+
+                updateLayout() {
+                    const container = this.$refs.grid;
+                    if (!container) return;
+                    const rect = container.getBoundingClientRect();
+                    const activeStreams = this.getActiveTabStreams();
+                    const count = activeStreams.length;
+                    const tab = this.getActiveTab();
+                    
+                    if (count === 0 || rect.width < 50) return;
+
+                    let cols = count <= 1 ? 1 : (count <= 2 ? 2 : (count <= 4 ? 2 : 3));
+                    let rows = count <= 2 ? 1 : 2;
+                    if (tab.focusId) { cols = 4; rows = 2; }
+                    const w = rect.width / cols, h = rect.height / rows;
+
+                    activeStreams.forEach((s) => {
+                        if (this.draggedId === s.id && this.dragType === 'tile') return;
+                        let x, y, width, height;
+                        if (tab.focusId && s.id === tab.focusId) { x = 0; y = 0; width = w * 3; height = h * 2; } 
+                        else if (tab.focusId) {
+                            const activeItems = activeStreams.filter(st => st.id !== tab.focusId).sort((a,b) => a.vIdx - b.vIdx);
+                            const pos = activeItems.indexOf(s);
+                            x = w * 3; y = pos * (rect.height / (count - 1));
+                            width = w; height = rect.height / (count - 1);
+                        } else {
+                            x = (s.vIdx % cols) * w; y = Math.floor(s.vIdx / cols) * h;
+                            width = w; height = h;
+                        }
+                        s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${width - 8}px; height: ${height - 8}px; opacity: 1;`;
+                    });
+                },
+
+                startDrag(e, id, type) {
+                    this.draggedId = id; this.dragType = type;
+                    if (type === 'tile') {
+                        const cardRect = e.target.closest('.stream-card').getBoundingClientRect();
+                        this.dragOffset = { x: e.clientX - cardRect.left, y: e.clientY - cardRect.top };
+                        e.dataTransfer.setDragImage(new Image(), 0, 0);
+                    }
+                },
+
+                handleDrag(e) {
+                    if (!e.clientX || this.draggedId === null) return;
+                    const containerRect = this.$refs.grid.getBoundingClientRect();
+                    const mouseX = e.clientX - containerRect.left, mouseY = e.clientY - containerRect.top;
+                    const s = this.allStreams.find(st => st.id === this.draggedId);
+                    const w = parseFloat(s.style.match(/width: (.*?)px/)[1]), h = parseFloat(s.style.match(/height: (.*?)px/)[1]);
+                    s.style = `transform: translate3d(${mouseX - this.dragOffset.x}px, ${mouseY - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`;
+
+                    this.getActiveTabStreams().forEach(other => {
+                        if (other.id === this.draggedId) return;
+                        const oMatch = other.style.match(/translate3d\((.*?)px, (.*?)px/);
+                        const ox = parseFloat(oMatch[1]), oy = parseFloat(oMatch[2]);
+                        const ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]);
+                        if (mouseX > ox && mouseX < ox + ow && mouseY > oy && mouseY < oy + oh) this.reorder(other.vIdx);
+                    });
+                },
+
+                reorder(targetVIdx) {
+                    const draggingStream = this.allStreams.find(s => s.id === this.draggedId);
+                    const activeStreams = this.getActiveTabStreams();
+                    const currentVIdx = draggingStream.vIdx;
+                    if (currentVIdx === targetVIdx) return;
+                    activeStreams.forEach(s => {
+                        if (s.id === this.draggedId) s.vIdx = targetVIdx;
+                        else if (currentVIdx < targetVIdx) { if (s.vIdx <= targetVIdx && s.vIdx > currentVIdx) s.vIdx--; }
+                        else { if (s.vIdx >= targetVIdx && s.vIdx < currentVIdx) s.vIdx++; }
+                    });
+                    this.updateLayout();
+                },
+
+                endDrag() { this.draggedId = null; this.updateUrl(); this.updateLayout(); },
+
+                generateEmbedUrl(s) {
+                    const host = window.location.hostname || 'localhost';
+                    return s.type === 't' 
+                        ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` 
+                        : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
+                },
+
+                updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
+                copyShareLink() {
+                    navigator.clipboard.writeText(window.location.href);
+                    this.copyText = 'Copied Link!';
+                    setTimeout(() => this.copyText = 'Share Link', 2000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
