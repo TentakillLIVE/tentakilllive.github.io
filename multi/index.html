@@ -6,32 +6,47 @@
     <title>EightEyes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://embed.twitch.tv/embed/v1.js"></script>
     <style>
         [x-cloak] { display: none !important; }
-        .header-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         .chip-twitch:hover { border-color: #9146FF; box-shadow: 0 0 12px rgba(145, 70, 255, 0.3); }
         .chip-youtube:hover { border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.3); }
 
-        .grid-viewport { position: relative; width: 100%; height: 100%; min-height: 100px; }
+        .grid-viewport { position: relative; width: 100%; height: 100%; overflow: hidden; }
         
         .stream-card { 
             position: absolute; 
             top: 0; left: 0;
-            width: 300px; height: 200px;
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), width 0.5s ease, height 0.5s ease, opacity 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1), width 0.4s ease, height 0.4s ease;
             will-change: transform, width, height;
-            opacity: 0;
         }
+        
+        /* CRITICAL FIX: Disable pointer events on iframes during resize to prevent "losing" the drag */
+        .is-resizing iframe, .is-resizing .twitch-container { pointer-events: none !important; }
+        .is-resizing .stream-card { transition: none !important; }
         
         .is-hidden { visibility: hidden; pointer-events: none; opacity: 0 !important; }
         .is-tile-dragging { z-index: 100 !important; transition: none !important; }
-        /* Firefox fix: prevent iframe from stealing mouse events during drag */
-        .dragging-active iframe { pointer-events: none !important; }
+        .dragging-active iframe, .dragging-active .twitch-container { pointer-events: none !important; }
 
         .icon-container { display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; }
         .icon-container svg { width: 100%; height: 100%; display: block; }
+
+        .twitch-container { width: 100%; height: 100%; background: #000; }
+        .twitch-container iframe { width: 100%; height: 100%; }
+        
+        /* Resizer Handle Style */
+        .resizer-handle {
+            position: absolute; top: 0; bottom: 0; width: 24px; /* Wider hit area */
+            cursor: col-resize; z-index: 60;
+            display: flex; justify-content: center; align-items: center;
+            /* Negative margin to center the hit area over the gap */
+            margin-left: -12px; 
+        }
+        .resizer-handle:hover .resizer-line, .resizer-active .resizer-line { background-color: #f95a1f; opacity: 1; height: 100%; }
+        .resizer-line { width: 4px; height: 40px; background-color: #555; border-radius: 4px; transition: all 0.2s; opacity: 0.5; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
         @keyframes tooltip-slide {
             0% { opacity: 0; transform: translateY(10px) translateX(-50%); }
@@ -43,10 +58,12 @@
 <body class="bg-zinc-950 text-zinc-100 font-sans overflow-hidden h-screen flex flex-col" 
       x-data="eightEyesManager()" 
       x-init="init()"
-      @click="showTooltip = false"
-      :class="draggedId ? 'dragging-active' : ''">
+      @click="showTooltip = false; showTabTooltip = false"
+      @mouseup="stopResize()"
+      @mousemove="handleResize($event)"
+      :class="[draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '']">
 
-    <div x-show="showError" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div x-show="showError" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 text-[#f95a1f] mb-4">
                 <div class="icon-container w-6 h-6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
@@ -60,19 +77,34 @@
         </div>
     </div>
 
-    <div class="fixed top-0 left-0 w-full z-50 header-transition" :class="headerVisible ? 'translate-y-0' : '-translate-y-[calc(100%-12px)]'">
-        <header class="p-4 bg-zinc-900 border-b border-zinc-800 shadow-2xl relative">
+    <div class="relative z-[100] flex flex-col shadow-2xl transition-all duration-500 ease-in-out"
+         x-ref="headerContainer"
+         :style="headerVisible ? 'margin-top: 0px;' : `margin-top: -${$refs.headerContent?.offsetHeight || 100}px;`">
+        
+        <div x-ref="headerContent" class="bg-zinc-900 border-b border-zinc-800 relative z-20 p-4">
             
             <div x-show="showTooltip" x-cloak @click.stop
-                 class="absolute bottom-[-20px] left-1/2 z-[110] animate-tooltip">
+                 class="absolute bottom-2 left-1/2 z-[110] animate-tooltip">
                 <div class="bg-zinc-100 text-zinc-900 text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-zinc-200">
                     <div class="flex items-center gap-2">
                         <div class="icon-container w-4 h-4 text-[#f95a1f]"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
-                        <span>YouTube streams are easier to find with **Custom Titles**. Click the pencil to rename!</span>
+                        <span>You can edit the labels for streams. Useful for YouTube streams!</span>
                     </div>
                     <button @click="showTooltip = false" class="bg-zinc-800 text-white px-2 py-1 rounded text-[10px] hover:bg-black transition-colors">Dismiss</button>
                 </div>
                 <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-100 rotate-45 border-l border-t border-zinc-200"></div>
+            </div>
+
+            <div x-show="showTabTooltip" x-cloak @click.stop
+                 class="absolute top-16 left-1/2 -translate-x-1/2 z-[110] animate-tooltip">
+                <div class="bg-blue-600 text-white text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-blue-500">
+                    <div class="flex items-center gap-2">
+                        <div class="icon-container w-4 h-4 text-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                        <span>Rename a tab by double-clicking it!</span>
+                    </div>
+                    <button @click="showTabTooltip = false; hasSeenTabTooltip = true" class="bg-black/20 hover:bg-black/40 px-2 py-1 rounded text-[10px] transition-colors">Got it</button>
+                </div>
+                <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-600 rotate-45 border-l border-t border-blue-500"></div>
             </div>
 
             <div class="flex flex-col gap-4">
@@ -84,17 +116,37 @@
                     
                     <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-zinc-800">
                         <template x-for="tab in tabs" :key="tab.id">
-                            <div class="flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
+                            <div class="group flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
                                  :class="activeTabId === tab.id ? 'bg-zinc-800 border-zinc-700' : 'hover:bg-zinc-800/50'">
-                                <button @click="switchTab(tab.id)" class="px-4 py-1.5 text-xs font-bold transition-all flex items-center gap-2" :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
-                                    <span x-show="!tab.editingName" x-text="tab.name"></span>
-                                    <input x-show="tab.editingName" x-model="tab.name" @blur="tab.editingName = false; updateDocTitle(); updateUrl()" @keydown.enter="tab.editingName = false"
-                                           class="bg-transparent border-none outline-none w-20 text-white" x-init="$el.focus()">
+                                
+                                <button @click.stop="removeTab(tab.id)" x-show="tabs.length > 1" 
+                                        class="pl-2 pr-1 text-zinc-600 hover:text-red-500 transition-colors" title="Delete Tab">
+                                    <div class="icon-container w-3 h-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                                 </button>
-                                <div class="flex items-center pr-1 gap-0.5 overflow-hidden transition-all" :class="activeTabId === tab.id ? 'max-w-[60px] opacity-100' : 'max-w-0 opacity-0'">
-                                    <button @click="tab.editingName = true" class="text-zinc-500 hover:text-blue-400 p-1"><div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div></button>
-                                    <button @click="removeTab(tab.id)" x-show="tabs.length > 1" class="text-zinc-500 hover:text-red-500 p-1"><div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div></button>
+                                
+                                <div @click="switchTab(tab.id)" 
+                                     @dblclick="tab.editingName = true; $nextTick(() => $refs['input_' + tab.id].focus())"
+                                     class="px-2 py-1.5 text-xs font-bold transition-all cursor-pointer select-none min-w-[60px] text-center" 
+                                     :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
+                                    
+                                    <span x-show="!tab.editingName" x-text="tab.name"></span>
+                                    
+                                    <input x-show="tab.editingName" 
+                                           :x-ref="'input_' + tab.id"
+                                           x-model="tab.name" 
+                                           @blur="tab.editingName = false; updateDocTitle(); updateUrl()" 
+                                           @keydown.enter="tab.editingName = false"
+                                           @click.stop
+                                           class="bg-transparent border-none outline-none w-20 text-white text-center p-0 m-0">
                                 </div>
+                                
+                                <div class="w-6 flex justify-center">
+                                    <button x-show="isTabAudible(tab.id)" @click.stop="muteTab(tab.id)" 
+                                            class="text-green-500 hover:text-white transition-colors" title="Mute Active Audio">
+                                        <div class="icon-container w-3 h-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></div>
+                                    </button>
+                                </div>
+
                             </div>
                         </template>
                         <button @click="addTab()" class="p-2 text-zinc-500 hover:text-[#f95a1f] transition-colors"><div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div></button>
@@ -133,7 +185,6 @@
                             <template x-if="stream.editing">
                                 <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
                             </template>
-
                             <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-blue-400">
                                 <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
                             </button>
@@ -141,16 +192,27 @@
                     </template>
                 </div>
             </div>
-        </header>
-        <div class="flex justify-center">
-            <button @click.stop="headerVisible = !headerVisible" class="bg-zinc-800 border-x border-zinc-700 px-10 py-1 rounded-b-2xl group">
-                <div class="w-12 h-1 bg-zinc-700 group-hover:bg-[#f95a1f] rounded-full mb-1 transition-colors"></div>
+        </div>
+        
+        <div class="flex justify-center -mt-[1px] relative z-10 h-0">
+            <button @click.stop="headerVisible = !headerVisible; $nextTick(() => updateLayout())" 
+                    class="bg-zinc-900 border-x border-b border-zinc-800 px-10 py-1 rounded-b-xl group hover:bg-zinc-800 transition-colors shadow-lg">
+                <div class="w-12 h-1 bg-zinc-600 group-hover:bg-[#f95a1f] rounded-full mb-0.5 transition-colors"></div>
             </button>
         </div>
     </div>
 
-    <main class="flex-1 p-3 bg-black transition-all duration-500 flex flex-col" :style="headerVisible ? 'margin-top: 140px' : 'margin-top: 25px'">
-        <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport">
+    <main class="flex-1 bg-black flex flex-col relative w-full overflow-hidden">
+        <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full">
+            
+            <div x-show="getActiveTab()?.focusId"
+                 class="resizer-handle"
+                 :class="isResizing ? 'resizer-active' : ''"
+                 @mousedown="startResize($event)"
+                 :style="getResizerStyle()">
+                 <div class="resizer-line"></div>
+            </div>
+
             <template x-for="stream in allStreams" :key="stream.id">
                 <div class="stream-card bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
                      :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
@@ -162,6 +224,16 @@
                             <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
                             <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
                         </div>
+                        
+                        <button @click.stop="focusAudio(stream.id)" 
+                                class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg transition-colors shadow-xl"
+                                :class="!stream.muted ? 'text-white bg-green-600 border-green-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'">
+                            <div class="icon-container">
+                                <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
+                                <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
+                            </div>
+                        </button>
+
                         <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-xl">
                             <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
                         </button>
@@ -171,27 +243,40 @@
                         <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                     </button>
 
-                    <iframe :src="stream.embedUrl" class="w-full h-full" frameborder="0" allowfullscreen="true"></iframe>
+                    <div x-show="stream.type === 'y'" class="w-full h-full">
+                        <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allowfullscreen="true"></iframe>
+                    </div>
+                    <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
                 </div>
             </template>
         </div>
     </main>
 
     <script>
+        window.twitchPlayers = {};
+
         function eightEyesManager() {
             return {
                 tabs: [], activeTabId: null, allStreams: [], newUrl: '',
-                headerVisible: true, draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
+                headerVisible: true, 
+                draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
+                // Resize State
+                isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
                 showError: false, showTooltip: false, hasSeenTooltip: false,
+                // NEW: Tab Tooltip States
+                showTabTooltip: false, hasSeenTabTooltip: false,
 
                 init() {
                     this.loadFromUrl();
-                    if (this.tabs.length === 0) this.addTab();
+                    // AUTO ADD (Default False for tooltip)
+                    if (this.tabs.length === 0) this.addTab(false);
                     const ro = new ResizeObserver(() => { this.updateLayout(); });
                     ro.observe(this.$refs.grid);
+                    ro.observe(this.$refs.headerContent);
                     this.updateDocTitle();
                 },
 
+                // ... [Standard Logic - addStream, etc.] ...
                 addStream() {
                     const url = this.newUrl.trim();
                     let type, val;
@@ -202,148 +287,255 @@
                         if (val) { type = 'y'; if (!this.hasSeenTooltip) { this.showTooltip = true; this.hasSeenTooltip = true; } } 
                         else { this.showError = true; return; }
                     }
-
                     if (val) {
-                        this.allStreams.push({ id: Math.random(), tabId: this.activeTabId, type, val, label: val, vIdx: this.getActiveTabStreams().length, style: '', editing: false, tempLabel: '', embedUrl: this.generateEmbedUrl({type, val}) });
-                        this.newUrl = ''; this.updateUrl(); this.$nextTick(() => this.updateLayout());
+                        const newStream = { 
+                            id: Math.random().toString(36).substr(2, 9), 
+                            tabId: this.activeTabId, type, val, label: val, 
+                            vIdx: this.getActiveTabStreams().length, style: '', editing: false, 
+                            tempLabel: '', muted: true, 
+                            embedUrl: this.generateEmbedUrl({type, val, muted: true}) 
+                        };
+                        this.allStreams.push(newStream);
+                        const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
+                        this.newUrl = ''; this.updateUrl(); 
+                        this.$nextTick(() => { this.updateLayout(); if(type === 't') this.$nextTick(() => this.initTwitchPlayer(newStream)); });
                     }
                 },
 
-                generateEmbedUrl(s) {
-                    const host = window.location.hostname || 'localhost';
-                    return s.type === 't' ? `https://player.twitch.tv/?channel=${s.val}&parent=${host}&muted=true&autoplay=true` : `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=1&enablejsapi=1`;
+                initTwitchPlayer(stream) {
+                    if (stream.type !== 't' || stream.tabId !== this.activeTabId) return;
+                    const containerId = 'twitch-' + stream.id;
+                    const options = { width: '100%', height: '100%', channel: stream.val, layout: 'video', parent: [window.location.hostname || 'localhost'] };
+                    let attempts = 0;
+                    const interval = setInterval(() => {
+                        attempts++;
+                        const container = document.getElementById(containerId);
+                        if(attempts > 50) { clearInterval(interval); return; }
+                        if (container && typeof Twitch !== 'undefined') {
+                            if (container.innerHTML !== '') return; 
+                            clearInterval(interval);
+                            if(window.twitchPlayers[stream.id]) delete window.twitchPlayers[stream.id];
+                            const player = new Twitch.Embed(containerId, options);
+                            player.addEventListener(Twitch.Embed.VIDEO_READY, () => {
+                                player.setMuted(stream.muted); 
+                                window.twitchPlayers[stream.id] = player;
+                            });
+                        }
+                    }, 100);
                 },
 
+                generateEmbedUrl(s) {
+                    if (s.type === 't') return ''; 
+                    return `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=${s.muted ? 1 : 0}&enablejsapi=1`;
+                },
+
+                muteTab(tabId) {
+                    this.allStreams.forEach(s => {
+                        if (s.tabId === tabId) {
+                            s.muted = true;
+                            this.applyMuteState(s);
+                        }
+                    });
+                    this.updateUrl();
+                },
+                isTabAudible(tabId) { return this.allStreams.some(s => s.tabId === tabId && !s.muted); },
+                focusAudio(id) {
+                    const target = this.allStreams.find(s => s.id === id); const wasMuted = target.muted;
+                    this.allStreams.forEach(s => { if (s.id === id) { s.muted = !wasMuted; } else { s.muted = true; } this.applyMuteState(s); });
+                    this.updateUrl();
+                },
+                applyMuteState(s) {
+                    if (s.type === 't') { const p = window.twitchPlayers[s.id]; if (p) { p.setMuted(s.muted); if (!s.muted) p.setVolume(1.0); } } 
+                    else if (s.type === 'y') { const f = document.getElementById('iframe-' + s.id); if (f && f.contentWindow) { const func = s.muted ? 'mute' : 'unMute'; f.contentWindow.postMessage(JSON.stringify({ 'event': 'command', 'func': func, 'args': [] }), '*'); } }
+                },
+
+                // === LAYOUT & RESIZE LOGIC ===
+                getResizerStyle() {
+                    const tab = this.getActiveTab(); if (!tab || !tab.focusId) return 'display: none';
+                    const focusedStream = this.allStreams.find(s => s.id === tab.focusId);
+                    if (!focusedStream || !focusedStream.style) return 'display: none';
+                    const widthMatch = focusedStream.style.match(/width: (.*?)px/);
+                    if (!widthMatch) return 'display: none';
+                    const mainW = parseFloat(widthMatch[1]);
+                    return `left: ${mainW + 8}px;`; // Use padding offset to center handle in the gap
+                },
+
+                startResize(e) {
+                    this.isResizing = true;
+                    this.resizeStartX = e.clientX;
+                    
+                    // Capture current actual width to prevent snapping
+                    const tab = this.getActiveTab();
+                    if(tab && tab.focusId) {
+                        const stream = this.allStreams.find(s => s.id === tab.focusId);
+                        if(stream && stream.style) {
+                             const match = stream.style.match(/width: (.*?)px/);
+                             this.resizeStartWidth = match ? parseFloat(match[1]) : 0;
+                        }
+                    }
+                },
+                
+                handleResize(e) {
+                    if (!this.isResizing || !this.resizeStartWidth) return;
+                    const container = this.$refs.grid;
+                    const rect = container.getBoundingClientRect();
+                    const availW = rect.width - 24;
+                    
+                    // Calculate Delta (change) from start
+                    const delta = e.clientX - this.resizeStartX;
+                    let newMainW = this.resizeStartWidth + delta;
+                    
+                    // Constrain
+                    const minSideW = 200; 
+                    const maxMainW = availW - minSideW;
+                    const minMainW = 300;
+
+                    if (newMainW > maxMainW) newMainW = maxMainW;
+                    if (newMainW < minMainW) newMainW = minMainW;
+
+                    // Calculate sidebar width based on this
+                    const newSideW = availW - newMainW;
+                    
+                    const tab = this.getActiveTab();
+                    if (tab) {
+                        tab.customSidebarWidth = newSideW;
+                        this.updateLayout();
+                    }
+                },
+
+                stopResize() { this.isResizing = false; },
+
+                updateLayout() {
+                    const container = this.$refs.grid; if (!container) return;
+                    const rect = container.getBoundingClientRect(); 
+                    const availW = rect.width - 24; const availH = rect.height - 24;
+                    const activeStreams = this.getActiveTabStreams(); const count = activeStreams.length; const tab = this.getActiveTab();
+                    if (count === 0 || availW < 50) return;
+
+                    // == FOCUS MODE ==
+                    if (tab.focusId) {
+                        const focusedStream = activeStreams.find(s => s.id === tab.focusId);
+                        if (!focusedStream) { tab.focusId = null; this.updateLayout(); return; }
+
+                        let mainW, sideW;
+                        if (tab.customSidebarWidth) {
+                            sideW = tab.customSidebarWidth;
+                            if (sideW > availW - 300) sideW = availW - 300;
+                            if (sideW < 200) sideW = 200;
+                            mainW = availW - sideW;
+                        } else {
+                            const idealMainW = availH * 1.777;
+                            const minSideW = Math.max(220, availW * 0.15);
+                            const maxMainW = availW - minSideW;
+                            mainW = Math.min(idealMainW, maxMainW);
+                            sideW = availW - mainW;
+                        }
+
+                        const sideCount = activeStreams.length - 1;
+                        const sideH = sideCount > 0 ? (availH / sideCount) : 0;
+                        let sideIndex = 0;
+                        activeStreams.sort((a,b) => a.vIdx - b.vIdx).forEach(s => {
+                            if (s.id === tab.focusId) {
+                                s.style = `transform: translate3d(0px, 0px, 0); width: ${mainW - 8}px; height: ${availH - 8}px; opacity: 1; z-index: 50;`;
+                            } else {
+                                const x = mainW;
+                                const y = sideIndex * sideH;
+                                s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${sideW - 8}px; height: ${sideH - 8}px; opacity: 1; z-index: 10;`;
+                                sideIndex++;
+                            }
+                        });
+
+                    } else {
+                        // == GRID MODE ==
+                        let bestLayout = { cols: 1, rows: 1, w: availW, h: availH };
+                        let bestScore = -1; 
+                        for (let c = 1; c <= count; c++) {
+                            const r = Math.ceil(count / c); const cellW = availW / c; const cellH = availH / r;
+                            let vidW, vidH; if (cellW / cellH > 1.777) { vidH = cellH; vidW = cellH * 1.777; } else { vidW = cellW; vidH = cellW / 1.777; }
+                            const totalArea = vidW * vidH * count;
+                            if (totalArea > bestScore) { bestScore = totalArea; bestLayout = { cols: c, rows: r, w: cellW, h: cellH }; }
+                        }
+                        const cols = bestLayout.cols; const w = bestLayout.w; const h = bestLayout.h;
+                        activeStreams.forEach((s) => {
+                            if (this.draggedId === s.id && this.dragType === 'tile') return;
+                            const x = (s.vIdx % cols) * w;
+                            const y = Math.floor(s.vIdx / cols) * h;
+                            s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - 8}px; height: ${h - 8}px; opacity: 1;`;
+                        });
+                    }
+                },
+
+                // ... [Standard Helpers] ...
                 updateUrl() {
                     let params = [];
                     this.tabs.forEach(tab => {
                         params.push(`tab=${encodeURIComponent(tab.name)}`);
                         this.allStreams.filter(s => s.tabId === tab.id).sort((a,b) => a.vIdx - b.vIdx).forEach(s => {
-                            let p = `${s.type}=${encodeURIComponent(s.val)}`;
-                            if (s.label !== s.val) p += `=${encodeURIComponent(s.label)}`;
-                            params.push(p);
+                            let p = `${s.type}=${encodeURIComponent(s.val)}`; if (s.label !== s.val) p += `=${encodeURIComponent(s.label)}`; params.push(p);
                         });
                     });
                     window.location.hash = params.join('&');
                 },
-
                 loadFromUrl() {
                     try {
                         const hash = window.location.hash.substring(1); if (!hash) return;
                         const parts = hash.split('&'); const newTabs = []; const newStreams = []; let currentTabId = null;
                         parts.forEach(part => {
-                            if (part.startsWith('tab=')) {
-                                currentTabId = Date.now() + Math.random();
-                                newTabs.push({ id: currentTabId, name: decodeURIComponent(part.split('=')[1]), focusId: null, editingName: false });
-                            } else if (currentTabId && (part.startsWith('t=') || part.startsWith('y='))) {
-                                const s = part.split('='); const type = s[0]; const val = decodeURIComponent(s[1]);
-                                const label = s[2] ? decodeURIComponent(s[2]) : val;
-                                newStreams.push({ id: Math.random(), tabId: currentTabId, type, val, label, vIdx: newStreams.filter(st => st.tabId === currentTabId).length, style: '', editing: false, tempLabel: '', embedUrl: this.generateEmbedUrl({type, val}) });
+                            if (part.startsWith('tab=')) { currentTabId = Date.now() + Math.random(); newTabs.push({ id: currentTabId, name: decodeURIComponent(part.split('=')[1]), focusId: null, editingName: false, customSidebarWidth: null }); } 
+                            else if (currentTabId && (part.startsWith('t=') || part.startsWith('y='))) {
+                                const s = part.split('='); const type = s[0]; const val = decodeURIComponent(s[1]); const label = s[2] ? decodeURIComponent(s[2]) : val;
+                                newStreams.push({ id: Math.random().toString(36).substr(2, 9), tabId: currentTabId, type, val, label, vIdx: newStreams.filter(st => st.tabId === currentTabId).length, style: '', editing: false, tempLabel: '', muted: true, embedUrl: this.generateEmbedUrl({type, val, muted: true}) });
                             }
                         });
-                        if (newTabs.length > 0) { this.tabs = newTabs; this.allStreams = newStreams; this.activeTabId = newTabs[0].id; }
+                        if (newTabs.length > 0) { this.tabs = newTabs; this.allStreams = newStreams; this.activeTabId = newTabs[0].id; this.$nextTick(() => { this.allStreams.forEach(s => { if(s.type === 't') this.initTwitchPlayer(s); }); }); }
                     } catch (e) { console.error(e); }
                 },
-
-                addTab() { const id = Date.now(); this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false }); this.switchTab(id); },
-                switchTab(id) { this.activeTabId = id; this.updateDocTitle(); this.updateUrl(); this.$nextTick(() => this.updateLayout()); },
+                addTab(isUser = true) { 
+                    const id = Date.now(); 
+                    this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false, customSidebarWidth: null }); 
+                    
+                    // Logic to show Tab Tooltip ONLY if user initiated
+                    if (isUser && !this.hasSeenTabTooltip) {
+                        this.showTabTooltip = true;
+                    }
+                    
+                    this.switchTab(id); 
+                },
+                
+                switchTab(id) { 
+                    this.activeTabId = id; 
+                    this.updateDocTitle(); 
+                    this.updateUrl(); 
+                    this.$nextTick(() => { 
+                        this.updateLayout();
+                        this.allStreams.forEach(s => {
+                            if (s.tabId === id && s.type === 't' && !window.twitchPlayers[s.id]) {
+                                this.initTwitchPlayer(s);
+                            }
+                        });
+                    }); 
+                },
+                
                 removeTab(id) { if (this.tabs.length <= 1) return; this.allStreams = this.allStreams.filter(s => s.tabId !== id); this.tabs = this.tabs.filter(t => t.id !== id); if (this.activeTabId === id) this.switchTab(this.tabs[0].id); else this.updateUrl(); },
                 getActiveTab() { return this.tabs.find(t => t.id === this.activeTabId); },
                 getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
                 sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
                 isFocused(id) { return this.getActiveTab()?.focusId === id; },
-                removeStream(id) { this.allStreams = this.allStreams.filter(s => s.id !== id); this.getActiveTabStreams().forEach((s, i) => s.vIdx = i); this.updateUrl(); this.updateLayout(); },
+                removeStream(id) { 
+                    this.allStreams = this.allStreams.filter(s => s.id !== id); 
+                    const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
+                    delete window.twitchPlayers[id]; 
+                    this.getActiveTabStreams().forEach((s, i) => s.vIdx = i); 
+                    this.updateUrl(); this.updateLayout(); 
+                },
                 startEdit(s) { s.tempLabel = s.label; s.editing = true; },
                 saveEdit(s) { s.label = s.tempLabel.trim() || s.val; s.editing = false; this.updateUrl(); },
                 toggleFocus(id) { const t = this.getActiveTab(); t.focusId = (t.focusId === id) ? null : id; this.updateLayout(); },
                 updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
-
-                updateLayout() {
-                    const container = this.$refs.grid; if (!container) return;
-                    const rect = container.getBoundingClientRect(); const activeStreams = this.getActiveTabStreams();
-                    const count = activeStreams.length; const tab = this.getActiveTab();
-                    if (count === 0 || rect.width < 50) return;
-                    let cols = count <= 1 ? 1 : (count <= 2 ? 2 : (count <= 4 ? 2 : 3));
-                    let rows = count <= 2 ? 1 : 2;
-                    if (tab.focusId) { cols = 4; rows = 2; }
-                    const w = rect.width / cols, h = rect.height / rows;
-                    activeStreams.forEach((s) => {
-                        if (this.draggedId === s.id && this.dragType === 'tile') return;
-                        let x, y, width, height;
-                        if (tab.focusId && s.id === tab.focusId) { x = 0; y = 0; width = w * 3; height = h * 2; } 
-                        else if (tab.focusId) {
-                            const items = activeStreams.filter(st => st.id !== tab.focusId).sort((a,b) => a.vIdx - b.vIdx);
-                            const pos = items.indexOf(s);
-                            x = w * 3; y = pos * (rect.height / (count - 1)); width = w; height = rect.height / (count - 1);
-                        } else { x = (s.vIdx % cols) * w; y = Math.floor(s.vIdx / cols) * h; width = w; height = h; }
-                        s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${width - 8}px; height: ${height - 8}px; opacity: 1;`;
-                    });
-                },
-
-                // DRAG LOGIC (Firefox Optimized)
-                startDrag(e, id, type) {
-                    this.draggedId = id;
-                    this.dragType = type;
-                    // Firefox Fix: Must set data to initialize drag
-                    e.dataTransfer.setData('text/plain', '');
-                    e.dataTransfer.effectAllowed = 'move';
-                    
-                    if (type === 'tile') {
-                        const cr = e.target.closest('.stream-card').getBoundingClientRect();
-                        this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top };
-                        // Chrome only: hide the ghost image
-                        if (e.dataTransfer.setDragImage) {
-                            const img = new Image();
-                            e.dataTransfer.setDragImage(img, 0, 0);
-                        }
-                    }
-                },
-
-                handleDrag(e) {
-                    if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return;
-                    const cr = this.$refs.grid.getBoundingClientRect();
-                    const mx = e.clientX - cr.left, my = e.clientY - cr.top;
-                    const s = this.allStreams.find(st => st.id === this.draggedId);
-                    
-                    // Match dimensions from existing style
-                    const wMatch = s.style.match(/width: (.*?)px/);
-                    const hMatch = s.style.match(/height: (.*?)px/);
-                    const w = wMatch ? parseFloat(wMatch[1]) : 300;
-                    const h = hMatch ? parseFloat(hMatch[1]) : 200;
-
-                    s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`;
-                    
-                    this.getActiveTabStreams().forEach(other => {
-                        if (other.id === this.draggedId) return;
-                        const om = other.style.match(/translate3d\((.*?)px, (.*?)px/);
-                        if (!om) return;
-                        const ox = parseFloat(om[1]), oy = parseFloat(om[2]);
-                        const ow = parseFloat(other.style.match(/width: (.*?)px/)[1]);
-                        const oh = parseFloat(other.style.match(/height: (.*?)px/)[1]);
-                        if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx);
-                    });
-                },
-
-                reorder(targetVIdx) {
-                    const draggingStream = this.allStreams.find(s => s.id === this.draggedId);
-                    if (!draggingStream) return;
-                    const activeStreams = this.getActiveTabStreams();
-                    const currentVIdx = draggingStream.vIdx;
-                    if (currentVIdx === targetVIdx) return;
-                    activeStreams.forEach(s => {
-                        if (s.id === this.draggedId) s.vIdx = targetVIdx;
-                        else if (currentVIdx < targetVIdx) { if (s.vIdx <= targetVIdx && s.vIdx > currentVIdx) s.vIdx--; }
-                        else { if (s.vIdx >= targetVIdx && s.vIdx < currentVIdx) s.vIdx++; }
-                    });
-                    this.updateLayout();
-                },
-
-                endDrag() {
-                    this.draggedId = null;
-                    this.dragType = null;
-                    this.updateUrl();
-                    this.updateLayout();
-                }
+                startDrag(e, id, type) { this.draggedId = id; this.dragType = type; e.dataTransfer.setData('text/plain', ''); e.dataTransfer.effectAllowed = 'move'; if (type === 'tile') { const cr = e.target.closest('.stream-card').getBoundingClientRect(); this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top }; if (e.dataTransfer.setDragImage) { const img = new Image(); e.dataTransfer.setDragImage(img, 0, 0); } } },
+                handleDrag(e) { if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return; const cr = this.$refs.grid.getBoundingClientRect(); const mx = e.clientX - cr.left, my = e.clientY - cr.top; const s = this.allStreams.find(st => st.id === this.draggedId); const w = parseFloat(s.style.match(/width: (.*?)px/)[1]); const h = parseFloat(s.style.match(/height: (.*?)px/)[1]); s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`; this.getActiveTabStreams().forEach(other => { if (other.id === this.draggedId) return; const om = other.style.match(/translate3d\((.*?)px, (.*?)px/); if (!om) return; const ox = parseFloat(om[1]), oy = parseFloat(om[2]), ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]); if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx); }); },
+                reorder(targetVIdx) { const draggingStream = this.allStreams.find(s => s.id === this.draggedId); if (!draggingStream) return; const activeStreams = this.getActiveTabStreams(); const currentVIdx = draggingStream.vIdx; if (currentVIdx === targetVIdx) return; activeStreams.forEach(s => { if (s.id === this.draggedId) s.vIdx = targetVIdx; else if (currentVIdx < targetVIdx) { if (s.vIdx <= targetVIdx && s.vIdx > currentVIdx) s.vIdx--; } else { if (s.vIdx >= targetVIdx && s.vIdx < currentVIdx) s.vIdx++; } }); this.updateLayout(); },
+                endDrag() { this.draggedId = null; this.dragType = null; this.updateUrl(); this.updateLayout(); }
             }
         }
     </script>
