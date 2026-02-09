@@ -44,7 +44,6 @@
                         height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         
-        /* Unified Control Button Styles */
         .seek-btn {
             padding: 4px 6px; font-size: 10px; font-weight: 700; color: var(--text-muted);
             border-radius: 4px; transition: all 0.2s; min-width: 32px; text-align: center;
@@ -53,11 +52,9 @@
 
         .glass-panel { background: var(--bg-card); border-bottom: 1px solid var(--border-color); }
 
-        /* Play/Pause Animation Wrapper */
         .play-pause-wrapper { position: relative; width: 24px; height: 24px; }
         .play-pause-icon { position: absolute; top: 0; left: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-        /* Fine Tune Nudge Buttons */
         .nudge-btn {
             padding: 2px 4px; font-size: 9px; font-family: monospace; font-weight: 600; color: #d4d4d8;
             border-radius: 3px; transition: background 0.1s; min-width: 24px; text-align: center;
@@ -89,7 +86,11 @@
             </select>
         </div>
 
-        <div class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center h-full" x-show="streams.length > 0">
+        <div class="absolute left-1/2 -translate-x-1/2 flex flex-row items-center justify-center h-full gap-4" x-show="streams.length > 0">
+            <div class="hidden lg:block text-[9px] text-zinc-500 font-bold uppercase tracking-wider max-w-[130px] text-right leading-tight opacity-60">
+                Twitch Player Sucks. Sometimes Seek Doesn't Work. Sorry.
+            </div>
+
             <div class="flex items-center gap-1 bg-black/10 p-1 rounded-lg border border-white/5 relative">
                 
                 <div class="flex items-center mr-2 border-r border-white/5 pr-2">
@@ -111,7 +112,7 @@
                              fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         <svg class="w-6 h-6 play-pause-icon" 
                              :class="isPlaying ? 'scale-100 rotate-0 opacity-100' : 'scale-50 rotate-90 opacity-0'"
-                             fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14h4V5h-4z"/></svg>
+                             fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </div>
                 </button>
 
@@ -149,6 +150,11 @@
             
             <button @click="$refs.fileInput.click()" class="px-3 py-1.5 rounded bg-[var(--bg-element)] border border-[var(--border-color)] hover:text-white hover:border-[var(--accent)] transition-colors text-[var(--text-muted)]" title="Upload Local Video">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </button>
+
+            <button @click="generateShareLink()" class="px-3 py-1.5 rounded bg-[var(--bg-element)] border border-[var(--border-color)] hover:text-white hover:border-[var(--accent)] transition-colors text-[var(--text-muted)] group relative" title="Copy Deep Link with Timestamps">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                <span x-show="showCopied" x-transition.opacity.duration.500ms class="absolute top-full right-0 mt-2 bg-[var(--accent)] text-white text-[10px] px-2 py-1 rounded whitespace-nowrap shadow-lg">Link Copied!</span>
             </button>
         </div>
     </header>
@@ -221,10 +227,15 @@
                 input: '',
                 theme: localStorage.getItem('theme') || 'dark',
                 focusedId: null,
+                
+                // Seek Logic State
                 seekAccumulator: 0,
                 seekTimer: null,
+                masterBaseTimes: {}, // Snapshots for global seek
+
                 isPlaying: false,
                 streamTimers: {},
+                showCopied: false,
 
                 init() {
                     const resizeObserver = new ResizeObserver(() => { this._performLayout(); });
@@ -235,10 +246,30 @@
                 getHostname() { return window.location.hostname || 'localhost'; },
                 saveSettings() { localStorage.setItem('theme', this.theme); },
 
-                // --- STREAM PARSING ---
+                // --- SHARE ---
+                generateShareLink() {
+                    if (this.streams.length === 0) return;
+                    const params = this.streams
+                        .filter(s => s.type !== 'local')
+                        .map(s => {
+                            const p = window.playerRegistry[s.id];
+                            const time = p ? Math.floor(p.getCurrentTime()) : 0;
+                            return `${s.vodId}:${time}`;
+                        })
+                        .join(',');
+
+                    if (!params) return;
+                    const url = new URL(window.location);
+                    url.searchParams.set('v', params);
+                    navigator.clipboard.writeText(url.toString()).then(() => {
+                        this.showCopied = true;
+                        setTimeout(() => this.showCopied = false, 2000);
+                    });
+                },
+
+                // --- INPUT ---
                 addStreamFromInput() {
                     let id = null, type = 'twitch';
-                    
                     const ytMatch = this.input.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([^&?]+)/) || this.input.match(/^[a-zA-Z0-9_-]{11}$/);
                     const twMatch = this.input.match(/twitch\.tv\/videos\/(\d+)/) || this.input.match(/^\d+$/);
 
@@ -254,16 +285,14 @@
                 handleFileUpload(event) {
                     const files = event.target.files;
                     if (!files) return;
-                    
                     Array.from(files).forEach(file => {
                         const objectUrl = URL.createObjectURL(file);
                         this.createStream(objectUrl, 'local', file.name);
                     });
-                    event.target.value = ''; // Reset input
+                    event.target.value = '';
                 },
 
-                createStream(source, type = 'twitch', title = '') {
-                    // Check duplicate VODs, but allow multiple locals
+                createStream(source, type = 'twitch', title = '', startTime = 0) {
                     if (type !== 'local' && this.streams.some(s => s.vodId === source)) return;
 
                     const id = 'stream-' + Date.now() + Math.random().toString(36).substr(2, 5);
@@ -271,30 +300,30 @@
                     this.streams.push({
                         id: id, vodId: source, type: type, title: title,
                         seekAccumulator: 0,
+                        baseTime: null, // Per-stream snapshot
                         style: 'display:none; opacity:0;'
                     });
 
                     this.$nextTick(() => {
                         this._performLayout();
                         requestAnimationFrame(() => {
-                            if (type === 'twitch') this.initTwitchPlayer(id, source);
-                            else if (type === 'youtube') this.initYouTubePlayer(id, source);
+                            if (type === 'twitch') this.initTwitchPlayer(id, source, startTime);
+                            else if (type === 'youtube') this.initYouTubePlayer(id, source, startTime);
                             else if (type === 'local') this.initLocalPlayer(id, source);
                         });
                     });
-                    
                     if(type !== 'local') this.updateUrl();
                 },
 
-                // --- PLAYER INITIALIZATION ---
-                initTwitchPlayer(id, vodId) {
+                // --- PLAYERS ---
+                initTwitchPlayer(id, vodId, startTime = 0) {
                     const options = { width: '100%', height: '100%', video: vodId, parent: [this.getHostname()], autoplay: false, muted: false };
                     const embed = new Twitch.Embed(`player-${id}`, options);
                     embed.addEventListener(Twitch.Embed.VIDEO_READY, () => {
                         const player = embed.getPlayer();
+                        if (startTime > 0) player.seek(startTime);
                         window.playerRegistry[id] = {
-                            type: 'twitch',
-                            instance: player,
+                            type: 'twitch', instance: player,
                             play: () => player.play(),
                             pause: () => player.pause(),
                             seek: (t) => player.seek(t),
@@ -308,11 +337,10 @@
                     });
                 },
 
-                initYouTubePlayer(id, videoId) {
+                initYouTubePlayer(id, videoId, startTime = 0) {
                     const onReady = (event) => {
                          window.playerRegistry[id] = {
-                            type: 'youtube',
-                            instance: event.target,
+                            type: 'youtube', instance: event.target,
                             play: () => event.target.playVideo(),
                             pause: () => event.target.pauseVideo(),
                             seek: (t) => event.target.seekTo(t, true),
@@ -326,9 +354,11 @@
                         if (event.data === YT.PlayerState.PLAYING) this.isPlaying = true;
                         if (event.data === YT.PlayerState.PAUSED) this.checkIfAnyPlaying();
                     };
+                    const playerVars = { 'autoplay': 0, 'controls': 1 };
+                    if (startTime > 0) playerVars.start = startTime;
                     new YT.Player(`player-${id}`, {
                         width: '100%', height: '100%', videoId: videoId,
-                        playerVars: { 'autoplay': 0, 'controls': 1 }, 
+                        playerVars: playerVars,
                         events: { 'onReady': onReady, 'onStateChange': onStateChange }
                     });
                 },
@@ -337,20 +367,14 @@
                     const container = document.getElementById(`player-${id}`);
                     const video = document.createElement('video');
                     video.src = url;
-                    video.style.width = '100%';
-                    video.style.height = '100%';
+                    video.style.width = '100%'; video.style.height = '100%';
                     video.style.objectFit = 'contain'; 
-                    video.controls = true;
-                    video.muted = true; // DEFAULT MUTED
-                    
+                    video.controls = true; video.muted = true; 
                     video.addEventListener('play', () => { this.isPlaying = true; });
                     video.addEventListener('pause', () => { this.checkIfAnyPlaying(); });
-                    
                     container.appendChild(video);
-                    
                     window.playerRegistry[id] = {
-                        type: 'local',
-                        instance: video,
+                        type: 'local', instance: video,
                         play: () => video.play(),
                         pause: () => video.pause(),
                         seek: (t) => video.currentTime = t,
@@ -358,11 +382,10 @@
                         isPaused: () => video.paused,
                         setMuted: (m) => video.muted = m
                     };
-                    
                     if (this.streams.length === 1) this.activateStream(id);
                 },
 
-                // --- LOGIC ---
+                // --- STATE LOGIC ---
                 checkIfAnyPlaying() {
                     setTimeout(() => {
                         const anyPlaying = Object.values(window.playerRegistry).some(p => !p.isPaused());
@@ -371,7 +394,6 @@
                 },
 
                 removeStream(id) {
-                    // Check if local to revoke object URL
                     const s = this.streams.find(st => st.id === id);
                     if (s && s.type === 'local') URL.revokeObjectURL(s.vodId);
 
@@ -400,7 +422,7 @@
                     this._performLayout();
                 },
 
-                // === MASTER CONTROLS ===
+                // === MASTER CONTROLS (Using Snapshot Logic) ===
                 toggleMasterPlayback() { this.isPlaying ? this.masterPause() : this.masterPlay(); },
                 masterPlay() { 
                     Object.values(window.playerRegistry).forEach(p => { try { p.play() } catch(e){} }); 
@@ -411,28 +433,65 @@
                     this.isPlaying = false;
                 },
                 masterSeek(delta) {
+                    // 1. Snapshot times if starting a new seek batch
+                    if (this.seekAccumulator === 0) {
+                        this.masterBaseTimes = {};
+                        Object.keys(window.playerRegistry).forEach(pid => {
+                            const p = window.playerRegistry[pid];
+                            if(p) this.masterBaseTimes[pid] = p.getCurrentTime();
+                        });
+                    }
+
+                    // 2. Add delta
                     this.seekAccumulator += delta;
+
+                    // 3. Debounce execute
                     if (this.seekTimer) clearTimeout(this.seekTimer);
                     this.seekTimer = setTimeout(() => { this.executeSeek(); }, 300); 
                 },
                 executeSeek() {
-                    const offset = this.seekAccumulator;
-                    Object.values(window.playerRegistry).forEach(p => { 
-                        try { const current = p.getCurrentTime(); p.seek(current + offset); } catch(e){} 
+                    // 4. Execute using Snapshot + Accumulator
+                    Object.keys(window.playerRegistry).forEach(pid => { 
+                        const p = window.playerRegistry[pid];
+                        const base = this.masterBaseTimes[pid];
+                        if (p && base !== undefined) {
+                            try { p.seek(base + this.seekAccumulator); } catch(e){}
+                        }
                     });
+                    
+                    // 5. Reset
                     this.seekAccumulator = 0;
+                    this.masterBaseTimes = {};
                 },
 
-                // === PER-STREAM CONTROLS ===
+                // === PER-STREAM CONTROLS (Using Snapshot Logic) ===
                 nudge(id, delta) {
                     const s = this.streams.find(st => st.id === id);
                     if (!s) return;
+                    const p = window.playerRegistry[id];
+                    if (!p) return;
+
+                    // 1. Snapshot if starting new batch
+                    if (s.seekAccumulator === 0) {
+                        s.baseTime = p.getCurrentTime();
+                    }
+
+                    // 2. Add delta (Fix float precision issues)
                     s.seekAccumulator = parseFloat((s.seekAccumulator + delta).toFixed(1));
+
+                    // 3. Debounce
                     if (this.streamTimers[id]) clearTimeout(this.streamTimers[id]);
                     this.streamTimers[id] = setTimeout(() => {
-                        const p = window.playerRegistry[id];
-                        if (p) try { p.seek(p.getCurrentTime() + s.seekAccumulator); } catch(e) {}
+                        // 4. Execute using Snapshot + Accumulator
+                        try {
+                            if (s.baseTime !== null) {
+                                p.seek(s.baseTime + s.seekAccumulator);
+                            }
+                        } catch(e) {}
+                        
+                        // 5. Reset
                         s.seekAccumulator = 0;
+                        s.baseTime = null;
                         delete this.streamTimers[id];
                     }, 400); 
                 },
@@ -495,14 +554,16 @@
                     const params = new URLSearchParams(window.location.search);
                     const v = params.get('v');
                     if (v) {
-                        const ids = v.split(',');
+                        const entries = v.split(',');
                         let delay = 0;
-                        ids.forEach(id => {
-                            if(!id) return;
+                        entries.forEach(entry => {
+                            if(!entry) return;
+                            const [id, startTimeStr] = entry.split(':');
+                            const startTime = startTimeStr ? parseInt(startTimeStr) : 0;
                             if (!this.streams.some(s => s.vodId === id)) {
                                 let type = 'twitch';
                                 if (id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id)) type = 'youtube';
-                                setTimeout(() => this.createStream(id, type), delay);
+                                setTimeout(() => this.createStream(id, type, '', startTime), delay);
                                 delay += 200;
                             }
                         });
