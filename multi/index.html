@@ -11,6 +11,60 @@
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
+        /* === THEME VARIABLES === */
+        :root {
+            /* Dark (Default) - Zinc Palette */
+            --bg-main: #09090b;       /* zinc-950 */
+            --bg-card: #18181b;       /* zinc-900 */
+            --bg-element: #27272a;    /* zinc-800 */
+            --bg-hover: #3f3f46;      /* zinc-700 */
+            --border-color: #27272a;  /* zinc-800 */
+            --text-main: #f4f4f5;     /* zinc-100 */
+            --text-muted: #a1a1aa;    /* zinc-400 */
+            --accent: #f95a1f;        /* The Orange */
+            --nav-bg: rgba(0, 0, 0, 0.4);
+            --tab-inactive: rgba(24, 24, 27, 0.5);
+        }
+
+        .theme-light {
+            --bg-main: #f4f4f5;       /* zinc-100 */
+            --bg-card: #ffffff;       /* white */
+            --bg-element: #e4e4e7;    /* zinc-200 */
+            --bg-hover: #d4d4d8;      /* zinc-300 */
+            --border-color: #e4e4e7;  /* zinc-200 */
+            --text-main: #18181b;     /* zinc-900 */
+            --text-muted: #71717a;    /* zinc-500 */
+            --nav-bg: rgba(0, 0, 0, 0.1);
+            --tab-inactive: rgba(0, 0, 0, 0.05);
+        }
+
+        .theme-catppuccin {
+            /* Macchiato Palette */
+            --bg-main: #1e2030;       /* Mantle */
+            --bg-card: #24273a;       /* Base */
+            --bg-element: #363a4f;    /* Surface0 */
+            --bg-hover: #494d64;      /* Surface1 */
+            --border-color: #363a4f;  /* Surface0 */
+            --text-main: #cad3f5;     /* Text */
+            --text-muted: #a5adcb;    /* Subtext0 */
+            --nav-bg: rgba(24, 25, 38, 0.4);
+            --tab-inactive: rgba(36, 39, 58, 0.5);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Utility classes using variables */
+        .bg-theme-card { background-color: var(--bg-card); }
+        .bg-theme-element { background-color: var(--bg-element); }
+        .border-theme { border-color: var(--border-color); }
+        .text-theme-main { color: var(--text-main); }
+        .text-theme-muted { color: var(--text-muted); }
+        .hover-bg-theme:hover { background-color: var(--bg-hover); }
+
         .chip-twitch:hover { border-color: #9146FF; box-shadow: 0 0 12px rgba(145, 70, 255, 0.3); }
         .chip-youtube:hover { border-color: #FF0000; box-shadow: 0 0 12px rgba(255, 0, 0, 0.3); }
 
@@ -23,7 +77,6 @@
             will-change: transform, width, height;
         }
         
-        /* CRITICAL FIX: Disable pointer events on iframes during resize to prevent "losing" the drag */
         .is-resizing iframe, .is-resizing .twitch-container { pointer-events: none !important; }
         .is-resizing .stream-card { transition: none !important; }
         
@@ -37,155 +90,184 @@
         .twitch-container { width: 100%; height: 100%; background: #000; }
         .twitch-container iframe { width: 100%; height: 100%; }
         
-        /* Resizer Handle Style */
         .resizer-handle {
-            position: absolute; top: 0; bottom: 0; width: 24px; /* Wider hit area */
+            position: absolute; top: 0; bottom: 0; width: 24px; 
             cursor: col-resize; z-index: 60;
             display: flex; justify-content: center; align-items: center;
-            /* Negative margin to center the hit area over the gap */
             margin-left: -12px; 
         }
         .resizer-handle:hover .resizer-line, .resizer-active .resizer-line { background-color: #f95a1f; opacity: 1; height: 100%; }
         .resizer-line { width: 4px; height: 40px; background-color: #555; border-radius: 4px; transition: all 0.2s; opacity: 0.5; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
 
-        @keyframes tooltip-slide {
-            0% { opacity: 0; transform: translateY(10px) translateX(-50%); }
-            100% { opacity: 1; transform: translateY(0) translateX(-50%); }
-        }
-        .animate-tooltip { animation: tooltip-slide 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards; }
+        /* Chat Styles */
+        .chat-iframe-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        .chat-active { z-index: 10; opacity: 1; pointer-events: auto; }
+        .chat-inactive { z-index: 0; opacity: 0; pointer-events: none; }
     </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 font-sans overflow-hidden h-screen flex flex-col" 
+<body class="font-sans overflow-hidden h-screen flex flex-col" 
       x-data="eightEyesManager()" 
       x-init="init()"
-      @click="showTooltip = false; showTabTooltip = false"
       @mouseup="stopResize()"
       @mousemove="handleResize($event)"
-      :class="[draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '']">
+      :class="['theme-' + theme, draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '']">
 
     <div x-show="showError" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl">
+        <div class="bg-theme-card border border-theme p-6 rounded-2xl max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 text-[#f95a1f] mb-4">
                 <div class="icon-container w-6 h-6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
                 <h3 class="text-lg font-bold">Invalid YouTube URL</h3>
             </div>
-            <p class="text-zinc-400 text-sm mb-6">YouTube streams require a specific ID. Use these formats:<br>
-                <code class="text-zinc-200 block mt-2 bg-black/30 p-2 rounded">youtube.com/watch?v=ID</code>
-                <code class="text-zinc-200 block mt-1 bg-black/30 p-2 rounded">youtu.be/ID</code>
+            <p class="text-theme-muted text-sm mb-6">YouTube streams require a specific ID. Use these formats:<br>
+                <code class="text-theme-main block mt-2 bg-black/30 p-2 rounded">youtube.com/watch?v=ID</code>
+                <code class="text-theme-main block mt-1 bg-black/30 p-2 rounded">youtu.be/ID</code>
             </p>
-            <button @click="showError = false" class="w-full bg-[#f95a1f] py-2 rounded-lg font-bold hover:brightness-110 transition-all">Got it</button>
+            <button @click="showError = false" class="w-full bg-[#f95a1f] py-2 rounded-lg font-bold text-white hover:brightness-110 transition-all">Got it</button>
         </div>
     </div>
 
-    <div class="relative z-[100] flex flex-col shadow-2xl transition-all duration-500 ease-in-out"
+    <div x-show="showHelp" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="showHelp = false">
+        <div class="bg-theme-card border border-theme p-8 rounded-2xl max-w-lg w-full shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-theme-main flex items-center gap-2">
+                    <span class="text-[#f95a1f]">Help & FAQ</span>
+                </h2>
+                <button @click="showHelp = false" class="text-theme-muted hover:text-theme-main"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-blue-500 font-bold text-lg mb-2 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Customization Tips
+                    </h3>
+                    <ul class="text-theme-muted text-sm space-y-2 list-disc list-inside">
+                        <li><strong>Rename Tabs:</strong> Double-click any tab name to rename it (e.g., "FPS Games", "Music").</li>
+                        <li><strong>Rename Streams:</strong> Click the pencil icon (<svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>) on any stream chip to give it a custom label.</li>
+                    </ul>
+                </div>
+                <div class="w-full h-px bg-[var(--border-color)]"></div>
+                <div>
+                    <h3 class="text-[#9146FF] font-bold text-lg mb-2 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                        Ads despite Twitch Turbo?
+                    </h3>
+                    <p class="text-theme-muted text-sm leading-relaxed">
+                        Browsers often block "Third-Party Cookies," which prevents the embedded player from knowing you are logged in.
+                    </p>
+                    <div class="mt-2 bg-black/40 p-3 rounded border border-theme text-xs text-zinc-300">
+                        <strong class="text-[#f95a1f]">Privacy Tip:</strong> 
+                        Don't enable "Third-Party Cookies" globally. 
+                        Instead, go to your browser settings (Cookies / Site Permissions) and add 
+                        <code class="bg-black/50 px-1 rounded">[*.]twitch.tv</code> 
+                        to your <strong>Allow</strong> list. This fixes the ads but limits tracking to just Twitch, keeping other advertisers blocked.
+                    </div>
+                </div>
+                <div class="w-full h-px bg-[var(--border-color)]"></div>
+                <div>
+                    <h3 class="text-[#FF0000] font-bold text-lg mb-2 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                        Adding YouTube Streams
+                    </h3>
+                    <p class="text-theme-muted text-sm">YouTube requires the <strong>Video ID</strong>, not the full channel URL.</p>
+                    <code class="block mt-2 bg-black/40 p-2 rounded text-xs text-zinc-300">youtube.com/watch?v=<span class="text-[#f95a1f]">dQw4w9WgXcQ</span></code>
+                </div>
+            </div>
+
+            <button @click="showHelp = false" class="mt-8 w-full bg-theme-element hover-bg-theme py-3 rounded-lg font-bold transition-colors">Close</button>
+        </div>
+    </div>
+
+    <div class="relative z-[100] flex flex-col transition-all duration-500 ease-in-out"
          x-ref="headerContainer"
          :style="headerVisible ? 'margin-top: 0px;' : `margin-top: -${$refs.headerContent?.offsetHeight || 100}px;`">
         
-        <div x-ref="headerContent" class="bg-zinc-900 border-b border-zinc-800 relative z-20 p-4">
-            
-            <div x-show="showTooltip" x-cloak @click.stop
-                 class="absolute bottom-2 left-1/2 z-[110] animate-tooltip">
-                <div class="bg-zinc-100 text-zinc-900 text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-zinc-200">
-                    <div class="flex items-center gap-2">
-                        <div class="icon-container w-4 h-4 text-[#f95a1f]"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
-                        <span>You can edit the labels for streams. Useful for YouTube streams!</span>
-                    </div>
-                    <button @click="showTooltip = false" class="bg-zinc-800 text-white px-2 py-1 rounded text-[10px] hover:bg-black transition-colors">Dismiss</button>
-                </div>
-                <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-100 rotate-45 border-l border-t border-zinc-200"></div>
-            </div>
-
-            <div x-show="showTabTooltip" x-cloak @click.stop
-                 class="absolute top-16 left-1/2 -translate-x-1/2 z-[110] animate-tooltip">
-                <div class="bg-blue-600 text-white text-[11px] font-bold py-2 px-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-blue-500">
-                    <div class="flex items-center gap-2">
-                        <div class="icon-container w-4 h-4 text-white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-                        <span>Rename a tab by double-clicking it!</span>
-                    </div>
-                    <button @click="showTabTooltip = false; hasSeenTabTooltip = true" class="bg-black/20 hover:bg-black/40 px-2 py-1 rounded text-[10px] transition-colors">Got it</button>
-                </div>
-                <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-600 rotate-45 border-l border-t border-blue-500"></div>
-            </div>
-
+        <div x-ref="headerContent" class="bg-theme-card border-b border-theme relative z-20 p-4 transition-colors duration-300 shadow-2xl">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap gap-4 items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
-                        <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
+                            <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
+                        </div>
+                        
+                        <div class="flex gap-1">
+                             <button @click="toggleTheme()" class="text-theme-muted hover:text-theme-main transition-colors p-1" :title="'Theme: ' + theme">
+                                <div class="icon-container w-5 h-5">
+                                    <template x-if="theme === 'dark'">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                                    </template>
+                                    <template x-if="theme === 'light'">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                                    </template>
+                                    <template x-if="theme === 'catppuccin'">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21S3 17.9 3 13.44c0-1.2.43-2.37 1-3.44 0 0-1.82-6.42-.42-7 1.39-.58 4.64.26 6.42 2.26 .65-.17 1.33-.26 2-.26z"></path></svg>
+                                    </template>
+                                </div>
+                            </button>
+
+                            <button @click="showHelp = true" class="text-theme-muted hover:text-theme-main transition-colors p-1" title="Help & FAQ">
+                                <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+                            </button>
+                        </div>
                     </div>
                     
-                    <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-zinc-800">
+                    <nav class="flex items-center gap-1 p-1 rounded-xl border border-transparent transition-colors" style="background-color: var(--nav-bg); border-color: var(--border-color);">
                         <template x-for="tab in tabs" :key="tab.id">
-                            <div class="group flex items-center bg-zinc-900/50 rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
-                                 :class="activeTabId === tab.id ? 'bg-zinc-800 border-zinc-700' : 'hover:bg-zinc-800/50'">
-                                
-                                <button @click.stop="removeTab(tab.id)" x-show="tabs.length > 1" 
-                                        class="pl-2 pr-1 text-zinc-600 hover:text-red-500 transition-colors" title="Delete Tab">
+                            <div class="group flex items-center rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
+                                 :class="activeTabId === tab.id ? 'bg-theme-element border-theme' : 'bg-[var(--tab-inactive)] hover-bg-theme'">
+                                <button @click.stop="removeTab(tab.id)" x-show="tabs.length > 1" class="pl-2 pr-1 text-theme-muted hover:text-red-500 transition-colors" title="Delete Tab">
                                     <div class="icon-container w-3 h-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                                 </button>
-                                
-                                <div @click="switchTab(tab.id)" 
-                                     @dblclick="tab.editingName = true; $nextTick(() => $refs['input_' + tab.id].focus())"
+                                <div @click="switchTab(tab.id)" @dblclick="tab.editingName = true; $nextTick(() => $refs['input_' + tab.id].focus())"
                                      class="px-2 py-1.5 text-xs font-bold transition-all cursor-pointer select-none min-w-[60px] text-center" 
-                                     :class="activeTabId === tab.id ? 'text-white' : 'text-zinc-500'">
-                                    
+                                     :class="activeTabId === tab.id ? 'text-theme-main' : 'text-theme-muted'">
                                     <span x-show="!tab.editingName" x-text="tab.name"></span>
-                                    
-                                    <input x-show="tab.editingName" 
-                                           :x-ref="'input_' + tab.id"
-                                           x-model="tab.name" 
-                                           @blur="tab.editingName = false; updateDocTitle(); updateUrl()" 
-                                           @keydown.enter="tab.editingName = false"
-                                           @click.stop
-                                           class="bg-transparent border-none outline-none w-20 text-white text-center p-0 m-0">
+                                    <input x-show="tab.editingName" :x-ref="'input_' + tab.id" x-model="tab.name" @blur="tab.editingName = false; updateDocTitle(); updateUrl()" @keydown.enter="tab.editingName = false" @click.stop class="bg-transparent border-none outline-none w-20 text-theme-main text-center p-0 m-0">
                                 </div>
-                                
                                 <div class="w-6 flex justify-center">
-                                    <button x-show="isTabAudible(tab.id)" @click.stop="muteTab(tab.id)" 
-                                            class="text-green-500 hover:text-white transition-colors" title="Mute Active Audio">
+                                    <button x-show="isTabAudible(tab.id)" @click.stop="muteTab(tab.id)" class="text-green-500 hover:text-theme-main transition-colors" title="Mute Active Audio">
                                         <div class="icon-container w-3 h-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></div>
                                     </button>
                                 </div>
-
                             </div>
                         </template>
-                        <button @click="addTab()" class="p-2 text-zinc-500 hover:text-[#f95a1f] transition-colors"><div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div></button>
+                        <button @click="addTab()" class="p-2 text-theme-muted hover:text-[#f95a1f] transition-colors"><div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></div></button>
                     </nav>
 
                     <div class="flex max-w-sm gap-2">
-                        <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-zinc-800 border border-zinc-700 px-4 py-2 rounded-lg outline-none text-sm focus:ring-1 focus:ring-[#f95a1f]">
-                        <button @click.stop="addStream()" class="bg-[#f95a1f] hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
+                        <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-theme-element border-theme px-4 py-2 rounded-lg outline-none text-sm text-theme-main focus:ring-1 focus:ring-[#f95a1f]">
+                        <button @click.stop="addStream()" class="bg-[#f95a1f] text-white hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
                     </div>
                 </div>
 
-                <div x-show="getActiveTabStreams().length > 0" 
-                     @dragover.prevent 
-                     class="flex flex-wrap gap-2 pt-3 border-t border-zinc-800" x-cloak>
+                <div x-show="getActiveTabStreams().length > 0" @dragover.prevent class="flex flex-wrap gap-2 pt-3 border-t border-theme" x-cloak>
                     <template x-for="stream in sortedActiveStreams()" :key="stream.id">
-                        <div class="flex items-center gap-2 bg-zinc-800 border border-zinc-700 pl-2 pr-3 py-1.5 rounded-full text-xs transition-all group"
-                             draggable="true"
-                             @dragstart="startDrag($event, stream.id, 'chip')"
-                             @dragover.prevent="if(dragType==='chip') reorder(stream.vIdx)"
-                             @dragend="endDrag()"
+                        <div class="flex items-center gap-2 bg-theme-element border border-theme pl-2 pr-3 py-1.5 rounded-full text-xs transition-all group"
+                             draggable="true" @dragstart="startDrag($event, stream.id, 'chip')" @dragover.prevent="if(dragType==='chip') reorder(stream.vIdx)" @dragend="endDrag()"
                              :class="[stream.type === 't' ? 'chip-twitch' : 'chip-youtube', stream.editing ? 'ring-1 ring-[#f95a1f]' : 'cursor-move']">
-                            
                             <div class="relative w-4 h-4 flex items-center justify-center">
                                 <div class="group-hover:hidden flex items-center justify-center icon-container">
                                     <template x-if="stream.type === 't'"><svg class="text-[#9146FF]" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg></template>
                                     <template x-if="stream.type === 'y'"><svg class="text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></template>
                                 </div>
-                                <button @click.stop="removeStream(stream.id)" class="hidden group-hover:flex items-center justify-center text-zinc-400 hover:text-red-500 icon-container">
+                                <button @click.stop="removeStream(stream.id)" class="hidden group-hover:flex items-center justify-center text-theme-muted hover:text-red-500 icon-container">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </button>
                             </div>
-
                             <template x-if="!stream.editing">
-                                <span class="text-zinc-300 font-semibold" x-text="stream.label"></span>
+                                <span class="text-theme-main font-semibold" x-text="stream.label"></span>
                             </template>
                             <template x-if="stream.editing">
-                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop class="bg-transparent border-none outline-none text-white font-semibold w-24" x-init="$el.focus()">
+                                <input type="text" x-model="stream.tempLabel" @blur="saveEdit(stream)" @keydown.enter="saveEdit(stream)" @click.stop class="bg-transparent border-none outline-none text-theme-main font-semibold w-24" x-init="$el.focus()">
                             </template>
-                            <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-blue-400">
+                            <button @click.stop="focusAudio(stream.id)" class="hover:text-theme-main transition-colors p-0.5 rounded" :class="stream.muted ? 'text-theme-muted' : 'text-green-400'">
+                                <div class="icon-container w-3.5 h-3.5">
+                                    <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
+                                    <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
+                                </div>
+                            </button>
+                            <button @click.stop="startEdit(stream)" x-show="!stream.editing" class="opacity-0 group-hover:opacity-100 p-1 text-theme-muted hover:text-blue-400">
                                 <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg></div>
                             </button>
                         </div>
@@ -194,65 +276,107 @@
             </div>
         </div>
         
-        <div class="flex justify-center -mt-[1px] relative z-10 h-0">
+        <div class="flex justify-center -mt-[1px] relative z-10 h-0 pointer-events-none">
             <button @click.stop="headerVisible = !headerVisible; $nextTick(() => updateLayout())" 
-                    class="bg-zinc-900 border-x border-b border-zinc-800 px-10 py-1 rounded-b-xl group hover:bg-zinc-800 transition-colors shadow-lg">
+                    class="bg-theme-card border-x border-b border-theme px-10 py-1 rounded-b-xl group hover-bg-theme transition-colors shadow-lg pointer-events-auto">
                 <div class="w-12 h-1 bg-zinc-600 group-hover:bg-[#f95a1f] rounded-full mb-0.5 transition-colors"></div>
             </button>
         </div>
     </div>
 
-    <main class="flex-1 bg-black flex flex-col relative w-full overflow-hidden">
-        <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full">
-            
-            <div x-show="getActiveTab()?.focusId"
-                 class="resizer-handle"
-                 :class="isResizing ? 'resizer-active' : ''"
-                 @mousedown="startResize($event)"
-                 :style="getResizerStyle()">
-                 <div class="resizer-line"></div>
-            </div>
-
-            <template x-for="stream in allStreams" :key="stream.id">
-                <div class="stream-card bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden group shadow-2xl"
-                     :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
-                     :style="stream.style">
-                    
-                    <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
-                        <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f]"
-                             draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
-                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
-                            <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
-                        </div>
-                        
-                        <button @click.stop="focusAudio(stream.id)" 
-                                class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg transition-colors shadow-xl"
-                                :class="!stream.muted ? 'text-white bg-green-600 border-green-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'">
-                            <div class="icon-container">
-                                <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
-                                <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
-                            </div>
-                        </button>
-
-                        <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg hover:bg-blue-600 transition-colors shadow-xl">
-                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
-                        </button>
-                    </div>
-
-                    <button @click.stop="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
-                        <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
-                    </button>
-
-                    <div x-show="stream.type === 'y'" class="w-full h-full">
-                        <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allowfullscreen="true"></iframe>
-                    </div>
-                    <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
+    <div class="flex-1 flex overflow-hidden relative w-full">
+        
+        <main class="flex-1 bg-black flex flex-col relative overflow-hidden pt-10">
+            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full">
+                
+                <div x-show="getActiveTab()?.focusId"
+                     class="resizer-handle"
+                     :class="isResizing ? 'resizer-active' : ''"
+                     @mousedown="startResize($event)"
+                     :style="getResizerStyle()">
+                     <div class="resizer-line"></div>
                 </div>
-            </template>
-        </div>
-    </main>
 
-    <script>
+                <template x-for="stream in allStreams" :key="stream.id">
+                    <div class="stream-card bg-theme-card rounded-xl border border-theme overflow-hidden group shadow-2xl"
+                         :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
+                         :style="stream.style">
+                        
+                        <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
+                            <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f] text-zinc-100"
+                                 draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
+                                <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
+                            </div>
+                            <button @click.stop="focusAudio(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg transition-colors shadow-xl" :class="!stream.muted ? 'text-white bg-green-600 border-green-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'">
+                                <div class="icon-container">
+                                    <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
+                                    <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
+                                </div>
+                            </button>
+                            <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-blue-600 transition-colors shadow-xl">
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
+                            </button>
+                        </div>
+                        <button @click.stop="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
+                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+                        </button>
+                        <div x-show="stream.type === 'y'" class="w-full h-full">
+                            <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                        <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
+                    </div>
+                </template>
+            </div>
+        </main>
+
+        <aside class="bg-theme-card border-l border-theme flex flex-col transition-all duration-300 relative z-30"
+               :class="chatOpen ? 'w-[350px]' : 'w-0'">
+            
+            <button @click="chatOpen = !chatOpen; $nextTick(() => updateLayout())" 
+                    class="absolute -left-[24px] top-1/2 -translate-y-1/2 bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg z-50">
+                <div class="icon-container w-4 h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
+            </button>
+
+            <div class="w-[350px] flex flex-col h-full overflow-hidden">
+                <div class="p-3 border-b border-theme bg-theme-card flex flex-col gap-2">
+                    <h3 class="text-xs font-bold text-theme-muted uppercase tracking-wider">Live Chat</h3>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <template x-for="stream in sortedActiveStreams()" :key="stream.id">
+                            <button @click="activeChatStreamId = stream.id" 
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors border"
+                                    :class="activeChatStreamId === stream.id ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">
+                                <span x-text="stream.label"></span>
+                            </button>
+                        </template>
+                        <div x-show="getActiveTabStreams().length === 0" class="text-theme-muted text-xs italic p-1">No streams active</div>
+                    </div>
+                </div>
+
+                <div class="flex-1 relative bg-theme-main transition-colors duration-300">
+                    <template x-for="stream in sortedActiveStreams()" :key="'chat-' + stream.id">
+                        <div class="chat-iframe-container" 
+                             :class="activeChatStreamId === stream.id ? 'chat-active' : 'chat-inactive'">
+                             <template x-if="stream.type === 't'">
+                                <iframe :src="`https://www.twitch.tv/embed/${stream.val}/chat?parent=${window.location.hostname || 'localhost'}&darkpopout`"
+                                        class="w-full h-full" frameborder="0"></iframe>
+                             </template>
+                             <template x-if="stream.type === 'y'">
+                                <iframe :src="`https://www.youtube.com/live_chat?v=${stream.val}&embed_domain=${window.location.hostname || 'localhost'}&dark_theme=1`"
+                                        class="w-full h-full" frameborder="0"></iframe>
+                             </template>
+                        </div>
+                    </template>
+                    
+                    <div x-show="!activeChatStreamId && getActiveTabStreams().length > 0" 
+                         class="absolute inset-0 flex items-center justify-center text-theme-muted text-sm font-medium italic">
+                        Select a stream to view chat
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+    </div> <script>
         window.twitchPlayers = {};
 
         function eightEyesManager() {
@@ -260,20 +384,29 @@
                 tabs: [], activeTabId: null, allStreams: [], newUrl: '',
                 headerVisible: true, 
                 draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
-                // Resize State
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
-                showError: false, showTooltip: false, hasSeenTooltip: false,
-                // NEW: Tab Tooltip States
-                showTabTooltip: false, hasSeenTabTooltip: false,
+                showHelp: false, showError: false,
+                chatOpen: false, activeChatStreamId: null,
+                // THEME
+                theme: 'dark', // 'dark', 'light', 'catppuccin'
 
                 init() {
+                    // Load Theme
+                    this.theme = localStorage.getItem('theme') || 'dark';
+                    
                     this.loadFromUrl();
-                    // AUTO ADD (Default False for tooltip)
                     if (this.tabs.length === 0) this.addTab(false);
                     const ro = new ResizeObserver(() => { this.updateLayout(); });
                     ro.observe(this.$refs.grid);
                     ro.observe(this.$refs.headerContent);
                     this.updateDocTitle();
+                },
+
+                toggleTheme() {
+                    if (this.theme === 'dark') this.theme = 'light';
+                    else if (this.theme === 'light') this.theme = 'catppuccin';
+                    else this.theme = 'dark';
+                    localStorage.setItem('theme', this.theme);
                 },
 
                 // ... [Standard Logic - addStream, etc.] ...
@@ -284,7 +417,7 @@
                     else if (url.includes('youtube.com') || url.includes('youtu.be')) {
                         if (url.includes('v=')) { val = url.split('v=')[1].split('&')[0]; } 
                         else if (url.includes('youtu.be/')) { val = url.split('youtu.be/')[1].split('?')[0]; }
-                        if (val) { type = 'y'; if (!this.hasSeenTooltip) { this.showTooltip = true; this.hasSeenTooltip = true; } } 
+                        if (val) { type = 'y'; } 
                         else { this.showError = true; return; }
                     }
                     if (val) {
@@ -296,6 +429,9 @@
                             embedUrl: this.generateEmbedUrl({type, val, muted: true}) 
                         };
                         this.allStreams.push(newStream);
+                        // Auto-select chat if it's the first stream
+                        if (!this.activeChatStreamId) this.activeChatStreamId = newStream.id;
+                        
                         const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
                         this.newUrl = ''; this.updateUrl(); 
                         this.$nextTick(() => { this.updateLayout(); if(type === 't') this.$nextTick(() => this.initTwitchPlayer(newStream)); });
@@ -305,7 +441,7 @@
                 initTwitchPlayer(stream) {
                     if (stream.type !== 't' || stream.tabId !== this.activeTabId) return;
                     const containerId = 'twitch-' + stream.id;
-                    const options = { width: '100%', height: '100%', channel: stream.val, layout: 'video', parent: [window.location.hostname || 'localhost'] };
+                    const options = { width: '100%', height: '100%', channel: stream.val, layout: 'video', autoplay: false, parent: [window.location.hostname || 'localhost'] };
                     let attempts = 0;
                     const interval = setInterval(() => {
                         attempts++;
@@ -326,7 +462,7 @@
 
                 generateEmbedUrl(s) {
                     if (s.type === 't') return ''; 
-                    return `https://www.youtube.com/embed/${s.val}?autoplay=1&mute=${s.muted ? 1 : 0}&enablejsapi=1`;
+                    return `https://www.youtube.com/embed/${s.val}?autoplay=0&mute=${s.muted ? 1 : 0}&enablejsapi=1`;
                 },
 
                 muteTab(tabId) {
@@ -349,7 +485,6 @@
                     else if (s.type === 'y') { const f = document.getElementById('iframe-' + s.id); if (f && f.contentWindow) { const func = s.muted ? 'mute' : 'unMute'; f.contentWindow.postMessage(JSON.stringify({ 'event': 'command', 'func': func, 'args': [] }), '*'); } }
                 },
 
-                // === LAYOUT & RESIZE LOGIC ===
                 getResizerStyle() {
                     const tab = this.getActiveTab(); if (!tab || !tab.focusId) return 'display: none';
                     const focusedStream = this.allStreams.find(s => s.id === tab.focusId);
@@ -357,14 +492,12 @@
                     const widthMatch = focusedStream.style.match(/width: (.*?)px/);
                     if (!widthMatch) return 'display: none';
                     const mainW = parseFloat(widthMatch[1]);
-                    return `left: ${mainW + 8}px;`; // Use padding offset to center handle in the gap
+                    return `left: ${mainW + 8}px;`; 
                 },
 
                 startResize(e) {
                     this.isResizing = true;
                     this.resizeStartX = e.clientX;
-                    
-                    // Capture current actual width to prevent snapping
                     const tab = this.getActiveTab();
                     if(tab && tab.focusId) {
                         const stream = this.allStreams.find(s => s.id === tab.focusId);
@@ -380,22 +513,14 @@
                     const container = this.$refs.grid;
                     const rect = container.getBoundingClientRect();
                     const availW = rect.width - 24;
-                    
-                    // Calculate Delta (change) from start
                     const delta = e.clientX - this.resizeStartX;
                     let newMainW = this.resizeStartWidth + delta;
-                    
-                    // Constrain
                     const minSideW = 200; 
                     const maxMainW = availW - minSideW;
                     const minMainW = 300;
-
                     if (newMainW > maxMainW) newMainW = maxMainW;
                     if (newMainW < minMainW) newMainW = minMainW;
-
-                    // Calculate sidebar width based on this
                     const newSideW = availW - newMainW;
-                    
                     const tab = this.getActiveTab();
                     if (tab) {
                         tab.customSidebarWidth = newSideW;
@@ -436,10 +561,10 @@
                         let sideIndex = 0;
                         activeStreams.sort((a,b) => a.vIdx - b.vIdx).forEach(s => {
                             if (s.id === tab.focusId) {
-                                s.style = `transform: translate3d(0px, 0px, 0); width: ${mainW - 8}px; height: ${availH - 8}px; opacity: 1; z-index: 50;`;
+                                s.style = `transform: translate3d(0px, 12px, 0); width: ${mainW - 8}px; height: ${availH - 8}px; opacity: 1; z-index: 50;`;
                             } else {
                                 const x = mainW;
-                                const y = sideIndex * sideH;
+                                const y = (sideIndex * sideH) + 12; // Added 12px offset
                                 s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${sideW - 8}px; height: ${sideH - 8}px; opacity: 1; z-index: 10;`;
                                 sideIndex++;
                             }
@@ -458,14 +583,13 @@
                         const cols = bestLayout.cols; const w = bestLayout.w; const h = bestLayout.h;
                         activeStreams.forEach((s) => {
                             if (this.draggedId === s.id && this.dragType === 'tile') return;
-                            const x = (s.vIdx % cols) * w;
-                            const y = Math.floor(s.vIdx / cols) * h;
+                            const x = ((s.vIdx % cols) * w) + 12; // Added 12px offset for padding
+                            const y = (Math.floor(s.vIdx / cols) * h) + 12; // Added 12px offset for padding
                             s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - 8}px; height: ${h - 8}px; opacity: 1;`;
                         });
                     }
                 },
 
-                // ... [Standard Helpers] ...
                 updateUrl() {
                     let params = [];
                     this.tabs.forEach(tab => {
@@ -493,17 +617,18 @@
                 addTab(isUser = true) { 
                     const id = Date.now(); 
                     this.tabs.push({ id, name: `Grid ${this.tabs.length + 1}`, focusId: null, editingName: false, customSidebarWidth: null }); 
-                    
-                    // Logic to show Tab Tooltip ONLY if user initiated
-                    if (isUser && !this.hasSeenTabTooltip) {
-                        this.showTabTooltip = true;
-                    }
-                    
                     this.switchTab(id); 
                 },
                 
                 switchTab(id) { 
                     this.activeTabId = id; 
+                    // Update Chat Selection
+                    const streams = this.getActiveTabStreams();
+                    if (streams.length > 0) {
+                        this.activeChatStreamId = streams[0].id;
+                    } else {
+                        this.activeChatStreamId = null;
+                    }
                     this.updateDocTitle(); 
                     this.updateUrl(); 
                     this.$nextTick(() => { 
@@ -521,8 +646,14 @@
                 getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
                 sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
                 isFocused(id) { return this.getActiveTab()?.focusId === id; },
+                
                 removeStream(id) { 
                     this.allStreams = this.allStreams.filter(s => s.id !== id); 
+                    // Update Chat if deleted stream was active
+                    if (this.activeChatStreamId === id) {
+                        const remaining = this.getActiveTabStreams();
+                        this.activeChatStreamId = remaining.length > 0 ? remaining[0].id : null;
+                    }
                     const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
                     delete window.twitchPlayers[id]; 
                     this.getActiveTabStreams().forEach((s, i) => s.vIdx = i); 
@@ -530,7 +661,16 @@
                 },
                 startEdit(s) { s.tempLabel = s.label; s.editing = true; },
                 saveEdit(s) { s.label = s.tempLabel.trim() || s.val; s.editing = false; this.updateUrl(); },
-                toggleFocus(id) { const t = this.getActiveTab(); t.focusId = (t.focusId === id) ? null : id; this.updateLayout(); },
+                
+                toggleFocus(id) { 
+                    const t = this.getActiveTab(); 
+                    t.focusId = (t.focusId === id) ? null : id; 
+                    // Auto-switch chat on focus
+                    if (t.focusId) {
+                        this.activeChatStreamId = id;
+                    }
+                    this.updateLayout(); 
+                },
                 updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
                 startDrag(e, id, type) { this.draggedId = id; this.dragType = type; e.dataTransfer.setData('text/plain', ''); e.dataTransfer.effectAllowed = 'move'; if (type === 'tile') { const cr = e.target.closest('.stream-card').getBoundingClientRect(); this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top }; if (e.dataTransfer.setDragImage) { const img = new Image(); e.dataTransfer.setDragImage(img, 0, 0); } } },
                 handleDrag(e) { if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return; const cr = this.$refs.grid.getBoundingClientRect(); const mx = e.clientX - cr.left, my = e.clientY - cr.top; const s = this.allStreams.find(st => st.id === this.draggedId); const w = parseFloat(s.style.match(/width: (.*?)px/)[1]); const h = parseFloat(s.style.match(/height: (.*?)px/)[1]); s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`; this.getActiveTabStreams().forEach(other => { if (other.id === this.draggedId) return; const om = other.style.match(/translate3d\((.*?)px, (.*?)px/); if (!om) return; const ox = parseFloat(om[1]), oy = parseFloat(om[2]), ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]); if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx); }); },

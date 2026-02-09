@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EightEyes VOD Review</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://embed.twitch.tv/embed/v1.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* === THEME VARIABLES === */
+        :root {
+            --bg-main: #09090b; --bg-card: #18181b; --bg-element: #27272a;
+            --bg-hover: #3f3f46; --border-color: #27272a; --text-main: #f4f4f5;
+            --text-muted: #a1a1aa; 
+            --accent: #ff6322; 
+        }
+        .theme-light {
+            --bg-main: #f4f4f5; --bg-card: #ffffff; --bg-element: #e4e4e7;
+            --bg-hover: #d4d4d8; --border-color: #e4e4e7; --text-main: #18181b;
+            --text-muted: #71717a; --accent: #ff6322;
+        }
+        .theme-catppuccin {
+            --bg-main: #1e1e2e; --bg-card: #181825; --bg-element: #313244;
+            --bg-hover: #45475a; --border-color: #313244; --text-main: #cdd6f4;
+            --text-muted: #a6adc8; --accent: #ff6322;
+        }
+
+        body { background-color: var(--bg-main); color: var(--text-main); overflow: hidden; height: 100vh; font-family: sans-serif; transition: background 0.3s ease; }
+        
+        .stream-card { 
+            position: absolute; 
+            background: var(--bg-card); 
+            border: 1px solid var(--border-color); 
+            overflow: hidden;
+            box-sizing: border-box;
+            transition: top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        
+        /* Unified Control Button Styles */
+        .seek-btn {
+            padding: 4px 6px; font-size: 10px; font-weight: 700; color: var(--text-muted);
+            border-radius: 4px; transition: all 0.2s; min-width: 32px; text-align: center;
+        }
+        .seek-btn:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
+
+        .glass-panel { background: var(--bg-card); border-bottom: 1px solid var(--border-color); }
+
+        /* Play/Pause Animation Wrapper */
+        .play-pause-wrapper { position: relative; width: 24px; height: 24px; }
+        .play-pause-icon { position: absolute; top: 0; left: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* Fine Tune Nudge Buttons */
+        .nudge-btn {
+            padding: 2px 4px; font-size: 9px; font-family: monospace; font-weight: 600; color: #d4d4d8;
+            border-radius: 3px; transition: background 0.1s; min-width: 24px; text-align: center;
+        }
+        .nudge-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+    </style>
+</head>
+
+<body x-data="app()" x-init="init()" :class="'theme-' + theme" class="flex flex-col h-screen w-screen">
+
+    <header class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-4 relative">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" :style="'color: var(--accent)'">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+                <h1 class="text-xl font-bold tracking-tighter uppercase" 
+                    style="font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';">
+                    Eight<span :style="'color: var(--accent)'">Eyes</span>
+                    <span class="ml-1 text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] align-middle">VOD REVIEW</span>
+                </h1>
+            </div>
+
+            <select x-model="theme" @change="saveSettings()" 
+                    class="bg-[var(--bg-element)] text-[10px] font-bold uppercase tracking-wider border border-white/5 rounded px-2 py-1 outline-none cursor-pointer hover:border-[var(--accent)]">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="catppuccin">Catppuccin</option>
+            </select>
+        </div>
+
+        <div class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center h-full" x-show="streams.length > 0">
+            <div class="flex items-center gap-1 bg-black/10 p-1 rounded-lg border border-white/5 relative">
+                
+                <div class="flex items-center mr-2 border-r border-white/5 pr-2">
+                    <button @click="masterSeek(-1800)" class="seek-btn" title="-30m">-30m</button>
+                    <button @click="masterSeek(-600)" class="seek-btn" title="-10m">-10m</button>
+                    <button @click="masterSeek(-60)" class="seek-btn" title="-1m">-1m</button>
+                    <button @click="masterSeek(-30)" class="seek-btn" title="-30s">-30s</button>
+                    <button @click="masterSeek(-10)" class="p-1.5 hover:text-[var(--accent)] transition-colors" title="-10s">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
+                    </button>
+                </div>
+
+                <button @click="toggleMasterPlayback()" 
+                        class="p-2 transition-transform hover:scale-105 active:scale-95 text-white" 
+                        :title="isPlaying ? 'Pause All' : 'Play All'">
+                    <div class="play-pause-wrapper">
+                        <svg class="w-6 h-6 play-pause-icon" 
+                             :class="!isPlaying ? 'scale-100 rotate-0 opacity-100' : 'scale-50 -rotate-90 opacity-0'"
+                             fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="w-6 h-6 play-pause-icon" 
+                             :class="isPlaying ? 'scale-100 rotate-0 opacity-100' : 'scale-50 rotate-90 opacity-0'"
+                             fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14h4V5h-4z"/></svg>
+                    </div>
+                </button>
+
+                <div class="flex items-center ml-2 border-l border-white/5 pl-2">
+                    <button @click="masterSeek(10)" class="p-1.5 hover:text-[var(--accent)] transition-colors" title="+10s">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/></svg>
+                    </button>
+                    <button @click="masterSeek(30)" class="seek-btn" title="+30s">+30s</button>
+                    <button @click="masterSeek(60)" class="seek-btn" title="+1m">+1m</button>
+                    <button @click="masterSeek(600)" class="seek-btn" title="+10m">+10m</button>
+                    <button @click="masterSeek(1800)" class="seek-btn" title="+30m">+30m</button>
+                </div>
+
+                <div x-show="seekAccumulator !== 0" 
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 scale-90"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 scale-90"
+                     class="absolute top-full mt-4 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl pointer-events-none whitespace-nowrap z-[9999] border border-white/20"
+                     style="box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                    <span x-text="seekAccumulator > 0 ? `+${seekAccumulator}s` : `${seekAccumulator}s`"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <input type="file" x-ref="fileInput" multiple accept="video/*" class="hidden" @change="handleFileUpload">
+            
+            <input type="text" x-model="input" @keyup.enter="addStreamFromInput()" placeholder="Twitch / YT / Local..." 
+                   class="bg-black/10 border border-[var(--border-color)] px-3 py-1.5 rounded text-sm w-48 focus:outline-none focus:border-[var(--accent)] transition-colors">
+            
+            <button @click="addStreamFromInput()" class="px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-white transition-all shadow-md" :style="'background: var(--accent)'">Add</button>
+            
+            <button @click="$refs.fileInput.click()" class="px-3 py-1.5 rounded bg-[var(--bg-element)] border border-[var(--border-color)] hover:text-white hover:border-[var(--accent)] transition-colors text-[var(--text-muted)]" title="Upload Local Video">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden relative z-0">
+        
+        <div id="vod-grid" class="flex-1 relative overflow-hidden bg-black/50 p-4">
+            <template x-for="stream in streams" :key="stream.id">
+                <div :id="'wrap-' + stream.id" 
+                     class="stream-card rounded-lg group shadow-2xl"
+                     :style="stream.style">
+                    
+                    <div x-show="stream.seekAccumulator !== 0" 
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-90"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-90"
+                         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur text-white text-lg font-black px-6 py-2 rounded-xl shadow-2xl pointer-events-none z-[60] border border-[var(--accent)]">
+                        <span x-text="stream.seekAccumulator > 0 ? `+${stream.seekAccumulator}s` : `${stream.seekAccumulator}s`"></span>
+                    </div>
+
+                    <div class="absolute top-0 left-0 w-full p-3 flex justify-center items-start opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none bg-gradient-to-b from-black/80 to-transparent">
+                        
+                        <div class="flex items-center bg-black/60 backdrop-blur rounded p-1 pointer-events-auto border border-white/5 shadow-lg">
+                            <div class="flex gap-0.5 border-r border-white/10 pr-1 mr-1">
+                                <button @click="nudge(stream.id, -5)" class="nudge-btn">-5</button>
+                                <button @click="nudge(stream.id, -1)" class="nudge-btn">-1</button>
+                                <button @click="nudge(stream.id, -0.5)" class="nudge-btn">-.5</button>
+                                <button @click="nudge(stream.id, -0.1)" class="nudge-btn">-.1</button>
+                            </div>
+                            <div class="flex gap-0.5">
+                                <button @click="nudge(stream.id, 0.1)" class="nudge-btn">+.1</button>
+                                <button @click="nudge(stream.id, 0.5)" class="nudge-btn">+.5</button>
+                                <button @click="nudge(stream.id, 1)" class="nudge-btn">+1</button>
+                                <button @click="nudge(stream.id, 5)" class="nudge-btn">+5</button>
+                            </div>
+                        </div>
+
+                        <div class="absolute top-3 right-3 flex gap-1 pointer-events-auto">
+                            <button @click="focusStream(stream.id)" 
+                                    :class="focusedId === stream.id ? 'bg-[var(--accent)] text-white' : 'bg-black/60 text-zinc-300'"
+                                    class="p-1.5 backdrop-blur rounded hover:bg-[var(--accent)] border border-white/5 hover:text-white transition-colors"
+                                    :title="focusedId === stream.id ? 'Restore Grid' : 'Focus Stream'">
+                                <svg x-show="focusedId !== stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                                <svg x-show="focusedId === stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9H4m5 0V4m0 5l-5-5m6 11h5m-5 0v5m0-5l5 5"/></svg>
+                            </button>
+                            
+                            <button @click="removeStream(stream.id)" class="p-1.5 bg-black/60 backdrop-blur rounded hover:bg-red-600 border border-white/5 text-white">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="absolute inset-0 z-0" @click="activateStream(stream.id)"></div>
+                    <div :id="'player-' + stream.id" class="w-full h-full relative z-10 pointer-events-auto bg-black flex items-center justify-center"></div>
+                </div>
+            </template>
+        </div>
+
+    </main>
+
+    <script>
+        window.playerRegistry = {};
+
+        function app() {
+            return {
+                streams: [],
+                input: '',
+                theme: localStorage.getItem('theme') || 'dark',
+                focusedId: null,
+                seekAccumulator: 0,
+                seekTimer: null,
+                isPlaying: false,
+                streamTimers: {},
+
+                init() {
+                    const resizeObserver = new ResizeObserver(() => { this._performLayout(); });
+                    resizeObserver.observe(document.getElementById('vod-grid'));
+                    setTimeout(() => this.loadFromUrl(), 100);
+                },
+
+                getHostname() { return window.location.hostname || 'localhost'; },
+                saveSettings() { localStorage.setItem('theme', this.theme); },
+
+                // --- STREAM PARSING ---
+                addStreamFromInput() {
+                    let id = null, type = 'twitch';
+                    
+                    const ytMatch = this.input.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([^&?]+)/) || this.input.match(/^[a-zA-Z0-9_-]{11}$/);
+                    const twMatch = this.input.match(/twitch\.tv\/videos\/(\d+)/) || this.input.match(/^\d+$/);
+
+                    if (ytMatch) { id = ytMatch[1] || ytMatch[0]; type = 'youtube'; }
+                    else if (twMatch) { id = twMatch[1] || twMatch[0]; type = 'twitch'; }
+
+                    if (id) {
+                        this.createStream(id, type);
+                        this.input = '';
+                    }
+                },
+
+                handleFileUpload(event) {
+                    const files = event.target.files;
+                    if (!files) return;
+                    
+                    Array.from(files).forEach(file => {
+                        const objectUrl = URL.createObjectURL(file);
+                        this.createStream(objectUrl, 'local', file.name);
+                    });
+                    event.target.value = ''; // Reset input
+                },
+
+                createStream(source, type = 'twitch', title = '') {
+                    // Check duplicate VODs, but allow multiple locals
+                    if (type !== 'local' && this.streams.some(s => s.vodId === source)) return;
+
+                    const id = 'stream-' + Date.now() + Math.random().toString(36).substr(2, 5);
+                    
+                    this.streams.push({
+                        id: id, vodId: source, type: type, title: title,
+                        seekAccumulator: 0,
+                        style: 'display:none; opacity:0;'
+                    });
+
+                    this.$nextTick(() => {
+                        this._performLayout();
+                        requestAnimationFrame(() => {
+                            if (type === 'twitch') this.initTwitchPlayer(id, source);
+                            else if (type === 'youtube') this.initYouTubePlayer(id, source);
+                            else if (type === 'local') this.initLocalPlayer(id, source);
+                        });
+                    });
+                    
+                    if(type !== 'local') this.updateUrl();
+                },
+
+                // --- PLAYER INITIALIZATION ---
+                initTwitchPlayer(id, vodId) {
+                    const options = { width: '100%', height: '100%', video: vodId, parent: [this.getHostname()], autoplay: false, muted: false };
+                    const embed = new Twitch.Embed(`player-${id}`, options);
+                    embed.addEventListener(Twitch.Embed.VIDEO_READY, () => {
+                        const player = embed.getPlayer();
+                        window.playerRegistry[id] = {
+                            type: 'twitch',
+                            instance: player,
+                            play: () => player.play(),
+                            pause: () => player.pause(),
+                            seek: (t) => player.seek(t),
+                            getCurrentTime: () => player.getCurrentTime(),
+                            isPaused: () => player.isPaused(),
+                            setMuted: (m) => player.setMuted(m)
+                        };
+                        player.addEventListener(Twitch.Player.PLAY, () => { this.isPlaying = true; });
+                        player.addEventListener(Twitch.Player.PAUSE, () => { this.checkIfAnyPlaying(); });
+                        if (this.streams.length === 1) this.activateStream(id);
+                    });
+                },
+
+                initYouTubePlayer(id, videoId) {
+                    const onReady = (event) => {
+                         window.playerRegistry[id] = {
+                            type: 'youtube',
+                            instance: event.target,
+                            play: () => event.target.playVideo(),
+                            pause: () => event.target.pauseVideo(),
+                            seek: (t) => event.target.seekTo(t, true),
+                            getCurrentTime: () => event.target.getCurrentTime(),
+                            isPaused: () => event.target.getPlayerState() !== 1,
+                            setMuted: (m) => m ? event.target.mute() : event.target.unMute()
+                        };
+                        if (this.streams.length === 1) this.activateStream(id);
+                    };
+                    const onStateChange = (event) => {
+                        if (event.data === YT.PlayerState.PLAYING) this.isPlaying = true;
+                        if (event.data === YT.PlayerState.PAUSED) this.checkIfAnyPlaying();
+                    };
+                    new YT.Player(`player-${id}`, {
+                        width: '100%', height: '100%', videoId: videoId,
+                        playerVars: { 'autoplay': 0, 'controls': 1 }, 
+                        events: { 'onReady': onReady, 'onStateChange': onStateChange }
+                    });
+                },
+
+                initLocalPlayer(id, url) {
+                    const container = document.getElementById(`player-${id}`);
+                    const video = document.createElement('video');
+                    video.src = url;
+                    video.style.width = '100%';
+                    video.style.height = '100%';
+                    video.style.objectFit = 'contain'; 
+                    video.controls = true;
+                    video.muted = true; // DEFAULT MUTED
+                    
+                    video.addEventListener('play', () => { this.isPlaying = true; });
+                    video.addEventListener('pause', () => { this.checkIfAnyPlaying(); });
+                    
+                    container.appendChild(video);
+                    
+                    window.playerRegistry[id] = {
+                        type: 'local',
+                        instance: video,
+                        play: () => video.play(),
+                        pause: () => video.pause(),
+                        seek: (t) => video.currentTime = t,
+                        getCurrentTime: () => video.currentTime,
+                        isPaused: () => video.paused,
+                        setMuted: (m) => video.muted = m
+                    };
+                    
+                    if (this.streams.length === 1) this.activateStream(id);
+                },
+
+                // --- LOGIC ---
+                checkIfAnyPlaying() {
+                    setTimeout(() => {
+                        const anyPlaying = Object.values(window.playerRegistry).some(p => !p.isPaused());
+                        this.isPlaying = anyPlaying;
+                    }, 200);
+                },
+
+                removeStream(id) {
+                    // Check if local to revoke object URL
+                    const s = this.streams.find(st => st.id === id);
+                    if (s && s.type === 'local') URL.revokeObjectURL(s.vodId);
+
+                    this.streams = this.streams.filter(s => s.id !== id);
+                    if (window.playerRegistry[id]) delete window.playerRegistry[id];
+                    if (this.focusedId === id) this.focusedId = null;
+                    if (this.streamTimers[id]) clearTimeout(this.streamTimers[id]);
+                    
+                    this.checkIfAnyPlaying();
+                    this._performLayout();
+                    this.updateUrl();
+                },
+
+                activateStream(id) {
+                    Object.keys(window.playerRegistry).forEach(pid => {
+                        const p = window.playerRegistry[pid];
+                        if (p && typeof p.setMuted === 'function') {
+                            p.setMuted(pid !== id);
+                        }
+                    });
+                },
+
+                focusStream(id) {
+                    this.focusedId = this.focusedId === id ? null : id;
+                    if (this.focusedId) this.activateStream(id);
+                    this._performLayout();
+                },
+
+                // === MASTER CONTROLS ===
+                toggleMasterPlayback() { this.isPlaying ? this.masterPause() : this.masterPlay(); },
+                masterPlay() { 
+                    Object.values(window.playerRegistry).forEach(p => { try { p.play() } catch(e){} }); 
+                    this.isPlaying = true;
+                },
+                masterPause() { 
+                    Object.values(window.playerRegistry).forEach(p => { try { p.pause() } catch(e){} }); 
+                    this.isPlaying = false;
+                },
+                masterSeek(delta) {
+                    this.seekAccumulator += delta;
+                    if (this.seekTimer) clearTimeout(this.seekTimer);
+                    this.seekTimer = setTimeout(() => { this.executeSeek(); }, 300); 
+                },
+                executeSeek() {
+                    const offset = this.seekAccumulator;
+                    Object.values(window.playerRegistry).forEach(p => { 
+                        try { const current = p.getCurrentTime(); p.seek(current + offset); } catch(e){} 
+                    });
+                    this.seekAccumulator = 0;
+                },
+
+                // === PER-STREAM CONTROLS ===
+                nudge(id, delta) {
+                    const s = this.streams.find(st => st.id === id);
+                    if (!s) return;
+                    s.seekAccumulator = parseFloat((s.seekAccumulator + delta).toFixed(1));
+                    if (this.streamTimers[id]) clearTimeout(this.streamTimers[id]);
+                    this.streamTimers[id] = setTimeout(() => {
+                        const p = window.playerRegistry[id];
+                        if (p) try { p.seek(p.getCurrentTime() + s.seekAccumulator); } catch(e) {}
+                        s.seekAccumulator = 0;
+                        delete this.streamTimers[id];
+                    }, 400); 
+                },
+
+                // === LAYOUT ===
+                _performLayout() {
+                    if (this.streams.length === 0) return;
+                    const grid = document.getElementById('vod-grid');
+                    if (!grid) return;
+                    const totalW = grid.clientWidth - 33; 
+                    const totalH = grid.clientHeight - 33;
+
+                    if (this.focusedId && this.streams.length > 1) {
+                        const others = this.streams.filter(s => s.id !== this.focusedId);
+                        let mainW = Math.floor(totalW * 0.75);
+                        let sidebarW = totalW - mainW - 16; 
+                        if (sidebarW < 200) { sidebarW = 200; mainW = totalW - sidebarW - 16; }
+                        const focusS = this.streams.find(s => s.id === this.focusedId);
+                        focusS.style = `top:16px; left:16px; width:${mainW}px; height:${totalH}px; z-index:50; opacity:1; display:block;`;
+                        const count = others.length;
+                        const sideH = Math.floor((totalH - ((count - 1) * 16)) / count); 
+                        others.forEach((s, i) => {
+                            const top = 16 + (i * (sideH + 16));
+                            const left = 16 + mainW + 16;
+                            s.style = `top:${top}px; left:${left}px; width:${sidebarW}px; height:${sideH}px; opacity:1; display:block;`;
+                        });
+                        return;
+                    }
+
+                    if (this.focusedId && this.streams.length === 1) {
+                        const s = this.streams[0];
+                        s.style = `top:16px; left:16px; width:${totalW}px; height:${totalH}px; z-index:50; opacity:1; display:block;`;
+                        return;
+                    }
+
+                    const count = this.streams.length;
+                    const cols = Math.ceil(Math.sqrt(count));
+                    const rows = Math.ceil(count / cols);
+                    const w = Math.floor(totalW / cols);
+                    const h = Math.floor(totalH / rows);
+                    this.streams.forEach((s, i) => {
+                        const r = Math.floor(i / cols);
+                        const c = i % cols;
+                        const totalGridW = w * cols;
+                        const totalGridH = h * rows;
+                        const offsetX = Math.floor((totalW - totalGridW) / 2) + 16;
+                        const offsetY = Math.floor((totalH - totalGridH) / 2) + 16;
+                        s.style = `top:${offsetY + (r*h)}px; left:${offsetX + (c*w)}px; width:${w}px; height:${h}px; opacity:1; display:block;`;
+                    });
+                },
+
+                updateUrl() {
+                    const ids = this.streams.filter(s => s.type !== 'local').map(s => s.vodId).join(',');
+                    const url = new URL(window.location);
+                    if (ids) url.searchParams.set('v', ids); else url.searchParams.delete('v');
+                    window.history.replaceState({}, '', url);
+                },
+
+                loadFromUrl() {
+                    const params = new URLSearchParams(window.location.search);
+                    const v = params.get('v');
+                    if (v) {
+                        const ids = v.split(',');
+                        let delay = 0;
+                        ids.forEach(id => {
+                            if(!id) return;
+                            if (!this.streams.some(s => s.vodId === id)) {
+                                let type = 'twitch';
+                                if (id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id)) type = 'youtube';
+                                setTimeout(() => this.createStream(id, type), delay);
+                                delay += 200;
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
