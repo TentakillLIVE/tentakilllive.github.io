@@ -65,8 +65,22 @@
 
 <body x-data="app()" x-init="init()" :class="'theme-' + theme" class="flex flex-col h-screen w-screen">
 
-    <header class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-4 relative">
-        <div class="flex items-center gap-4">
+    <header 
+        class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-4 relative transition-colors duration-200"
+        :class="isDragging ? 'bg-[var(--bg-hover)]' : ''"
+        @dragenter.prevent="dragCounter++; isDragging = true"
+        @dragleave.prevent="dragCounter--; if(dragCounter <= 0) isDragging = false"
+        @dragover.prevent
+        @drop.prevent="handleDrop($event)"
+    >
+        
+        <div x-show="isDragging" class="absolute inset-0 z-[110] bg-black/80 flex items-center justify-center pointer-events-none">
+            <div class="border-2 border-dashed border-[var(--accent)] px-8 py-2 rounded-lg bg-black/50">
+                <span class="text-[var(--accent)] font-bold uppercase tracking-widest animate-pulse">Drop Video File Here</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
             <div class="flex items-center gap-2">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" :style="'color: var(--accent)'">
                     <path d="M8 5v14l11-7z" />
@@ -86,8 +100,11 @@
             </select>
         </div>
 
-        <div class="absolute left-1/2 -translate-x-1/2 flex flex-row items-center justify-center h-full gap-4" x-show="streams.length > 0">
-            <div class="hidden lg:block text-[9px] text-zinc-500 font-bold uppercase tracking-wider max-w-[130px] text-right leading-tight opacity-60">
+        <div class="absolute left-1/2 -translate-x-1/2 flex flex-row items-center justify-center h-full gap-4 transition-opacity duration-200" 
+             :class="isDragging ? 'opacity-20' : ''" 
+             x-show="streams.length > 0">
+            
+            <div class="hidden lg:block text-[9px] text-red-500 font-bold uppercase tracking-wider max-w-[130px] text-right leading-tight">
                 Twitch Player Sucks. Sometimes Seek Doesn't Work. Sorry.
             </div>
 
@@ -140,10 +157,13 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
             <input type="file" x-ref="fileInput" multiple accept="video/*" class="hidden" @change="handleFileUpload">
             
-            <input type="text" x-model="input" @keyup.enter="addStreamFromInput()" placeholder="Twitch / YT / Local..." 
+            <input type="text" x-model="input" 
+                   @keyup.enter="addStreamFromInput()" 
+                   @paste="setTimeout(() => addStreamFromInput(), 100)"
+                   placeholder="Twitch / YT / Local..." 
                    class="bg-black/10 border border-[var(--border-color)] px-3 py-1.5 rounded text-sm w-48 focus:outline-none focus:border-[var(--accent)] transition-colors">
             
             <button @click="addStreamFromInput()" class="px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-white transition-all shadow-md" :style="'background: var(--accent)'">Add</button>
@@ -228,6 +248,10 @@
                 theme: localStorage.getItem('theme') || 'dark',
                 focusedId: null,
                 
+                // Drag State
+                isDragging: false,
+                dragCounter: 0,
+                
                 // Seek Logic State
                 seekAccumulator: 0,
                 seekTimer: null,
@@ -245,6 +269,21 @@
 
                 getHostname() { return window.location.hostname || 'localhost'; },
                 saveSettings() { localStorage.setItem('theme', this.theme); },
+
+                // --- DROP HANDLER (Top Pane) ---
+                handleDrop(e) {
+                    this.isDragging = false;
+                    this.dragCounter = 0;
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        Array.from(files).forEach(file => {
+                            if (file.type.startsWith('video/')) {
+                                const objectUrl = URL.createObjectURL(file);
+                                this.createStream(objectUrl, 'local', file.name);
+                            }
+                        });
+                    }
+                },
 
                 // --- SHARE ---
                 generateShareLink() {
