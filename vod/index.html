@@ -63,7 +63,30 @@
     </style>
 </head>
 
-<body x-data="app()" x-init="init()" :class="'theme-' + theme" class="flex flex-col h-screen w-screen">
+<body x-data="app()" x-init="init()" :class="'theme-' + theme" class="flex flex-col h-screen w-screen relative">
+
+    <div x-show="showSettings" x-cloak class="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center" @click.self="showSettings = false">
+        <div class="bg-[var(--bg-card)] border border-[var(--border-color)] p-6 rounded-xl w-full max-w-md shadow-2xl relative">
+            <button @click="showSettings = false" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            <h2 class="text-xl font-bold mb-4 text-[var(--accent)] uppercase tracking-widest">API Settings</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-[var(--text-muted)] mb-1">Twitch Client ID</label>
+                    <input type="text" x-model="apiKeys.twitchClientId" class="w-full bg-black/20 border border-[var(--border-color)] rounded px-3 py-2 text-sm focus:border-[var(--accent)] outline-none text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-[var(--text-muted)] mb-1">Twitch Access Token</label>
+                    <input type="password" x-model="apiKeys.twitchToken" class="w-full bg-black/20 border border-[var(--border-color)] rounded px-3 py-2 text-sm focus:border-[var(--accent)] outline-none text-white">
+                    <p class="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">
+                        Go to <a href="https://twitchtokengenerator.com/" target="_blank" class="underline hover:text-white text-[var(--accent)]">twitchtokengenerator.com</a>.
+                        <br>No scopes needed! Just click "Generate Token", then copy the <strong>Client ID</strong> and <strong>Access Token</strong> above.
+                    </p>
+                </div>
+                <button @click="saveKeys()" class="w-full bg-[var(--accent)] text-white font-bold py-2 rounded mt-2 hover:opacity-90">Save Keys</button>
+            </div>
+        </div>
+    </div>
 
     <header 
         class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-4 relative transition-colors duration-200"
@@ -91,6 +114,13 @@
                     <span class="ml-1 text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] align-middle">VOD REVIEW</span>
                 </h1>
             </div>
+
+            <button @click="showSettings = true" class="text-[var(--text-muted)] hover:text-[var(--accent)]" title="API Settings">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <button @click="syncStreams()" class="text-[var(--text-muted)] hover:text-[var(--accent)]" title="Sync All Twitch VODs to First Video">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
 
             <select x-model="theme" @change="saveSettings()" 
                     class="bg-[var(--bg-element)] text-[10px] font-bold uppercase tracking-wider border border-white/5 rounded px-2 py-1 outline-none cursor-pointer hover:border-[var(--accent)]">
@@ -252,11 +282,14 @@
                 isDragging: false,
                 dragCounter: 0,
                 
-                // Seek Logic State
+                // Settings & Sync State
+                showSettings: false,
+                apiKeys: { twitchClientId: '', twitchToken: '' },
+                
+                // Seek Logic
                 seekAccumulator: 0,
                 seekTimer: null,
-                masterBaseTimes: {}, // Snapshots for global seek
-
+                masterBaseTimes: {},
                 isPlaying: false,
                 streamTimers: {},
                 showCopied: false,
@@ -264,13 +297,21 @@
                 init() {
                     const resizeObserver = new ResizeObserver(() => { this._performLayout(); });
                     resizeObserver.observe(document.getElementById('vod-grid'));
+                    setInterval(() => this.updateUIProgress(), 500);
                     setTimeout(() => this.loadFromUrl(), 100);
+                    
+                    const savedKeys = localStorage.getItem('apiKeys');
+                    if(savedKeys) this.apiKeys = JSON.parse(savedKeys);
                 },
 
                 getHostname() { return window.location.hostname || 'localhost'; },
                 saveSettings() { localStorage.setItem('theme', this.theme); },
+                
+                saveKeys() {
+                    localStorage.setItem('apiKeys', JSON.stringify(this.apiKeys));
+                    this.showSettings = false;
+                },
 
-                // --- DROP HANDLER (Top Pane) ---
                 handleDrop(e) {
                     this.isDragging = false;
                     this.dragCounter = 0;
@@ -283,6 +324,56 @@
                             }
                         });
                     }
+                },
+
+                async fetchMetadata(stream) {
+                    if (stream.type === 'twitch' && this.apiKeys.twitchClientId && this.apiKeys.twitchToken) {
+                        try {
+                            const res = await fetch(`https://api.twitch.tv/helix/videos?id=${stream.vodId}`, {
+                                headers: { 'Client-ID': this.apiKeys.twitchClientId, 'Authorization': `Bearer ${this.apiKeys.twitchToken}` }
+                            });
+                            const data = await res.json();
+                            if (data.data && data.data[0]) {
+                                stream.startTimeAbsolute = new Date(data.data[0].created_at).getTime();
+                                console.log("Fetched Twitch Time:", stream.startTimeAbsolute);
+                            }
+                        } catch (e) { console.error("Twitch Fetch Error", e); }
+                    }
+                },
+
+                // --- SYNC LOGIC (Twitch Only) ---
+                syncStreams() {
+                    if (this.streams.length < 2) return;
+                    
+                    // 1. Identify Anchor (First VOD)
+                    const anchorStream = this.streams[0];
+                    if (!anchorStream.startTimeAbsolute) {
+                        alert("Reference VOD (First Tile) has no start time data. Please add Twitch API keys and reload.");
+                        return;
+                    }
+
+                    const anchorPlayer = window.playerRegistry[anchorStream.id];
+                    if (!anchorPlayer) return;
+
+                    // 2. Calculate "Real World Time" of the Anchor
+                    const anchorCurrentTime = anchorPlayer.getCurrentTime();
+                    const realWorldTargetTime = anchorStream.startTimeAbsolute + (anchorCurrentTime * 1000);
+                    
+                    console.log("Syncing to Anchor Real Time:", new Date(realWorldTargetTime).toISOString());
+
+                    // 3. Sync all others to this Real World Time
+                    this.streams.forEach((s, index) => {
+                        if (index === 0) return; // Skip anchor
+                        if (!s.startTimeAbsolute) return; // Skip if no metadata
+
+                        const targetOffsetSeconds = (realWorldTargetTime - s.startTimeAbsolute) / 1000;
+                        const p = window.playerRegistry[s.id];
+                        
+                        if (p && targetOffsetSeconds >= 0) {
+                            console.log(`Syncing ${s.id} to ${targetOffsetSeconds}s`);
+                            p.seek(targetOffsetSeconds);
+                        }
+                    });
                 },
 
                 // --- SHARE ---
@@ -336,12 +427,16 @@
 
                     const id = 'stream-' + Date.now() + Math.random().toString(36).substr(2, 5);
                     
-                    this.streams.push({
+                    const newStream = {
                         id: id, vodId: source, type: type, title: title,
                         seekAccumulator: 0,
-                        baseTime: null, // Per-stream snapshot
-                        style: 'display:none; opacity:0;'
-                    });
+                        baseTime: null,
+                        style: 'display:none; opacity:0;',
+                        startTimeAbsolute: null
+                    };
+                    
+                    this.streams.push(newStream);
+                    this.fetchMetadata(newStream);
 
                     this.$nextTick(() => {
                         this._performLayout();

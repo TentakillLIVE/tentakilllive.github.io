@@ -236,7 +236,7 @@
                     </nav>
 
                     <div class="flex max-w-sm gap-2">
-                        <input type="text" x-model="newUrl" @keydown.enter="addStream()" @click.stop placeholder="URL..." class="bg-theme-element border-theme px-4 py-2 rounded-lg outline-none text-sm text-theme-main focus:ring-1 focus:ring-[#f95a1f]">
+                        <input type="text" x-model="newUrl" @keydown.enter="addStream()" @paste="$nextTick(() => addStream())" @click.stop placeholder="URL..." class="bg-theme-element border-theme px-4 py-2 rounded-lg outline-none text-sm text-theme-main focus:ring-1 focus:ring-[#f95a1f]">
                         <button @click.stop="addStream()" class="bg-[#f95a1f] text-white hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
                     </div>
                 </div>
