@@ -101,8 +101,9 @@
 
         /* Chat Styles */
         .chat-iframe-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        .chat-active { z-index: 10; opacity: 1; pointer-events: auto; }
-        .chat-inactive { z-index: 0; opacity: 0; pointer-events: none; }
+        /* FIX: Use visibility and higher z-index to prevent "obscured" errors */
+        .chat-active { z-index: 50; opacity: 1; visibility: visible; pointer-events: auto; }
+        .chat-inactive { z-index: 0; opacity: 0; visibility: hidden; pointer-events: none; }
     </style>
 </head>
 <body class="font-sans overflow-hidden h-screen flex flex-col" 
