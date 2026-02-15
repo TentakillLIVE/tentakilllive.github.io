@@ -194,6 +194,10 @@
                         </div>
                         
                         <div class="flex gap-1">
+                             <button @click="showTitles = !showTitles" class="text-theme-muted hover:text-theme-main transition-colors p-1" :class="showTitles ? 'text-theme-main' : ''" title="Toggle Stream Titles">
+                                <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></div>
+                             </button>
+
                              <button @click="toggleTheme()" class="text-theme-muted hover:text-theme-main transition-colors p-1" :title="'Theme: ' + theme">
                                 <div class="icon-container w-5 h-5">
                                     <template x-if="theme === 'dark'">
@@ -300,33 +304,39 @@
                 </div>
 
                 <template x-for="stream in allStreams" :key="stream.id">
-                    <div class="stream-card bg-theme-card rounded-xl border border-theme overflow-hidden group shadow-2xl"
+                    <div class="stream-card bg-theme-card rounded-xl border border-theme overflow-hidden group shadow-2xl flex flex-col"
                          :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
                          :style="stream.style">
+                         
+                        <div x-show="showTitles" class="w-full text-center py-1 bg-theme-element border-b border-theme text-theme-main text-xs font-bold truncate shrink-0 select-none">
+                            <span x-text="stream.label"></span>
+                        </div>
                         
-                        <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
-                            <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f] text-zinc-100"
-                                 draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
-                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
-                                <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
-                            </div>
-                            <button @click.stop="focusAudio(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg transition-colors shadow-xl" :class="!stream.muted ? 'text-white bg-green-600 border-green-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'">
-                                <div class="icon-container">
-                                    <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
-                                    <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
+                        <div class="relative flex-1 min-h-0 w-full bg-black">
+                            <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
+                                <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f] text-zinc-100"
+                                     draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
+                                    <div class="icon-container"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg></div>
+                                    <span class="text-[10px] font-black uppercase tracking-widest leading-none select-none" x-text="stream.label"></span>
                                 </div>
+                                <button @click.stop="focusAudio(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg transition-colors shadow-xl" :class="!stream.muted ? 'text-white bg-green-600 border-green-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'">
+                                    <div class="icon-container">
+                                        <template x-if="!stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></template>
+                                        <template x-if="stream.muted"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg></template>
+                                    </div>
+                                </button>
+                                <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-blue-600 transition-colors shadow-xl">
+                                    <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
+                                </button>
+                            </div>
+                            <button @click.stop="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
+                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                             </button>
-                            <button @click.stop="toggleFocus(stream.id)" class="bg-zinc-900/95 border border-zinc-700 px-2 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-blue-600 transition-colors shadow-xl">
-                                <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
-                            </button>
+                            <div x-show="stream.type === 'y'" class="w-full h-full">
+                                <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            </div>
+                            <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
                         </div>
-                        <button @click.stop="removeStream(stream.id)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all z-50 bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl">
-                            <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
-                        </button>
-                        <div x-show="stream.type === 'y'" class="w-full h-full">
-                            <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                        </div>
-                        <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
                     </div>
                 </template>
             </div>
@@ -396,6 +406,7 @@
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
                 showHelp: false, showError: false,
                 chatOpen: false, activeChatStreamId: null,
+                showTitles: false,
                 // THEME
                 theme: 'dark', // 'dark', 'light', 'catppuccin'
 
