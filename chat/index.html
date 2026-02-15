@@ -150,6 +150,11 @@
         .preview-content { padding: 0 20px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
         .preview-line { margin-bottom: 6px; padding: 6px 10px; border-radius: 6px; width: fit-content; max-width: 95%; opacity: 1; transform-origin: bottom center; }
         
+        .stroked-text {
+            -webkit-text-stroke: var(--preview-stroke-w, 0px) black;
+            paint-order: stroke fill;
+        }
+
         .badge-preview { display: inline-block; vertical-align: baseline; margin-right: 5px; }
         .sim-user { margin-right: 5px; }
         .sim-sep { color: #aaa; margin-right: 5px; }
@@ -570,6 +575,7 @@
 
         function updatePreview() {
             const c = getStyleConfig();
+            document.getElementById('preview-box').style.setProperty('--preview-stroke-w', c.sW > 0 ? c.sW + 'px' : '0px');
             document.querySelectorAll('.preview-line').forEach(line => {
                 line.style.backgroundColor = `rgba(0,0,0,${c.bgO})`;
                 line.style.boxShadow = c.bgShad ? `0 2px 4px rgba(0,0,0,${c.bgO * 0.6})` : 'none';
@@ -580,7 +586,7 @@
                 const u = line.querySelector('.sim-user');
                 if(u) {
                     u.style.fontFamily = c.uF; u.style.fontSize = c.uS; u.style.fontWeight = c.uB; u.style.fontStyle = c.uI; u.style.textTransform = c.uT;
-                    u.style.webkitTextStroke = c.sW > 0 ? c.sW + 'px black' : '0';
+                    u.classList.toggle('stroked-text', c.sW > 0);
                     u.style.textShadow = c.uShad ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
                     u.style.color = c.staticColor ? c.uCol : line.getAttribute('data-orig-color');
                 }
@@ -589,7 +595,8 @@
                 const m = line.querySelector('.sim-msg');
                 if(m) {
                     m.style.fontFamily = c.mF; m.style.fontSize = c.mS; m.style.fontWeight = c.mB; m.style.fontStyle = c.mI; m.style.textTransform = c.mT;
-                    m.style.color = c.mCol; m.style.webkitTextStroke = c.sW > 0 ? c.sW + 'px black' : '0';
+                    m.style.color = c.mCol;
+                    m.classList.toggle('stroked-text', c.sW > 0);
                     m.style.textShadow = c.mShad ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
                     m.style.display = c.block ? 'block' : 'inline';
                 }
