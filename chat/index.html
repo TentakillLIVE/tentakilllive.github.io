@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream Chat Builder v1.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Poppins:wght@400;700&family=Oswald:wght@400;700&family=Raleway:wght@400;700&family=Nunito:wght@400;700&family=Bebas+Neue&family=Anton&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --accent: #9146ff; 
+            --accent-hover: #772ce8;
+            --bg-dark: #0e0e10; 
+            --panel-bg: #18181b; 
+            --input-bg: #2d2d30; 
+            --border: #3f3f46; 
+            --text-main: #efeff1; 
+            --text-dim: #adadb8;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background: var(--bg-dark); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 440px; 
+            background: var(--panel-bg); 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 10;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+        }
+
+        .sidebar-header {
+            padding: 20px 20px 10px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel-bg);
+        }
+
+        .sidebar-header h2 { margin: 0; font-size: 1.2rem; color: var(--accent); letter-spacing: -0.5px; }
+        .sidebar-header span { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 20px 40px 20px;
+        }
+
+        /* --- CONTROLS & TOOLTIPS --- */
+        .control-group { margin-bottom: 16px; }
+        .label-row { display: flex; align-items: center; margin-bottom: 6px; gap: 6px; }
+        .control-group label { font-size: 0.85rem; color: var(--text-dim); font-weight: 500; cursor: default; }
+        
+        .tooltip-icon {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 14px; height: 14px;
+            background: #333;
+            color: #aaa;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: help;
+            flex-shrink: 0;
+        }
+        .tooltip-icon:hover { background: var(--accent); color: white; }
+
+        #global-tooltip {
+            position: fixed; display: none; background: #000; border: 1px solid var(--border);
+            color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem;
+            max-width: 250px; z-index: 9999; line-height: 1.4; box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        input[type="text"], input[type="number"], select, textarea { 
+            width: 100%; background: var(--input-bg); border: 1px solid transparent; 
+            color: var(--text-main); padding: 10px 12px; border-radius: 6px; 
+            font-size: 0.9rem; font-family: inherit; transition: all 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #000; }
+
+        #channel { 
+            font-size: 1.1rem; font-weight: bold; color: var(--accent); 
+            background: #000; border: 1px solid var(--border); text-align: center;
+        }
+
+        .range-sync { display: flex; align-items: center; gap: 10px; }
+        .range-sync input[type="number"] { width: 70px; text-align: center; }
+        
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; flex: 1; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: var(--input-bg); border-radius: 3px; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: var(--accent); margin-top: -5px; cursor: pointer;
+        }
+
+        .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; user-select: none; width: fit-content; }
+        .checkbox-row input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .checkbox-row span { margin: 0; color: var(--text-main); font-size: 0.9rem; }
+
+        .style-toggles { display: flex; gap: 15px; margin-top: 5px; }
+        .style-toggles label { font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-main); }
+
+        .color-group { display: flex; align-items: center; gap: 8px; background: var(--input-bg); padding: 5px; border-radius: 6px; border: 1px solid transparent;}
+        input[type="color"] { -webkit-appearance: none; border: none; width: 32px; height: 32px; padding: 0; background: none; cursor: pointer; }
+        .hex-input { background: transparent !important; border: none !important; font-family: monospace; text-transform: uppercase; font-weight: bold; padding: 0 !important; }
+
+        details { background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border); overflow: hidden; }
+        summary {
+            padding: 12px 15px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-main);
+            display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02);
+        }
+        summary::after { content: '+'; }
+        details[open] summary::after { content: '-'; }
+        .section-content { padding: 15px; }
+        .divider { border-top: 1px solid var(--border); margin: 15px 0; }
+
+        .sidebar-footer { padding: 20px; background: var(--panel-bg); border-top: 1px solid var(--border); }
+        button.copy-btn { 
+            width: 100%; background: var(--accent); color: white; border: none; padding: 14px; 
+            font-weight: 700; border-radius: 8px; cursor: pointer; font-size: 1rem; 
+        }
+
+        /* --- PREVIEW --- */
+        .preview-area { 
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #000;
+            background-image: linear-gradient(45deg, #1a1a1a 25%, transparent 25%), linear-gradient(-45deg, #1a1a1a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1a1a1a 75%), linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
+            background-size: 20px 20px;
+        }
+        
+        .preview-header { 
+            position: absolute; top: 20px; background: rgba(0,0,0,0.8); padding: 8px 16px; 
+            border-radius: 20px; color: var(--text-dim); font-size: 0.8rem; border: 1px solid var(--border); 
+            display: flex; align-items: center; gap: 12px; z-index: 20;
+        }
+        
+        #previewBgPicker { -webkit-appearance: none; border: none; width: 18px; height: 18px; background: none; cursor: pointer; border-radius: 50%; }
+        #previewBgPicker::-webkit-color-swatch { border: 2px solid #555; border-radius: 50%; }
+
+        #preview-box { width: 450px; height: 600px; border: 2px dashed #444; border-radius: 8px; position: relative; overflow: hidden; }
+        .preview-content { padding: 0 20px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+        .preview-line { margin-bottom: 6px; padding: 6px 10px; border-radius: 6px; width: fit-content; max-width: 95%; opacity: 1; transform-origin: bottom center; }
+        
+        .badge-preview { display: inline-block; vertical-align: baseline; margin-right: 5px; }
+        .sim-user { margin-right: 5px; }
+        .sim-sep { color: #aaa; margin-right: 5px; }
+        #copy-status { text-align: center; color: #2ecc71; font-size: 0.85rem; height: 20px; margin-top: 8px; font-weight: 600; opacity: 0; transition: opacity 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div id="global-tooltip"></div>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>STREAM CHAT BUILDER</h2>
+            <span>v1.0</span>
+            <div class="control-group" style="margin-top:15px; margin-bottom: 0;">
+                <input type="text" id="channel" placeholder="Enter Twitch Username (Required)">
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+            
+            <details open>
+                <summary>Typography</summary>
+                <div class="section-content">
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Username Font</label>
+                            <span class="tooltip-icon" data-tip="The primary font used for the chatter's name.">?</span>
+                        </div>
+                        <select id="userFont" onchange="updatePreview()">
+                            <option value="Segoe UI">System Default</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Open Sans">Open Sans</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Poppins">Poppins</option>
+                            <option value="Oswald">Oswald</option>
+                            <option value="Bebas Neue">Bebas Neue</option>
+                            <option value="Anton">Anton</option>
+                            <option value="Custom">Custom (Local)...</option>
+                        </select>
+                    </div>
+                    <div class="control-group" id="customUserFontGroup" style="display:none;">
+                        <input type="text" id="customUserFontName" placeholder="Font Name (e.g. Helvetica)" oninput="updatePreview()">
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>User Style</label>
+                            <span class="tooltip-icon" data-tip="Case styling and formatting for usernames.">?</span>
+                        </div>
+                        <select id="userTrans" style="margin-bottom:8px;" onchange="updatePreview()">
+                            <option value="none">Normal Case</option>
+                            <option value="capitalize">Capitalize</option>
+                            <option value="uppercase">Uppercase</option>
+                            <option value="lowercase">Lowercase</option>
+                        </select>
+                        <div class="style-toggles">
+                            <label><input type="checkbox" id="userBold" checked onchange="updatePreview()"> Bold</label>
+                            <label><input type="checkbox" id="userItalic" onchange="updatePreview()"> Italic</label>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Message Font</label>
+                            <span class="tooltip-icon" data-tip="Font used for the chat text. Defaults to the same as username.">?</span>
+                        </div>
+                        <select id="msgFont" onchange="updatePreview()">
+                            <option value="same">Same as Username</option>
+                            <option value="Segoe UI">System Default</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Open Sans">Open Sans</option>
+                            <option value="Custom">Custom (Local)...</option>
+                        </select>
+                    </div>
+                    <div class="control-group" id="customFontGroup" style="display:none;">
+                        <input type="text" id="customFontName" placeholder="Font Name" oninput="updatePreview()">
+                    </div>
+                    
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Message Style</label>
+                            <span class="tooltip-icon" data-tip="Case styling and formatting for chat messages.">?</span>
+                        </div>
+                        <select id="msgTrans" style="margin-bottom:8px;" onchange="updatePreview()">
+                            <option value="none">Normal Case</option>
+                            <option value="capitalize">Capitalize</option>
+                            <option value="uppercase">Uppercase</option>
+                            <option value="lowercase">Lowercase</option>
+                        </select>
+                        <div class="style-toggles">
+                            <label><input type="checkbox" id="msgBold" onchange="updatePreview()"> Bold</label>
+                            <label><input type="checkbox" id="msgItalic" onchange="updatePreview()"> Italic</label>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div style="display:flex; gap:10px;">
+                        <div class="control-group" style="flex:1;">
+                            <div class="label-row">
+                                <label id="userSizeLabel">Font Size</label>
+                                <span class="tooltip-icon" data-tip="Sets the text height in pixels.">?</span>
+                            </div>
+                            <input type="number" id="userSize" value="24" oninput="updatePreview()">
+                        </div>
+                        <div class="control-group" style="display:none; flex:1;" id="msgSizeGroup">
+                            <div class="label-row">
+                                <label>Msg Size</label>
+                                <span class="tooltip-icon" data-tip="Sets the message text height in pixels, independently of the username size.">?</span>
+                            </div>
+                            <input type="number" id="msgSize" value="24" oninput="updatePreview()">
+                        </div>
+                    </div>
+                    
+                    <div class="label-row" style="margin-bottom:0;">
+                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                            <input type="checkbox" id="syncSizes" checked onchange="toggleUserSize()"> 
+                            <span>Sync Font Sizes</span>
+                        </label>
+                        <span class="tooltip-icon" data-tip="Link the username and message sizes together.">?</span>
+                    </div>
+                </div>
+            </details>
+
+            <details>
+                <summary>Colors & Style</summary>
+                <div class="section-content">
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Username Color</label>
+                            <span class="tooltip-icon" data-tip="The color used for chatters.">?</span>
+                        </div>
+                        <div class="color-group">
+                            <input type="color" id="userColorPicker" value="#a970ff" oninput="syncColor('user', 'picker')">
+                            <input type="text" id="userColorText" class="hex-input" value="#a970ff" oninput="syncColor('user', 'text')">
+                        </div>
+                        <div class="label-row" style="margin-top:5px; margin-bottom:0;">
+                            <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                                <input type="checkbox" id="staticUserColor" onchange="updatePreview()"> 
+                                <span>Force color for all users</span>
+                            </label>
+                            <span class="tooltip-icon" data-tip="Ignore Twitch user colors and use this one for everyone.">?</span>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Message Text Color</label>
+                            <span class="tooltip-icon" data-tip="Color of the chat message text.">?</span>
+                        </div>
+                        <div class="color-group">
+                            <input type="color" id="msgColorPicker" value="#ffffff" oninput="syncColor('msg', 'picker')">
+                            <input type="text" id="msgColorText" class="hex-input" value="#ffffff" oninput="syncColor('msg', 'text')">
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Outline Thickness (Stroke)</label>
+                            <span class="tooltip-icon" data-tip="Adds a black border around text to improve readability on bright backgrounds.">?</span>
+                        </div>
+                        <input type="number" id="strokeSize" value="2" min="0" max="15" step="0.5" oninput="updatePreview()">
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Drop Shadows</label>
+                            <span class="tooltip-icon" data-tip="Adds subtle depth shadows to specific chat elements.">?</span>
+                        </div>
+                        <div class="style-toggles" style="flex-wrap: wrap; gap: 10px;">
+                            <label><input type="checkbox" id="uShadow" onchange="updatePreview()"> User</label>
+                            <label><input type="checkbox" id="mShadow" onchange="updatePreview()"> Msg</label>
+                            <label><input type="checkbox" id="bgShadow" onchange="updatePreview()"> BG</label>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Background Opacity</label>
+                            <span class="tooltip-icon" data-tip="Darkness of the box behind each message. 0 = Invisible.">?</span>
+                        </div>
+                        <div class="range-sync">
+                            <input type="range" id="bgOpacity" min="0" max="100" value="0" oninput="syncOpacity('range')">
+                            <input type="number" id="bgOpacityNum" min="0" max="100" value="0" oninput="syncOpacity('num')">
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <details>
+                <summary>Layout & Moderation</summary>
+                <div class="section-content">
+                    <div class="label-row" style="margin-bottom:0;">
+                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                            <input type="checkbox" id="blockLayout" onchange="updatePreview()"> 
+                            <span>Block Mode (New Line)</span>
+                        </label>
+                        <span class="tooltip-icon" data-tip="Moves chat messages to a new line below the username.">?</span>
+                    </div>
+                    
+                    <div class="label-row" style="margin-bottom:0;">
+                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                            <input type="checkbox" id="showBadges" checked onchange="updatePreview()"> 
+                            <span>Show Badges</span>
+                        </label>
+                        <span class="tooltip-icon" data-tip="Toggle visibility of Moderator, Subscriber, and Artist icons.">?</span>
+                    </div>
+
+                    <div class="control-group" style="margin-top:10px;">
+                        <div class="label-row">
+                            <label>Badge Size</label>
+                            <span class="tooltip-icon" data-tip="Controls the height of badge icons displayed next to usernames.">?</span>
+                        </div>
+                        <div class="label-row" style="margin-bottom:0;">
+                            <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                                <input type="checkbox" id="autoBadgeSize" checked onchange="toggleBadgeInput()"> 
+                                <span>Auto (1.2em)</span>
+                            </label>
+                            <span class="tooltip-icon" data-tip="Badges scale automatically with your font size.">?</span>
+                        </div>
+                        <input type="number" id="badgeSize" value="20" style="display:none; width:80px;" oninput="updatePreview()">
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Message Pacing</label>
+                            <span class="tooltip-icon" data-tip="Batching delay in ms. Higher values make fast chat more readable.">?</span>
+                        </div>
+                        <div class="range-sync">
+                            <input type="range" id="batchTime" min="25" max="1000" step="25" value="250" oninput="syncBatch('range')">
+                            <input type="number" id="batchTimeNum" min="25" max="1000" step="25" value="250" oninput="syncBatch('num')">
+                        </div>
+                    </div>
+
+                    <div class="label-row" style="margin-bottom:0;">
+                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                            <input type="checkbox" id="smoothScroll" checked> 
+                            <span>Smooth Slide Animation</span>
+                        </label>
+                        <span class="tooltip-icon" data-tip="New messages push the old ones up with a sliding transition.">?</span>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="label-row" style="margin-bottom:0;">
+                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
+                            <input type="checkbox" id="hideCommands" checked> 
+                            <span>Hide Bot Commands (!...)</span>
+                        </label>
+                        <span class="tooltip-icon" data-tip="Automatically filters out messages starting with an exclamation point.">?</span>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="copy-btn" onclick="copyUrl()">Copy Overlay URL</button>
+            <div id="copy-status">URL Copied!</div>
+        </div>
+    </div>
+
+    <div class="preview-area">
+        <div class="preview-header">
+            <span>LIVE PREVIEW</span>
+            <input type="color" id="previewBgPicker" value="#000000" title="Change Background" oninput="updatePreviewBg()">
+        </div>
+        <div id="preview-box">
+            <div id="preview-content" class="preview-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const badgeAssets = {
+            'broadcaster': 'images/broadcaster.png',
+            'moderator': 'images/mod.png',
+            'lead-moderator': 'images/lead-mod.png',
+            'vip': 'images/vip.png',
+            'artist': 'images/artist.png',
+            'subscriber': 'images/sub.png'
+        };
+
+        const simMessages = [
+            { name: "random_chatter67", color: "#45b1ff", text: "what server is this?", badges: [] },
+            { name: "Luke_Skywalker", color: "#ff8c00", text: "Your days are numbered.", badges: [] },
+            { name: "xGamer_Manx", color: "#32cd32", text: "how does your game look so good?", badges: [] },
+            { name: "TheFakeJoshmanster", color: "#0000FF", text: "Not last this week :)", badges: [] },
+            { name: "Scruffy1233", color: "#FF8C00", text: "I love random races!", badges: [] },
+            { name: "Manipioul", color: "#800080", text: "i love the Discord support team :)", badges: ['subscriber'] },
+            { name: "Jimmy_Deans", color: "#FFFF00", text: "I gotta pee so bad", badges: ['subscriber'] },
+            { name: "RoadHound", color: "#800080", text: "SNIFFA", badges: ['subscriber'] },
+            { name: "AndreaTheArchmage", color: "#800080", text: "PETTHECHAT", badges: ['subscriber'] },
+            { name: "HeroDijon", color: "#0000FF", text: "I followed you on Bluesky", badges: ['subscriber'] },
+            { name: "SharkMan", color: "#0000FF", text: "Hope you like the new emotes :)", badges: ['artist', 'subscriber'] },
+            { name: "RedPanda", color: "#800080", text: "POGGERS I love Elden Ring!", badges: ['moderator', 'subscriber'] },
+            { name: "Bimbo", color: "#800080", text: "What is a pokemon?", badges: ['moderator', 'subscriber'] },
+            { name: "TheReality", color: "#008000", text: "I'm on a 50-streak in Connections", badges: ['moderator', 'subscriber'] },
+            { name: "Tentacle", color: "#FF8C00", text: "I don't even know what gooning is!", badges: ['lead-moderator', 'subscriber'] },
+            { name: "Sarah", color: "#dbb1ff", text: "My chat is so cooked", badges: ['broadcaster'] }
+        ];
+
+        let simInterval;
+
+        const tooltipEl = document.getElementById('global-tooltip');
+        function showTooltip(e, text) {
+            const rect = e.target.getBoundingClientRect();
+            tooltipEl.textContent = text;
+            tooltipEl.style.display = 'block';
+            tooltipEl.style.top = (rect.top + (rect.height / 2) - (tooltipEl.offsetHeight / 2)) + 'px';
+            tooltipEl.style.left = (rect.right + 12) + 'px';
+        }
+        function hideTooltip() { tooltipEl.style.display = 'none'; }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('chatBuilderSettings'));
+            if(settings) {
+                Object.keys(settings).forEach(key => {
+                    const el = document.getElementById(key);
+                    if(el) {
+                        if(el.type === 'checkbox') el.checked = settings[key];
+                        else el.value = settings[key];
+                    }
+                });
+                toggleUserSize(); toggleBadgeInput();
+            }
+            updatePreview();
+        }
+
+        function saveSettings() {
+            const settings = {};
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                if(el.id) {
+                    if(el.type === 'checkbox') settings[el.id] = el.checked;
+                    else settings[el.id] = el.value;
+                }
+            });
+            localStorage.setItem('chatBuilderSettings', JSON.stringify(settings));
+        }
+
+        function syncColor(p, s) {
+            const pic = document.getElementById(p + 'ColorPicker');
+            const txt = document.getElementById(p + 'ColorText');
+            if (s === 'picker') txt.value = pic.value; else pic.value = txt.value;
+            saveSettings(); updatePreview();
+        }
+
+        function syncOpacity(s) {
+            const r = document.getElementById('bgOpacity');
+            const n = document.getElementById('bgOpacityNum');
+            if (s === 'range') n.value = r.value; else r.value = n.value;
+            saveSettings(); updatePreview();
+        }
+
+        function syncBatch(s) {
+            const r = document.getElementById('batchTime');
+            const n = document.getElementById('batchTimeNum');
+            if (s === 'range') n.value = r.value; else r.value = n.value;
+            saveSettings();
+        }
+
+        function toggleUserSize() {
+            const sync = document.getElementById('syncSizes').checked;
+            document.getElementById('msgSizeGroup').style.display = sync ? 'none' : 'block';
+            saveSettings(); updatePreview();
+        }
+
+        function toggleBadgeInput() {
+            const auto = document.getElementById('autoBadgeSize').checked;
+            document.getElementById('badgeSize').style.display = auto ? 'none' : 'block';
+            saveSettings(); updatePreview();
+        }
+
+        function updatePreviewBg() {
+            const color = document.getElementById('previewBgPicker').value;
+            document.querySelector('.preview-area').style.background = color;
+            document.querySelector('.preview-area').style.backgroundImage = 'none';
+        }
+
+        function getStyleConfig() {
+            const uFSel = document.getElementById('userFont').value;
+            const mFSel = document.getElementById('msgFont').value;
+            const uF = uFSel === 'Custom' ? document.getElementById('customUserFontName').value : uFSel;
+            const mF = mFSel === 'same' ? uF : (mFSel === 'Custom' ? document.getElementById('customFontName').value : mFSel);
+            const uS = document.getElementById('userSize').value + 'px';
+            const mS = document.getElementById('syncSizes').checked ? uS : document.getElementById('msgSize').value + 'px';
+            const bH = document.getElementById('autoBadgeSize').checked ? '1.2em' : document.getElementById('badgeSize').value + 'px';
+
+            return {
+                uF, mF, uS, mS, bH,
+                uT: document.getElementById('userTrans').value,
+                mT: document.getElementById('msgTrans').value,
+                uB: document.getElementById('userBold').checked ? '700' : '400',
+                uI: document.getElementById('userItalic').checked ? 'italic' : 'normal',
+                mB: document.getElementById('msgBold').checked ? '700' : '400',
+                mI: document.getElementById('msgItalic').checked ? 'italic' : 'normal',
+                staticColor: document.getElementById('staticUserColor').checked,
+                uCol: document.getElementById('userColorPicker').value,
+                mCol: document.getElementById('msgColorPicker').value,
+                bgO: document.getElementById('bgOpacity').value / 100,
+                showB: document.getElementById('showBadges').checked,
+                sW: document.getElementById('strokeSize').value,
+                block: document.getElementById('blockLayout').checked,
+                uShad: document.getElementById('uShadow').checked,
+                mShad: document.getElementById('mShadow').checked,
+                bgShad: document.getElementById('bgShadow').checked
+            };
+        }
+
+        function updatePreview() {
+            const c = getStyleConfig();
+            document.querySelectorAll('.preview-line').forEach(line => {
+                line.style.backgroundColor = `rgba(0,0,0,${c.bgO})`;
+                line.style.boxShadow = c.bgShad ? `0 2px 4px rgba(0,0,0,${c.bgO * 0.6})` : 'none';
+                line.querySelectorAll('.badge-preview').forEach(b => {
+                    b.style.display = c.showB ? 'inline-block' : 'none';
+                    b.style.height = c.bH;
+                });
+                const u = line.querySelector('.sim-user');
+                if(u) {
+                    u.style.fontFamily = c.uF; u.style.fontSize = c.uS; u.style.fontWeight = c.uB; u.style.fontStyle = c.uI; u.style.textTransform = c.uT;
+                    u.style.webkitTextStroke = c.sW > 0 ? c.sW + 'px black' : '0';
+                    u.style.textShadow = c.uShad ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
+                    u.style.color = c.staticColor ? c.uCol : line.getAttribute('data-orig-color');
+                }
+                const s = line.querySelector('.sim-sep');
+                if(s) { s.style.display = c.block ? 'none' : 'inline'; s.style.textShadow = c.uShad ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none'; }
+                const m = line.querySelector('.sim-msg');
+                if(m) {
+                    m.style.fontFamily = c.mF; m.style.fontSize = c.mS; m.style.fontWeight = c.mB; m.style.fontStyle = c.mI; m.style.textTransform = c.mT;
+                    m.style.color = c.mCol; m.style.webkitTextStroke = c.sW > 0 ? c.sW + 'px black' : '0';
+                    m.style.textShadow = c.mShad ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none';
+                    m.style.display = c.block ? 'block' : 'inline';
+                }
+            });
+        }
+
+        function addSimMessage(data) {
+            const container = document.getElementById('preview-content');
+            const line = document.createElement('div');
+            line.className = 'preview-line';
+            line.setAttribute('data-orig-color', data.color);
+            let badges = '';
+            data.badges.forEach(b => badges += `<img src="${badgeAssets[b]}" class="badge-preview">`);
+            line.innerHTML = `${badges}<span class="sim-user">${data.name}</span><span class="sim-sep">:</span><span class="sim-msg">${data.text}</span>`;
+            container.appendChild(line);
+            updatePreview();
+            if (document.getElementById('smoothScroll').checked) {
+                const h = line.offsetHeight; line.style.height = '0px'; line.style.opacity = '0'; line.style.marginBottom = '0px'; line.style.padding = '0px';
+                line.offsetHeight; line.style.transition = 'all 0.3s ease';
+                line.style.height = h + 'px'; line.style.opacity = '1'; line.style.marginBottom = '6px'; line.style.padding = '6px 10px';
+            }
+            if(container.children.length > 7) container.removeChild(container.firstChild);
+        }
+
+        function copyUrl() {
+            const ch = document.getElementById('channel').value.trim();
+            if(!ch) return alert("Enter Twitch Username!");
+            const params = new URLSearchParams();
+            const c = getStyleConfig();
+            params.set('channel', ch); params.set('uFont', c.uF); params.set('mFont', c.mF); params.set('uSize', parseInt(c.uS)); params.set('mSize', parseInt(c.mS));
+            params.set('uBold', document.getElementById('userBold').checked); params.set('mBold', document.getElementById('msgBold').checked);
+            params.set('uItalic', document.getElementById('userItalic').checked); params.set('mItalic', document.getElementById('msgItalic').checked);
+            params.set('uColor', c.staticColor ? c.uCol.replace('#','') : 'false'); params.set('mColor', c.mCol.replace('#',''));
+            params.set('bg', document.getElementById('bgOpacity').value); params.set('stroke', c.sW);
+            if(c.uShad) params.set('uShadow', 'true'); if(c.mShad) params.set('mShadow', 'true'); if(c.bgShad) params.set('bgShadow', 'true');
+            params.set('badges', c.showB); if(!document.getElementById('autoBadgeSize').checked) params.set('badgeSize', parseInt(c.bH));
+            params.set('smooth', document.getElementById('smoothScroll').checked); params.set('block', c.block);
+            params.set('uTrans', c.uT); params.set('mTrans', c.mT);
+            
+            let url = window.location.href.split('?')[0].replace('index.html', '') + 'chat.html?' + params.toString();
+            navigator.clipboard.writeText(url).then(() => {
+                const s = document.getElementById('copy-status'); s.style.opacity = '1';
+                setTimeout(() => s.style.opacity = '0', 3000);
+            });
+        }
+
+        // Initialize Tooltips
+        document.querySelectorAll('.tooltip-icon').forEach(icon => {
+            icon.addEventListener('mouseenter', (e) => showTooltip(e, icon.getAttribute('data-tip')));
+            icon.addEventListener('mouseleave', hideTooltip);
+        });
+
+        loadSettings();
+        simInterval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * simMessages.length);
+            addSimMessage(simMessages[randomIndex]);
+        }, 2500);
+    </script>
+</body>
+</html>

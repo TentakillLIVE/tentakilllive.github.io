@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Overlay v1.0</title>
+    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
+    <link id="font-loader" rel="stylesheet" href="">
+    <style>
+        :root {
+            --m-font: 'Segoe UI'; --u-font: 'Segoe UI';
+            --m-size: 18px; --u-size: 18px;
+            --m-color: #fff; --u-color: #a970ff;
+            --bg: rgba(0,0,0,0);
+            --stroke-w: 0px;
+            --u-trans: none;
+            --m-trans: none;
+            --u-weight: 700; --m-weight: 400;
+            --u-style: normal; --m-style: normal;
+            --badge-height: 1.2em; /* Default */
+            
+            /* Shadows */
+            --u-shadow: none;
+            --m-shadow: none;
+            --bg-shadow: none;
+        }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background: transparent; }
+        
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 100vh;
+            width: 100%;
+            padding: 0 20px 20px 20px; 
+            box-sizing: border-box; 
+        }
+
+        .chat-line {
+            background: var(--bg);
+            margin-top: 0; 
+            margin-bottom: 6px; 
+            padding: 6px 10px; 
+            border-radius: 4px;
+            word-wrap: break-word;
+            opacity: 1; 
+            line-height: 1.4; 
+            overflow: hidden; 
+            transform-origin: bottom center;
+            flex-shrink: 0; 
+            box-sizing: border-box;
+            box-shadow: var(--bg-shadow);
+        }
+
+        .stroked-text {
+            -webkit-text-stroke: var(--stroke-w) black;
+            paint-order: stroke fill;
+        }
+
+        .username {
+            font-family: var(--u-font);
+            font-size: var(--u-size);
+            font-weight: var(--u-weight);
+            font-style: var(--u-style);
+            margin-right: 5px;
+            text-transform: var(--u-trans);
+            text-shadow: var(--u-shadow);
+        }
+
+        .message {
+            font-family: var(--m-font);
+            font-size: var(--m-size);
+            font-weight: var(--m-weight);
+            font-style: var(--m-style);
+            color: var(--m-color);
+            text-transform: var(--m-trans);
+            text-shadow: var(--m-shadow);
+        }
+        
+        /* LAYOUT */
+        .msg-block { display: block; margin-top: 4px; }
+        .msg-inline { display: inline; }
+
+        /* SCALING & ALIGNMENT */
+        .badge { 
+            height: var(--badge-height); 
+            vertical-align: baseline; 
+            margin-right: 4px; 
+        }
+        .message img { 
+            vertical-align: middle; 
+            height: 1.3em; 
+            margin: 0 2px; 
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="chat-container"></div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        
+        let badgeH = '1.2em';
+        if(params.get('badgeSize')) {
+            badgeH = params.get('badgeSize') + 'px';
+        }
+        
+        // Calculate Background Opacity and Shadow
+        const bgVal = parseFloat(params.get('bg') || '0');
+        const bgShadowEnabled = params.get('bgShadow') === 'true';
+        let bgShadowCSS = 'none';
+        
+        if (bgShadowEnabled) {
+            // Shadow opacity scales with BG opacity. 
+            // If BG is 100% (1.0), Shadow is 0.6. If BG is 0%, Shadow is 0.
+            const shadowAlpha = (bgVal / 100) * 0.6;
+            bgShadowCSS = `0 2px 4px rgba(0,0,0,${shadowAlpha})`;
+        }
+
+        const config = {
+            channel: params.get('channel'),
+            mFont: params.get('mFont') || 'Segoe UI',
+            uFont: params.get('uFont') === 'same' ? (params.get('mFont') || 'Segoe UI') : (params.get('uFont') || 'Segoe UI'),
+            mSize: params.get('mSize') || '18',
+            uSize: params.get('uSize') === 'same' ? (params.get('mSize') || '18') : (params.get('uSize') || '18'),
+            mColor: params.get('mColor') || 'fff',
+            uColor: params.get('uColor') === 'false' ? null : '#' + params.get('uColor'),
+            bg: bgVal,
+            stroke: parseFloat(params.get('stroke') || '0'),
+            badges: params.get('badges') === 'true',
+            smooth: params.get('smooth') === 'true',
+            block: params.get('block') === 'true',
+            uTrans: params.get('uTrans') || 'none',
+            mTrans: params.get('mTrans') || 'none',
+            
+            uBold: params.get('uBold') === 'true',
+            uItalic: params.get('uItalic') === 'true',
+            mBold: params.get('mBold') === 'true',
+            mItalic: params.get('mItalic') === 'true',
+            
+            // Shadows
+            uShadow: params.get('uShadow') === 'true' ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none',
+            mShadow: params.get('mShadow') === 'true' ? '1px 1px 2px rgba(0,0,0,0.8)' : 'none',
+            bgShadow: bgShadowCSS,
+            
+            badgeHeight: badgeH,
+
+            delay: parseFloat(params.get('delay') || '0') * 1000,
+            hide: parseFloat(params.get('hide') || '0') * 1000,
+            blacklist: (params.get('block') || '').toLowerCase().split(','),
+            
+            // New Configs
+            showCommands: params.get('commands') !== 'false', 
+            batchTime: parseInt(params.get('batch') || '250')
+        };
+
+        if(!config.channel) document.write("No Channel Configured");
+
+        const fontsToLoad = new Set([config.mFont, config.uFont]);
+        const googleFonts = [...fontsToLoad].filter(f => f !== 'Custom' && f !== 'Segoe UI');
+        if(googleFonts.length) {
+            document.getElementById('font-loader').href = `https://fonts.googleapis.com/css2?family=${googleFonts.map(f=>f.replace(/ /g, '+')+':wght@400;700').join('&')}&display=swap`;
+        }
+        const root = document.documentElement;
+        root.style.setProperty('--m-font', config.mFont);
+        root.style.setProperty('--u-font', config.uFont);
+        root.style.setProperty('--m-size', config.mSize + 'px');
+        root.style.setProperty('--u-size', config.uSize + 'px');
+        root.style.setProperty('--m-color', '#' + config.mColor);
+        root.style.setProperty('--bg', `rgba(0,0,0,${config.bg/100})`);
+        root.style.setProperty('--stroke-w', config.stroke + 'px');
+        root.style.setProperty('--u-trans', config.uTrans);
+        root.style.setProperty('--m-trans', config.mTrans);
+        
+        root.style.setProperty('--u-weight', config.uBold ? '700' : '400');
+        root.style.setProperty('--u-style', config.uItalic ? 'italic' : 'normal');
+        root.style.setProperty('--m-weight', config.mBold ? '700' : '400');
+        root.style.setProperty('--m-style', config.mItalic ? 'italic' : 'normal');
+        
+        root.style.setProperty('--badge-height', config.badgeHeight);
+
+        // Apply Shadow Variables
+        root.style.setProperty('--u-shadow', config.uShadow);
+        root.style.setProperty('--m-shadow', config.mShadow);
+        root.style.setProperty('--bg-shadow', config.bgShadow);
+
+        const badgeCache = {
+            'moderator/1': 'https://static-cdn.jtvnw.net/badges/v1/3267646d-33f0-4b17-b3df-f923a41db1d0/1',
+            'vip/1': 'https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/1',
+            'broadcaster/1': 'https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1'
+        };
+        let emotes = {};
+        
+        let dataLoaded = false;
+        let dataLoadPromise = null; 
+
+        const messageQueue = [];
+
+        async function loadChannelData(roomId) {
+            if(dataLoaded) return;
+            if(dataLoadPromise) return dataLoadPromise; 
+
+            dataLoadPromise = (async () => {
+                try {
+                    // 1. Fetch Global Badges
+                    const globalRes = await fetch('https://api.ivr.fi/v2/twitch/badges/global');
+                    if(globalRes.ok) {
+                        const globalData = await globalRes.json();
+                        globalData.forEach(set => {
+                            set.versions.forEach(v => {
+                                badgeCache[`${set.set_id}/${v.id}`] = v.image_url_2x;
+                                if(v.id === '1') badgeCache[set.set_id] = v.image_url_2x;
+                            });
+                        });
+                    }
+
+                    // 2. Fetch Channel Badges
+                    const ivrRes = await fetch(`https://api.ivr.fi/v2/twitch/badges/channel?id=${roomId}`);
+                    if(ivrRes.ok) {
+                        const badgeData = await ivrRes.json();
+                        badgeData.forEach(set => {
+                            set.versions.forEach(v => badgeCache[`${set.set_id}/${v.id}`] = v.image_url_2x);
+                        });
+                    }
+
+                    // 3. Fetch Emotes
+                    const fRes = await fetch(`https://api.frankerfacez.com/v1/room/id/${roomId}`);
+                    if(fRes.ok) {
+                        const data = await fRes.json();
+                        if(data.sets) Object.values(data.sets).forEach(s => s.emoticons.forEach(e => emotes[e.name] = e.urls['2']||e.urls['1']));
+                    }
+                    const sRes = await fetch(`https://7tv.io/v3/users/twitch/${roomId}`);
+                    if(sRes.ok) {
+                        const data = await sRes.json();
+                        if(data.emote_set?.emotes) data.emote_set.emotes.forEach(e => emotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
+                    }
+                    const bRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${roomId}`);
+                    if(bRes.ok) {
+                        const data = await bRes.json();
+                        if(data.channelEmotes) data.channelEmotes.forEach(e => emotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
+                        if(data.sharedEmotes) data.sharedEmotes.forEach(e => emotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
+                    }
+                    dataLoaded = true;
+                } catch(e) { console.error(e); }
+            })();
+            
+            return dataLoadPromise;
+        }
+
+        const client = new tmi.Client({ channels: [config.channel] });
+        const container = document.getElementById('chat-container');
+        client.connect().catch(console.error);
+
+        // ASYNC Message Handler
+        client.on('message', async (chan, tags, message, self) => {
+            if(!dataLoaded && tags['room-id']) {
+                await loadChannelData(tags['room-id']);
+            }
+
+            if(config.blacklist.includes(tags['username'].toLowerCase())) return;
+            if(!config.showCommands && message.startsWith('!')) return;
+
+            setTimeout(() => {
+                messageQueue.push({ tags, message });
+            }, config.delay);
+        });
+
+        // Deletion Events
+        client.on('messagedeleted', (channel, username, deletedMessage, userstate) => {
+            const msgId = userstate['target-msg-id'];
+            const el = document.querySelector(`div[data-msg-id="${msgId}"]`);
+            if(el) {
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            }
+        });
+
+        client.on('timeout', (channel, username) => removeUserMessages(username));
+        client.on('ban', (channel, username) => removeUserMessages(username));
+
+        function removeUserMessages(username) {
+            if(!username) return;
+            const els = document.querySelectorAll(`div[data-username="${username}"]`);
+            els.forEach(el => {
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 300);
+            });
+        }
+
+        setInterval(() => {
+            if (messageQueue.length > 0) {
+                const data = messageQueue.shift();
+                renderMessage(data.tags, data.message);
+            }
+        }, config.batchTime);
+
+        function renderMessage(tags, message) {
+            const div = document.createElement('div');
+            div.className = 'chat-line';
+            
+            div.setAttribute('data-msg-id', tags.id);
+            div.setAttribute('data-username', tags.username);
+
+            if(config.badges && tags.badges) {
+                Object.entries(tags.badges).forEach(([key, version]) => {
+                    let url = badgeCache[`${key}/${version}`] || badgeCache[key];
+                    if(url) div.innerHTML += `<img src="${url}" class="badge">`;
+                });
+            }
+
+            const uColor = config.uColor || tags['color'] || '#a970ff';
+            const strokeClass = config.stroke > 0 ? 'stroked-text' : '';
+            
+            div.innerHTML += `<span class="username ${strokeClass}" style="color:${uColor}">${tags['display-name']}</span>`;
+            
+            if(!config.block) {
+                div.innerHTML += `<span style="margin-right:5px; color:#ccc;">:</span>`;
+            }
+
+            const layoutClass = config.block ? 'msg-block' : 'msg-inline';
+            const mSpan = document.createElement('span');
+            mSpan.className = `message ${layoutClass}`;
+            mSpan.innerHTML = parseEmotes(message, tags, strokeClass);
+            div.appendChild(mSpan);
+
+            div.style.opacity = '0';
+            container.appendChild(div);
+
+            if (config.smooth) {
+                const finalHeight = div.getBoundingClientRect().height;
+                const finalMargin = 6;
+                
+                div.style.height = '0px';
+                div.style.marginBottom = '0px';
+                div.style.paddingTop = '0px';
+                div.style.paddingBottom = '0px';
+                div.offsetHeight; 
+
+                div.style.transition = 'height 0.3s ease-out, margin 0.3s ease-out, padding 0.3s ease-out, opacity 0.3s ease-in';
+                requestAnimationFrame(() => {
+                    div.style.height = finalHeight + 'px';
+                    div.style.marginBottom = finalMargin + 'px';
+                    div.style.paddingTop = '6px'; 
+                    div.style.paddingBottom = '6px'; 
+                    div.style.opacity = '1';
+                });
+                setTimeout(() => { div.style.height = 'auto'; div.style.transition = ''; }, 350);
+
+            } else {
+                div.style.animation = 'fade 0.2s forwards';
+                div.style.opacity = '1';
+            }
+
+            if(container.children.length > 50) container.removeChild(container.firstChild);
+            window.scrollTo(0, document.body.scrollHeight);
+
+            if(config.hide > 0) {
+                setTimeout(() => {
+                    div.style.transition = 'opacity 1s';
+                    div.style.opacity = '0';
+                    setTimeout(() => div.remove(), 1000);
+                }, config.hide);
+            }
+        }
+
+        function parseEmotes(msg, tags, strokeClass) {
+            let tokens = [];
+            for(let i=0; i<msg.length; i++) tokens.push({ char: msg[i], type: 'text' });
+            
+            if(tags.emotes) {
+                Object.entries(tags.emotes).forEach(([id, positions]) => {
+                    positions.forEach(pos => {
+                        const [s, e] = pos.split('-').map(Number);
+                        for(let i=s; i<=e; i++) {
+                            tokens[i].type = 'twitch';
+                            tokens[i].id = id;
+                            if(i===s) tokens[i].start = true;
+                        }
+                    });
+                });
+            }
+
+            let html = "", word = "";
+            const flushWord = (w) => {
+                if(!w) return "";
+                const clean = w.replace(/</g, "&lt;");
+                if(emotes[w]) return `<img src="${emotes[w]}"/>`; 
+                return `<span class="${strokeClass}">${clean}</span>`; 
+            };
+
+            for(let i=0; i<tokens.length; i++) {
+                if(tokens[i].type === 'twitch') {
+                    html += flushWord(word); word = "";
+                    if(tokens[i].start) html += `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${tokens[i].id}/default/dark/1.0"/>`;
+                } else {
+                    if(tokens[i].char === " ") {
+                        html += flushWord(word) + " ";
+                        word = "";
+                    } else word += tokens[i].char;
+                }
+            }
+            html += flushWord(word);
+            return html;
+        }
+    </script>
+</body>
+</html>
