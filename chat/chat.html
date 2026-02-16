@@ -22,6 +22,7 @@
             --u-shadow: none;
             --m-shadow: none;
             --bg-shadow: none;
+            --msg-gap: 6px;
         }
         body { margin: 0; overflow: hidden; font-family: sans-serif; background: transparent; }
         
@@ -38,10 +39,11 @@
         .chat-line {
             background: var(--bg);
             margin-top: 0; 
-            margin-bottom: 6px; 
+            margin-bottom: var(--msg-gap); 
             padding: 6px 10px; 
             border-radius: 4px;
             word-wrap: break-word;
+            overflow-wrap: anywhere;
             opacity: 1; 
             line-height: 1.4; 
             overflow: hidden; 
@@ -49,6 +51,11 @@
             flex-shrink: 0; 
             box-sizing: border-box;
             box-shadow: var(--bg-shadow);
+        }
+
+        .chat-meta {
+            display: inline;
+            white-space: nowrap;
         }
 
         .stroked-text {
@@ -127,7 +134,13 @@
             uColor: params.get('uColor') === 'false' ? null : '#' + params.get('uColor'),
             bg: bgVal,
             stroke: parseFloat(params.get('stroke') || '0'),
-            badges: params.get('badges') === 'true',
+            badges: params.get('badges') !== 'none',
+            badgeAllowlist: (() => {
+                const v = params.get('badges') || 'all';
+                if(v === 'all' || v === 'true') return null; // null = show all
+                if(v === 'none' || v === 'false') return [];  // empty = show none
+                return v.split(',');                           // array = custom allowlist
+            })(),
             smooth: params.get('smooth') === 'true',
             block: params.get('block') === 'true',
             uTrans: params.get('uTrans') || 'none',
@@ -151,7 +164,8 @@
             
             // New Configs
             showCommands: params.get('commands') !== 'false', 
-            batchTime: parseInt(params.get('batch') || '250')
+            batchTime: parseInt(params.get('batch') || '250'),
+            msgGap: parseInt(params.get('msgGap') || '6')
         };
 
         if(!config.channel) document.write("No Channel Configured");
@@ -178,6 +192,7 @@
         root.style.setProperty('--m-style', config.mItalic ? 'italic' : 'normal');
         
         root.style.setProperty('--badge-height', config.badgeHeight);
+        root.style.setProperty('--msg-gap', config.msgGap + 'px');
 
         // Apply Shadow Variables
         root.style.setProperty('--u-shadow', config.uShadow);
@@ -301,21 +316,27 @@
             div.setAttribute('data-msg-id', tags.id);
             div.setAttribute('data-username', tags.username);
 
+            const meta = document.createElement('span');
+            meta.className = 'chat-meta';
+
             if(config.badges && tags.badges) {
                 Object.entries(tags.badges).forEach(([key, version]) => {
+                    if(config.badgeAllowlist !== null && !config.badgeAllowlist.includes(key)) return;
                     let url = badgeCache[`${key}/${version}`] || badgeCache[key];
-                    if(url) div.innerHTML += `<img src="${url}" class="badge">`;
+                    if(url) meta.innerHTML += `<img src="${url}" class="badge">`;
                 });
             }
 
             const uColor = config.uColor || tags['color'] || '#a970ff';
             const strokeClass = config.stroke > 0 ? 'stroked-text' : '';
             
-            div.innerHTML += `<span class="username ${strokeClass}" style="color:${uColor}">${tags['display-name']}</span>`;
+            meta.innerHTML += `<span class="username ${strokeClass}" style="color:${uColor}">${tags['display-name']}</span>`;
             
             if(!config.block) {
-                div.innerHTML += `<span style="margin-right:5px; color:#ccc;">:</span>`;
+                meta.innerHTML += `<span style="margin-right:5px; color:#ccc;">:</span>`;
             }
+
+            div.appendChild(meta);
 
             const layoutClass = config.block ? 'msg-block' : 'msg-inline';
             const mSpan = document.createElement('span');
@@ -328,7 +349,7 @@
 
             if (config.smooth) {
                 const finalHeight = div.getBoundingClientRect().height;
-                const finalMargin = 6;
+                const finalMargin = config.msgGap;
                 
                 div.style.height = '0px';
                 div.style.marginBottom = '0px';

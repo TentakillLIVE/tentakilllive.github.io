@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Stream Chat Builder v1.0</title>
+    <title>Stream Chat Builder v1.1</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Poppins:wght@400;700&family=Oswald:wght@400;700&family=Raleway:wght@400;700&family=Nunito:wght@400;700&family=Bebas+Neue&family=Anton&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -137,18 +137,33 @@
             background-size: 20px 20px;
         }
         
-        .preview-header { 
-            position: absolute; top: 20px; background: rgba(0,0,0,0.8); padding: 8px 16px; 
-            border-radius: 20px; color: var(--text-dim); font-size: 0.8rem; border: 1px solid var(--border); 
-            display: flex; align-items: center; gap: 12px; z-index: 20;
+        .preview-header {
+            position: absolute; top: 20px; display: flex; align-items: center; gap: 10px; z-index: 20;
         }
-        
-        #previewBgPicker { -webkit-appearance: none; border: none; width: 18px; height: 18px; background: none; cursor: pointer; border-radius: 50%; }
-        #previewBgPicker::-webkit-color-swatch { border: 2px solid #555; border-radius: 50%; }
+
+        .preview-label {
+            background: rgba(0,0,0,0.8); padding: 8px 16px;
+            border-radius: 20px; color: var(--text-dim); font-size: 0.8rem; border: 1px solid var(--border);
+        }
+
+        .preview-bg-btn {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(0,0,0,0.8); padding: 7px 14px;
+            border-radius: 20px; border: 1px solid var(--border);
+            color: var(--text-main); font-size: 0.8rem; cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .preview-bg-btn:hover { border-color: var(--accent); background: rgba(20,0,40,0.9); }
+
+        #previewBgPicker { -webkit-appearance: none; border: none; width: 16px; height: 16px; background: none; cursor: pointer; border-radius: 50%; flex-shrink: 0; }
+        #previewBgPicker::-webkit-color-swatch-wrapper { padding: 0; }
+        #previewBgPicker::-webkit-color-swatch { border: 2px solid #666; border-radius: 50%; }
 
         #preview-box { width: 450px; height: 600px; border: 2px dashed #444; border-radius: 8px; position: relative; overflow: hidden; }
         .preview-content { padding: 0 20px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
-        .preview-line { margin-bottom: 6px; padding: 6px 10px; border-radius: 6px; width: fit-content; max-width: 95%; opacity: 1; transform-origin: bottom center; }
+        .preview-line { margin-bottom: var(--preview-msg-gap, 6px); padding: 6px 10px; border-radius: 6px; width: fit-content; max-width: 95%; opacity: 1; transform-origin: bottom center; word-wrap: break-word; overflow-wrap: anywhere; }
+
+        .preview-meta { display: inline; white-space: nowrap; }
         
         .stroked-text {
             -webkit-text-stroke: var(--preview-stroke-w, 0px) black;
@@ -168,7 +183,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>STREAM CHAT BUILDER</h2>
-            <span>v1.0</span>
+            <span>v1.1</span>
             <div class="control-group" style="margin-top:15px; margin-bottom: 0;">
                 <input type="text" id="channel" placeholder="Enter Twitch Username (Required)">
             </div>
@@ -184,7 +199,7 @@
                             <label>Username Font</label>
                             <span class="tooltip-icon" data-tip="The primary font used for the chatter's name.">?</span>
                         </div>
-                        <select id="userFont" onchange="updatePreview()">
+                        <select id="userFont" onchange="toggleCustomFont('user'); updatePreview()">
                             <option value="Segoe UI">System Default</option>
                             <option value="Roboto">Roboto</option>
                             <option value="Open Sans">Open Sans</option>
@@ -224,11 +239,16 @@
                             <label>Message Font</label>
                             <span class="tooltip-icon" data-tip="Font used for the chat text. Defaults to the same as username.">?</span>
                         </div>
-                        <select id="msgFont" onchange="updatePreview()">
+                        <select id="msgFont" onchange="toggleCustomFont('msg'); updatePreview()">
                             <option value="same">Same as Username</option>
                             <option value="Segoe UI">System Default</option>
                             <option value="Roboto">Roboto</option>
                             <option value="Open Sans">Open Sans</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Poppins">Poppins</option>
+                            <option value="Oswald">Oswald</option>
+                            <option value="Bebas Neue">Bebas Neue</option>
+                            <option value="Anton">Anton</option>
                             <option value="Custom">Custom (Local)...</option>
                         </select>
                     </div>
@@ -364,12 +384,23 @@
                         <span class="tooltip-icon" data-tip="Moves chat messages to a new line below the username.">?</span>
                     </div>
                     
-                    <div class="label-row" style="margin-bottom:0;">
-                        <label class="checkbox-row" style="padding:6px 0; margin:0;">
-                            <input type="checkbox" id="showBadges" checked onchange="updatePreview()"> 
-                            <span>Show Badges</span>
-                        </label>
-                        <span class="tooltip-icon" data-tip="Toggle visibility of Moderator, Subscriber, and Artist icons.">?</span>
+                    <div class="control-group" style="margin-bottom:0;">
+                        <div class="label-row">
+                            <label>Show Badges</label>
+                            <span class="tooltip-icon" data-tip="Choose which chat badges are visible on stream.">?</span>
+                        </div>
+                        <select id="showBadges" onchange="toggleBadgeCustom(); updatePreview()">
+                            <option value="all">On (All Badges)</option>
+                            <option value="none">Off</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                    </div>
+                    <div id="badgeCustomGroup" style="display:none; background: rgba(255,255,255,0.04); border-radius:6px; padding: 10px 12px; margin-top:8px; border: 1px solid var(--border);">
+                        <label class="checkbox-row"><input type="checkbox" id="badge-broadcaster" checked onchange="updatePreview()"> <span>Broadcaster</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="badge-moderator" checked onchange="updatePreview()"> <span>Moderator</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="badge-vip" checked onchange="updatePreview()"> <span>VIP</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="badge-subscriber" checked onchange="updatePreview()"> <span>Subscriber</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="badge-artist" checked onchange="updatePreview()"> <span>Artist</span></label>
                     </div>
 
                     <div class="control-group" style="margin-top:10px;">
@@ -388,6 +419,17 @@
                     </div>
 
                     <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Message Spacing</label>
+                            <span class="tooltip-icon" data-tip="Gap between each chat message in pixels.">?</span>
+                        </div>
+                        <div class="range-sync">
+                            <input type="range" id="msgGap" min="0" max="40" step="1" value="6" oninput="syncMsgGap('range')">
+                            <input type="number" id="msgGapNum" min="0" max="40" step="1" value="6" oninput="syncMsgGap('num')">
+                        </div>
+                    </div>
 
                     <div class="control-group">
                         <div class="label-row">
@@ -429,8 +471,11 @@
 
     <div class="preview-area">
         <div class="preview-header">
-            <span>LIVE PREVIEW</span>
-            <input type="color" id="previewBgPicker" value="#000000" title="Change Background" oninput="updatePreviewBg()">
+            <span class="preview-label">LIVE PREVIEW</span>
+            <label class="preview-bg-btn" title="Change preview background colour">
+                <input type="color" id="previewBgPicker" value="#000000" oninput="updatePreviewBg()">
+                Change Background
+            </label>
         </div>
         <div id="preview-box">
             <div id="preview-content" class="preview-content"></div>
@@ -488,7 +533,7 @@
                         else el.value = settings[key];
                     }
                 });
-                toggleUserSize(); toggleBadgeInput();
+                toggleUserSize(); toggleBadgeInput(); toggleBadgeCustom(); toggleCustomFont('user'); toggleCustomFont('msg');
             }
             updatePreview();
         }
@@ -525,10 +570,29 @@
             saveSettings();
         }
 
+        function syncMsgGap(s) {
+            const r = document.getElementById('msgGap');
+            const n = document.getElementById('msgGapNum');
+            if (s === 'range') n.value = r.value; else r.value = n.value;
+            saveSettings(); updatePreview();
+        }
+
+        function toggleCustomFont(which) {
+            const isUser = which === 'user';
+            const sel = document.getElementById(isUser ? 'userFont' : 'msgFont');
+            const group = document.getElementById(isUser ? 'customUserFontGroup' : 'customFontGroup');
+            group.style.display = sel.value === 'Custom' ? 'block' : 'none';
+        }
+
         function toggleUserSize() {
             const sync = document.getElementById('syncSizes').checked;
             document.getElementById('msgSizeGroup').style.display = sync ? 'none' : 'block';
             saveSettings(); updatePreview();
+        }
+
+        function toggleBadgeCustom() {
+            const val = document.getElementById('showBadges').value;
+            document.getElementById('badgeCustomGroup').style.display = val === 'custom' ? 'block' : 'none';
         }
 
         function toggleBadgeInput() {
@@ -564,23 +628,32 @@
                 uCol: document.getElementById('userColorPicker').value,
                 mCol: document.getElementById('msgColorPicker').value,
                 bgO: document.getElementById('bgOpacity').value / 100,
-                showB: document.getElementById('showBadges').checked,
+                showB: document.getElementById('showBadges').value,
+                visibleBadges: ['broadcaster','moderator','vip','subscriber','artist'].filter(b => {
+                    const v = document.getElementById('showBadges').value;
+                    if(v === 'all') return true;
+                    if(v === 'none') return false;
+                    return document.getElementById('badge-' + b)?.checked;
+                }),
                 sW: document.getElementById('strokeSize').value,
                 block: document.getElementById('blockLayout').checked,
                 uShad: document.getElementById('uShadow').checked,
                 mShad: document.getElementById('mShadow').checked,
-                bgShad: document.getElementById('bgShadow').checked
+                bgShad: document.getElementById('bgShadow').checked,
+                msgGap: document.getElementById('msgGap').value
             };
         }
 
         function updatePreview() {
             const c = getStyleConfig();
             document.getElementById('preview-box').style.setProperty('--preview-stroke-w', c.sW > 0 ? c.sW + 'px' : '0px');
+            document.getElementById('preview-box').style.setProperty('--preview-msg-gap', c.msgGap + 'px');
             document.querySelectorAll('.preview-line').forEach(line => {
                 line.style.backgroundColor = `rgba(0,0,0,${c.bgO})`;
                 line.style.boxShadow = c.bgShad ? `0 2px 4px rgba(0,0,0,${c.bgO * 0.6})` : 'none';
                 line.querySelectorAll('.badge-preview').forEach(b => {
-                    b.style.display = c.showB ? 'inline-block' : 'none';
+                    const type = b.getAttribute('data-badge-type');
+                    b.style.display = c.visibleBadges.includes(type) ? 'inline-block' : 'none';
                     b.style.height = c.bH;
                 });
                 const u = line.querySelector('.sim-user');
@@ -609,14 +682,15 @@
             line.className = 'preview-line';
             line.setAttribute('data-orig-color', data.color);
             let badges = '';
-            data.badges.forEach(b => badges += `<img src="${badgeAssets[b]}" class="badge-preview">`);
-            line.innerHTML = `${badges}<span class="sim-user">${data.name}</span><span class="sim-sep">:</span><span class="sim-msg">${data.text}</span>`;
+            data.badges.forEach(b => badges += `<img src="${badgeAssets[b]}" class="badge-preview" data-badge-type="${b}">`);
+            line.innerHTML = `<span class="preview-meta">${badges}<span class="sim-user">${data.name}</span><span class="sim-sep">:</span></span><span class="sim-msg">${data.text}</span>`;
             container.appendChild(line);
             updatePreview();
             if (document.getElementById('smoothScroll').checked) {
                 const h = line.offsetHeight; line.style.height = '0px'; line.style.opacity = '0'; line.style.marginBottom = '0px'; line.style.padding = '0px';
                 line.offsetHeight; line.style.transition = 'all 0.3s ease';
-                line.style.height = h + 'px'; line.style.opacity = '1'; line.style.marginBottom = '6px'; line.style.padding = '6px 10px';
+                const gap = document.getElementById('msgGap').value + 'px';
+                line.style.height = h + 'px'; line.style.opacity = '1'; line.style.marginBottom = gap; line.style.padding = '6px 10px';
             }
             if(container.children.length > 7) container.removeChild(container.firstChild);
         }
@@ -632,8 +706,10 @@
             params.set('uColor', c.staticColor ? c.uCol.replace('#','') : 'false'); params.set('mColor', c.mCol.replace('#',''));
             params.set('bg', document.getElementById('bgOpacity').value); params.set('stroke', c.sW);
             if(c.uShad) params.set('uShadow', 'true'); if(c.mShad) params.set('mShadow', 'true'); if(c.bgShad) params.set('bgShadow', 'true');
-            params.set('badges', c.showB); if(!document.getElementById('autoBadgeSize').checked) params.set('badgeSize', parseInt(c.bH));
+            params.set('badges', c.showB === 'none' ? 'none' : c.showB === 'custom' ? c.visibleBadges.join(',') : 'all');
+            if(!document.getElementById('autoBadgeSize').checked) params.set('badgeSize', parseInt(c.bH));
             params.set('smooth', document.getElementById('smoothScroll').checked); params.set('block', c.block);
+            params.set('msgGap', c.msgGap);
             params.set('uTrans', c.uT); params.set('mTrans', c.mT);
             
             let url = window.location.href.split('?')[0].replace('index.html', '') + 'chat.html?' + params.toString();
