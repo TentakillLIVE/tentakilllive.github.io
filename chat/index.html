@@ -299,6 +299,19 @@
                         </label>
                         <span class="tooltip-icon" data-tip="Link the username and message sizes together.">?</span>
                     </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group" style="margin-bottom:0;">
+                        <div class="label-row">
+                            <label>Emote Size</label>
+                            <span class="tooltip-icon" data-tip="Scale of emotes relative to the default size (100% = 1.3× font size).">?</span>
+                        </div>
+                        <div class="range-sync">
+                            <input type="range" id="emoteScale" min="50" max="200" step="10" value="100" oninput="syncEmoteScale('range')">
+                            <input type="number" id="emoteScaleNum" min="50" max="200" step="10" value="100" oninput="syncEmoteScale('num')">
+                        </div>
+                    </div>
                 </div>
             </details>
 
@@ -598,6 +611,13 @@
             saveSettings(); updatePreview();
         }
 
+        function syncEmoteScale(s) {
+            const r = document.getElementById('emoteScale');
+            const n = document.getElementById('emoteScaleNum');
+            if (s === 'range') n.value = r.value; else r.value = n.value;
+            saveSettings();
+        }
+
         function toggleCustomFont(which) {
             const isUser = which === 'user';
             const sel = document.getElementById(isUser ? 'userFont' : 'msgFont');
@@ -737,6 +757,8 @@
             if(blocked.length) params.set('userBlock', blocked.join(','));
             const decay = parseInt(document.getElementById('msgDecay').value) || 0;
             if(decay > 0) params.set('decay', decay);
+            const emoteScale = document.getElementById('emoteScale').value;
+            if(emoteScale !== '100') params.set('emoteScale', emoteScale);
             
             let url = window.location.href.split('?')[0].replace('index.html', '') + 'chat.html?' + params.toString();
             navigator.clipboard.writeText(url).then(() => {

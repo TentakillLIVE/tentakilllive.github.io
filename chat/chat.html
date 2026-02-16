@@ -23,8 +23,8 @@
             --m-shadow: none;
             --bg-shadow: none;
             --msg-gap: 6px;
+            --emote-size: 1.3em;
         }
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: transparent; }
         
         #chat-container {
             display: flex;
@@ -95,8 +95,26 @@
         }
         .message img { 
             vertical-align: middle; 
-            height: 1.3em; 
+            height: var(--emote-size); 
             margin: 0 2px; 
+        }
+        .zw-stack {
+            display: inline-block;
+            position: relative;
+            vertical-align: middle;
+            height: var(--emote-size);
+            margin: 0 2px;
+        }
+        .zw-stack img {
+            display: block;
+            margin: 0 !important;
+        }
+        .zw-stack .zw-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
     </style>
 </head>
@@ -166,7 +184,8 @@
             // New Configs
             showCommands: params.get('commands') !== 'false', 
             batchTime: parseInt(params.get('batch') || '250'),
-            msgGap: parseInt(params.get('msgGap') || '6')
+            msgGap: parseInt(params.get('msgGap') || '6'),
+            emoteScale: parseInt(params.get('emoteScale') || '100')
         };
 
         if(!config.channel) document.write("No Channel Configured");
@@ -194,6 +213,7 @@
         
         root.style.setProperty('--badge-height', config.badgeHeight);
         root.style.setProperty('--msg-gap', config.msgGap + 'px');
+        root.style.setProperty('--emote-size', (1.3 * config.emoteScale / 100).toFixed(3) + 'em');
 
         // Apply Shadow Variables
         root.style.setProperty('--u-shadow', config.uShadow);
@@ -206,6 +226,7 @@
             'broadcaster/1': 'https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/1'
         };
         let emotes = {};
+        let zwEmotes = new Set(); // 7TV zero-width emote names
         
         let dataLoaded = false;
         let dataLoadPromise = null; 
@@ -248,7 +269,10 @@
                     const sRes = await fetch(`https://7tv.io/v3/users/twitch/${roomId}`);
                     if(sRes.ok) {
                         const data = await sRes.json();
-                        if(data.emote_set?.emotes) data.emote_set.emotes.forEach(e => emotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
+                        if(data.emote_set?.emotes) data.emote_set.emotes.forEach(e => {
+                            emotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                            if((e.data?.flags ?? 0) & (1 << 8)) zwEmotes.add(e.name);
+                        });
                     }
                     const bRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${roomId}`);
                     if(bRes.ok) {
@@ -402,27 +426,59 @@
                 });
             }
 
-            let html = "", word = "";
+            // Build an intermediate parts array so zero-width emotes can
+            // retroactively stack onto the previous emote rather than rendering
+            // as a separate image.
+            let parts = [];
+            let word = "";
+
             const flushWord = (w) => {
-                if(!w) return "";
-                const clean = w.replace(/</g, "&lt;");
-                if(emotes[w]) return `<img src="${emotes[w]}"/>`; 
-                return `<span class="${strokeClass}">${clean}</span>`; 
+                if(!w) return;
+                if(zwEmotes.has(w)) {
+                    // Look backwards past any trailing spaces to find the previous emote
+                    let idx = parts.length - 1;
+                    while(idx >= 0 && parts[idx].type === 'space') idx--;
+                    if(idx >= 0 && parts[idx].type === 'emote') {
+                        // Remove the trailing space(s) — the overlay sits directly on the base emote
+                        parts.splice(idx + 1);
+                        if(!parts[idx].overlays) parts[idx].overlays = [];
+                        parts[idx].overlays.push(emotes[w]);
+                        return;
+                    }
+                }
+                if(emotes[w]) {
+                    parts.push({ type: 'emote', src: emotes[w] });
+                } else {
+                    parts.push({ type: 'text', content: `<span class="${strokeClass}">${w.replace(/</g, "&lt;")}</span>` });
+                }
             };
 
             for(let i=0; i<tokens.length; i++) {
                 if(tokens[i].type === 'twitch') {
-                    html += flushWord(word); word = "";
-                    if(tokens[i].start) html += `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${tokens[i].id}/default/dark/1.0"/>`;
+                    flushWord(word); word = "";
+                    if(tokens[i].start) parts.push({ type: 'emote', src: `https://static-cdn.jtvnw.net/emoticons/v2/${tokens[i].id}/default/dark/1.0` });
                 } else {
                     if(tokens[i].char === " ") {
-                        html += flushWord(word) + " ";
+                        flushWord(word);
+                        parts.push({ type: 'space' });
                         word = "";
                     } else word += tokens[i].char;
                 }
             }
-            html += flushWord(word);
-            return html;
+            flushWord(word);
+
+            return parts.map(p => {
+                if(p.type === 'space') return " ";
+                if(p.type === 'text') return p.content;
+                if(p.type === 'emote') {
+                    if(p.overlays?.length) {
+                        const overlayImgs = p.overlays.map(src => `<img src="${src}" class="zw-overlay"/>`).join('');
+                        return `<span class="zw-stack"><img src="${p.src}"/>${overlayImgs}</span>`;
+                    }
+                    return `<img src="${p.src}"/>`;
+                }
+                return "";
+            }).join('');
         }
     </script>
 </body>
