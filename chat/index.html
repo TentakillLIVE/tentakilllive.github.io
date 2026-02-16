@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Stream Chat Builder v1.1</title>
+    <title>Stream Chat Builder v1.2</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Lato:wght@400;700&family=Poppins:wght@400;700&family=Oswald:wght@400;700&family=Raleway:wght@400;700&family=Nunito:wght@400;700&family=Bebas+Neue&family=Anton&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -183,7 +183,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>STREAM CHAT BUILDER</h2>
-            <span>v1.1</span>
+            <span>v1.2</span>
             <div class="control-group" style="margin-top:15px; margin-bottom: 0;">
                 <input type="text" id="channel" placeholder="Enter Twitch Username (Required)">
             </div>
@@ -459,6 +459,27 @@
                         </label>
                         <span class="tooltip-icon" data-tip="Automatically filters out messages starting with an exclamation point.">?</span>
                     </div>
+
+                    <div class="divider"></div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label>Blocked Users</label>
+                            <span class="tooltip-icon" data-tip="Messages from these users will never appear. Enter one username per line, not case-sensitive.">?</span>
+                        </div>
+                        <textarea id="blockedUsers" rows="3" placeholder="Enter one username per line..." oninput="saveSettings()" style="resize:vertical; min-height:70px; line-height:1.5;"></textarea>
+                    </div>
+
+                    <div class="control-group" style="margin-bottom:0;">
+                        <div class="label-row">
+                            <label>Message Decay</label>
+                            <span class="tooltip-icon" data-tip="Fade out and remove messages after this many seconds. Set to 0 to disable.">?</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <input type="number" id="msgDecay" value="0" min="0" max="3600" step="1" oninput="saveSettings()" style="width:80px;">
+                            <span style="font-size:0.85rem; color:var(--text-dim);">seconds &nbsp;(0 = off)</span>
+                        </div>
+                    </div>
                 </div>
             </details>
         </div>
@@ -711,6 +732,11 @@
             params.set('smooth', document.getElementById('smoothScroll').checked); params.set('block', c.block);
             params.set('msgGap', c.msgGap);
             params.set('uTrans', c.uT); params.set('mTrans', c.mT);
+            if(!document.getElementById('hideCommands').checked) params.set('commands', 'false');
+            const blocked = document.getElementById('blockedUsers').value.trim().split('\n').map(u => u.trim().toLowerCase()).filter(Boolean);
+            if(blocked.length) params.set('userBlock', blocked.join(','));
+            const decay = parseInt(document.getElementById('msgDecay').value) || 0;
+            if(decay > 0) params.set('decay', decay);
             
             let url = window.location.href.split('?')[0].replace('index.html', '') + 'chat.html?' + params.toString();
             navigator.clipboard.writeText(url).then(() => {

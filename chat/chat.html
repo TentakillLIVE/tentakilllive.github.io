@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chat Overlay v1.0</title>
+    <title>Chat Overlay v1.2</title>
     <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
     <link id="font-loader" rel="stylesheet" href="">
     <style>
@@ -160,7 +160,8 @@
 
             delay: parseFloat(params.get('delay') || '0') * 1000,
             hide: parseFloat(params.get('hide') || '0') * 1000,
-            blacklist: (params.get('block') || '').toLowerCase().split(','),
+            msgDecay: parseFloat(params.get('decay') || '0') * 1000,
+            blacklist: (params.get('userBlock') || '').toLowerCase().split(',').filter(Boolean),
             
             // New Configs
             showCommands: params.get('commands') !== 'false', 
@@ -375,12 +376,12 @@
             if(container.children.length > 50) container.removeChild(container.firstChild);
             window.scrollTo(0, document.body.scrollHeight);
 
-            if(config.hide > 0) {
+            if(config.msgDecay > 0) {
                 setTimeout(() => {
-                    div.style.transition = 'opacity 1s';
+                    div.style.transition = 'opacity 1s ease-out';
                     div.style.opacity = '0';
                     setTimeout(() => div.remove(), 1000);
-                }, config.hide);
+                }, config.msgDecay);
             }
         }
 
