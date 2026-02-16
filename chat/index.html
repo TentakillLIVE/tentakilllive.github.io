@@ -465,9 +465,9 @@
                     <div class="control-group">
                         <div class="label-row">
                             <label>Blocked Users</label>
-                            <span class="tooltip-icon" data-tip="Messages from these users will never appear. Enter one username per line, not case-sensitive.">?</span>
+                            <span class="tooltip-icon" data-tip="Messages from these users will never appear. Enter usernames separated by commas, not case-sensitive.">?</span>
                         </div>
-                        <textarea id="blockedUsers" rows="3" placeholder="Enter one username per line..." oninput="saveSettings()" style="resize:vertical; min-height:70px; line-height:1.5;"></textarea>
+                        <input type="text" id="blockedUsers" placeholder="e.g. user1, user2, user3" oninput="saveSettings()">
                     </div>
 
                     <div class="control-group" style="margin-bottom:0;">
@@ -732,8 +732,8 @@
             params.set('smooth', document.getElementById('smoothScroll').checked); params.set('block', c.block);
             params.set('msgGap', c.msgGap);
             params.set('uTrans', c.uT); params.set('mTrans', c.mT);
-            if(!document.getElementById('hideCommands').checked) params.set('commands', 'false');
-            const blocked = document.getElementById('blockedUsers').value.trim().split('\n').map(u => u.trim().toLowerCase()).filter(Boolean);
+            if(document.getElementById('hideCommands').checked) params.set('commands', 'false');
+            const blocked = document.getElementById('blockedUsers').value.trim().split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
             if(blocked.length) params.set('userBlock', blocked.join(','));
             const decay = parseInt(document.getElementById('msgDecay').value) || 0;
             if(decay > 0) params.set('decay', decay);
