@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EightEyes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://embed.twitch.tv/embed/v1.js"></script>
@@ -103,6 +106,59 @@
         .chat-iframe-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         .chat-active { z-index: 50; opacity: 1; visibility: visible; pointer-events: auto; }
         .chat-inactive { z-index: 0; opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* Stream Titles */
+        .stream-title {
+            font-family: 'Bungee', sans-serif;
+            letter-spacing: 0.04em;
+            line-height: 1;
+        }
+
+        /* Title Size Slider */
+        .title-slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+            max-width: 0;
+            opacity: 0;
+            transition: max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s ease;
+            padding-left: 0;
+        }
+        .title-slider-wrap.visible {
+            max-width: 140px;
+            opacity: 1;
+            padding-left: 6px;
+        }
+        .title-range {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 90px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--bg-hover);
+            outline: none;
+            cursor: pointer;
+        }
+        .title-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f95a1f;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .title-range::-webkit-slider-thumb:hover { transform: scale(1.25); }
+        .title-range::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f95a1f;
+            cursor: pointer;
+            border: none;
+        }
     </style>
 </head>
 <body class="font-sans overflow-hidden h-screen flex flex-col" 
@@ -190,15 +246,11 @@
                     <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2">
                             <div class="w-3 h-3 bg-[#f95a1f] rounded-full animate-pulse"></div>
-                            <h1 class="text-xl font-bold tracking-tighter uppercase">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
+                            <h1 class="text-xl tracking-tighter uppercase" style="font-family: 'Bungee', sans-serif;">Eight<span class="text-[#f95a1f]">Eyes</span></h1>
                         </div>
                         
                         <div class="flex gap-1">
-                             <button @click="showTitles = !showTitles" class="text-theme-muted hover:text-theme-main transition-colors p-1" :class="showTitles ? 'text-theme-main' : ''" title="Toggle Stream Titles">
-                                <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg></div>
-                             </button>
-
-                             <button @click="toggleTheme()" class="text-theme-muted hover:text-theme-main transition-colors p-1" :title="'Theme: ' + theme">
+                            <button @click="toggleTheme()" class="text-theme-muted hover:text-theme-main transition-colors p-1" :title="'Theme: ' + theme">
                                 <div class="icon-container w-5 h-5">
                                     <template x-if="theme === 'dark'">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
@@ -215,6 +267,24 @@
                             <button @click="showHelp = true" class="text-theme-muted hover:text-theme-main transition-colors p-1" title="Help & FAQ">
                                 <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
                             </button>
+
+                            <!-- Stream Titles Toggle + Size Slider -->
+                            <div class="flex items-center">
+                                <button @click="showTitles = !showTitles" 
+                                        class="text-theme-muted hover:text-theme-main transition-colors p-1 rounded" 
+                                        :class="showTitles ? 'text-[#f95a1f]' : ''" 
+                                        title="Toggle Stream Titles">
+                                    <div class="icon-container w-5 h-5">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <div class="title-slider-wrap" :class="showTitles ? 'visible' : ''">
+                                    <input type="range" min="9" max="48" x-model="titleSize" class="title-range" title="Title Size">
+                                    <span class="text-theme-muted text-[10px] font-mono w-5 text-right select-none" x-text="titleSize + 'px'"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -292,7 +362,7 @@
 
     <div class="flex-1 flex overflow-hidden relative w-full">
         
-        <main class="flex-1 bg-black flex flex-col relative overflow-hidden pt-10">
+        <main class="flex-1 bg-black flex flex-col relative overflow-hidden">
             <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full">
                 
                 <div x-show="getActiveTab()?.focusId"
@@ -308,7 +378,8 @@
                          :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
                          :style="stream.style">
                          
-                        <div x-show="showTitles" class="w-full text-center py-1 bg-theme-element border-b border-theme text-theme-main text-xs font-bold truncate shrink-0 select-none">
+                        <div x-show="showTitles" class="stream-title w-full text-center py-1.5 px-2 bg-theme-element border-b border-theme text-theme-main truncate shrink-0 select-none"
+                             :style="`font-size: ${titleSize}px;`">
                             <span x-text="stream.label"></span>
                         </div>
                         
@@ -407,6 +478,7 @@
                 showHelp: false, showError: false,
                 chatOpen: false, activeChatStreamId: null,
                 showTitles: false,
+                titleSize: 13,
                 // THEME
                 theme: 'dark', // 'dark', 'light', 'catppuccin'
 
