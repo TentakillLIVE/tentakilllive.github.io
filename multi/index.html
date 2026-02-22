@@ -160,6 +160,11 @@
             cursor: pointer;
             border: none;
         }
+        /* Animations off */
+        .no-animations *, .no-animations *::before, .no-animations *::after {
+            transition: none !important;
+            animation: none !important;
+        }
     </style>
 </head>
 <body class="font-sans overflow-hidden h-screen flex flex-col" 
@@ -168,7 +173,7 @@
       @mouseup="stopResize()"
       @mousemove="handleResize($event)"
       @keydown.window="handleHotkeys($event)"
-      :class="['theme-' + theme, draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '']">
+      :class="['theme-' + theme, draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '', animations ? '' : 'no-animations']">
 
     <div x-show="showError" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="bg-theme-card border border-theme p-6 rounded-2xl max-w-sm w-full shadow-2xl">
@@ -355,16 +360,137 @@
                                 <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
                             </button>
 
-                            <button @click="showSettings = !showSettings" 
-                                    class="text-theme-muted hover:text-theme-main transition-colors p-1 rounded"
-                                    :class="showSettings ? 'text-[#f95a1f]' : ''"
-                                    title="Settings">
-                                <div class="icon-container w-5 h-5">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                                    </svg>
+                            <div class="relative">
+                                <button x-ref="settingsBtn" @click="showSettings = !showSettings" 
+                                        class="text-theme-muted hover:text-theme-main transition-colors p-1 rounded"
+                                        :class="showSettings ? 'text-[#f95a1f]' : ''"
+                                        title="Settings">
+                                    <div class="icon-container w-5 h-5">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                        </svg>
+                                    </div>
+                                </button>
+
+                                <!-- Backdrop to close popover on outside click -->
+                                <div x-show="showSettings" x-cloak
+                                     @click="showSettings = false"
+                                     class="fixed inset-0 z-[199]"></div>
+
+                                <!-- Settings popover — fixed so header overflow-hidden doesn't clip it -->
+                                <div x-show="showSettings"
+                                     x-cloak
+                                     x-ref="settingsPopover"
+                                     x-effect="if (showSettings) {
+                                         const btn = $refs.settingsBtn.getBoundingClientRect();
+                                         $refs.settingsPopover.style.top  = (btn.bottom + 8) + 'px';
+                                         $refs.settingsPopover.style.left = btn.left + 'px';
+                                     }"
+                                     class="fixed z-[200] w-72 bg-theme-card border border-theme rounded-xl shadow-2xl overflow-hidden"
+                                     style="min-width: 288px;">
+
+                                    <!-- Popover header -->
+                                    <div class="flex items-center justify-between px-3 py-2 border-b border-theme">
+                                        <span class="text-[10px] font-bold uppercase tracking-widest text-theme-muted">Settings</span>
+                                        <button @click="showSettings = false" class="text-theme-muted hover:text-theme-main transition-colors">
+                                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="p-3 grid grid-cols-2 gap-x-3 gap-y-3">
+
+                                        <!-- Theme -->
+                                        <div class="col-span-2">
+                                            <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Theme</div>
+                                            <div class="flex gap-1">
+                                                <template x-for="t in ['dark','light','catppuccin']" :key="t">
+                                                    <button @click="theme = t; localStorage.setItem('theme', t)"
+                                                            class="flex-1 py-1 rounded-md text-[10px] font-bold transition-all border"
+                                                            :class="theme === t ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">
+                                                        <span x-text="t === 'catppuccin' ? 'Catppuccin' : t.charAt(0).toUpperCase() + t.slice(1)"></span>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <!-- Layout -->
+                                        <div>
+                                            <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Layout</div>
+                                            <div class="flex gap-1">
+                                                <button @click="compact = false; localStorage.setItem('compact','false'); $nextTick(() => updateLayout())"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="!compact ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Padded</button>
+                                                <button @click="compact = true; localStorage.setItem('compact','true'); $nextTick(() => updateLayout())"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="compact ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Full</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Animations -->
+                                        <div>
+                                            <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Animations</div>
+                                            <div class="flex gap-1">
+                                                <button @click="animations = false; localStorage.setItem('animations','false')"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="!animations ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Off</button>
+                                                <button @click="animations = true; localStorage.setItem('animations','true')"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="animations ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Divider -->
+                                        <div class="col-span-2 border-t border-theme -mx-3 px-3 pt-3">
+                                            <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Stream Titles</div>
+                                            <div class="flex gap-1">
+                                                <button @click="showTitles = false; saveTitleSettings()"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="!showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Off</button>
+                                                <button @click="showTitles = true; saveTitleSettings()"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Title style + placement (only when titles on) -->
+                                        <template x-if="showTitles">
+                                            <div class="col-span-2 grid grid-cols-2 gap-x-3 gap-y-3">
+
+                                                <div>
+                                                    <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Style</div>
+                                                    <div class="flex gap-1">
+                                                        <button @click="titleMode = 'header'; saveTitleSettings()"
+                                                                class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                                :class="titleMode === 'header' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Header</button>
+                                                        <button @click="titleMode = 'overlay'; saveTitleSettings()"
+                                                                class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                                :class="titleMode === 'overlay' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Overlay</button>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Placement</div>
+                                                    <div class="flex gap-1">
+                                                        <template x-for="opt in [{v:'top',l:'Top'},{v:'bottom',l:'Btm'},{v:'top-avoid',l:'T.Av'},{v:'bottom-avoid',l:'B.Av'}]" :key="opt.v">
+                                                            <button @click="titlePlacement = opt.v; saveTitleSettings()"
+                                                                    class="flex-1 py-1 rounded-md text-[9px] font-bold border transition-all leading-tight"
+                                                                    :class="titlePlacement === opt.v ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'"
+                                                                    x-text="opt.l"></button>
+                                                        </template>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-span-2">
+                                                    <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Title Size — <span x-text="titleSize + 'px'" class="text-theme-main font-mono"></span></div>
+                                                    <input type="range" min="9" max="48" x-model="titleSize" @input="saveTitleSettings()" class="title-range w-full">
+                                                </div>
+
+                                            </div>
+                                        </template>
+
+                                    </div>
                                 </div>
-                            </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -402,72 +528,6 @@
                     <div class="flex max-w-sm gap-2">
                         <input type="text" x-model="newUrl" @keydown.enter="addStream()" @paste="$nextTick(() => addStream())" @click.stop placeholder="URL..." class="bg-theme-element border-theme px-4 py-2 rounded-lg outline-none text-sm text-theme-main focus:ring-1 focus:ring-[#f95a1f]">
                         <button @click.stop="addStream()" class="bg-[#f95a1f] text-white hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
-                    </div>
-                </div>
-
-                <!-- Settings Panel -->
-                <div x-show="showSettings" x-collapse class="border-t border-theme pt-3" x-cloak>
-                    <div class="grid grid-cols-2 gap-x-6 gap-y-4">
-
-                        <!-- Theme -->
-                        <div>
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Theme</div>
-                            <div class="flex gap-1.5">
-                                <template x-for="t in ['dark','light','catppuccin']" :key="t">
-                                    <button @click="theme = t; localStorage.setItem('theme', t)"
-                                            class="flex-1 py-1.5 rounded-lg text-xs font-bold capitalize transition-all border"
-                                            :class="theme === t ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">
-                                        <span x-text="t === 'catppuccin' ? 'Catppuccin' : t.charAt(0).toUpperCase() + t.slice(1)"></span>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Titles toggle -->
-                        <div>
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Stream Titles</div>
-                            <div class="flex gap-1.5">
-                                <button @click="showTitles = false; saveTitleSettings()"
-                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                                        :class="!showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Off</button>
-                                <button @click="showTitles = true; saveTitleSettings()"
-                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                                        :class="showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
-                            </div>
-                        </div>
-
-                        <!-- Title mode -->
-                        <div x-show="showTitles">
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Style</div>
-                            <div class="flex gap-1.5">
-                                <button @click="titleMode = 'header'; saveTitleSettings()"
-                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                                        :class="titleMode === 'header' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Header</button>
-                                <button @click="titleMode = 'overlay'; saveTitleSettings()"
-                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                                        :class="titleMode === 'overlay' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Overlay</button>
-                            </div>
-                        </div>
-
-                        <!-- Title placement -->
-                        <div x-show="showTitles">
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Placement</div>
-                            <div class="flex gap-1.5">
-                                <template x-for="opt in [{v:'top',l:'Top'},{v:'bottom',l:'Bottom'},{v:'top-avoid',l:'Top Avoid'},{v:'bottom-avoid',l:'Btm Avoid'}]" :key="opt.v">
-                                    <button @click="titlePlacement = opt.v; saveTitleSettings()"
-                                            class="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border leading-tight"
-                                            :class="titlePlacement === opt.v ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'"
-                                            x-text="opt.l"></button>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Title size -->
-                        <div x-show="showTitles" class="col-span-2">
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Size — <span x-text="titleSize + 'px'" class="text-theme-main font-mono"></span></div>
-                            <input type="range" min="9" max="48" x-model="titleSize" @input="saveTitleSettings()" class="title-range w-full" title="Title Size">
-                        </div>
-
                     </div>
                 </div>
 
@@ -531,7 +591,7 @@
     <div class="flex-1 flex overflow-hidden relative w-full">
         
         <main class="flex-1 bg-black flex flex-col relative overflow-hidden">
-            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full" :style="chatOpen ? 'padding-right: 36px' : 'padding-right: 36px'">
+            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport w-full h-full" :class="compact ? 'p-0' : 'p-3'" :style="compact ? 'padding-right: 24px' : 'padding-right: 36px'">
                 
                 <div x-show="getActiveTab()?.focusId"
                      class="resizer-handle"
@@ -542,8 +602,8 @@
                 </div>
 
                 <template x-for="stream in allStreams" :key="stream.id">
-                    <div class="stream-card bg-theme-card rounded-xl border border-theme overflow-hidden group shadow-2xl flex flex-col"
-                         :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
+                    <div class="stream-card bg-theme-card overflow-hidden group flex flex-col"
+                         :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '', compact ? 'border border-theme' : 'rounded-xl border border-theme shadow-2xl']"
                          :style="stream.style">
 
                         <!-- HEADER title: TOP position -->
@@ -705,6 +765,8 @@
                 titleSize: 13,
                 titleMode: 'header',       // 'header' | 'overlay'
                 titlePlacement: 'top',     // 'top' | 'bottom' | 'top-avoid' | 'bottom-avoid'
+                animations: true,
+                compact: false,
                 // THEME
                 theme: 'dark', // 'dark', 'light', 'catppuccin'
 
@@ -715,6 +777,8 @@
                     this.titleSize     = parseInt(localStorage.getItem('titleSize'))     || 13;
                     this.titleMode     = localStorage.getItem('titleMode')     || 'header';
                     this.titlePlacement= localStorage.getItem('titlePlacement')|| 'top';
+                    this.animations    = localStorage.getItem('animations') !== 'false';
+                    this.compact       = localStorage.getItem('compact') === 'true';
                     
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab(false);
@@ -976,8 +1040,9 @@
 
                 updateLayout() {
                     const container = this.$refs.grid; if (!container) return;
-                    const rect = container.getBoundingClientRect(); 
-                    const availW = rect.width - 24; const availH = rect.height - 24;
+                    const rect = container.getBoundingClientRect();
+                    const gap = this.compact ? 0 : 12;
+                    const availW = rect.width - (gap * 2); const availH = rect.height - (gap * 2);
                     const allTabStreams = this.getActiveTabStreams();
                     const tab = this.getActiveTab();
 
@@ -1014,11 +1079,11 @@
                         let sideIndex = 0;
                         activeStreams.sort((a,b) => a.vIdx - b.vIdx).forEach(s => {
                             if (s.id === tab.focusId) {
-                                s.style = `transform: translate3d(0px, 12px, 0); width: ${mainW - 8}px; height: ${availH - 8}px; opacity: 1; z-index: 50;`;
+                                s.style = `transform: translate3d(0px, ${gap}px, 0); width: ${mainW - gap}px; height: ${availH - gap}px; opacity: 1; z-index: 50;`;
                             } else {
                                 const x = mainW;
-                                const y = (sideIndex * sideH) + 12; // Added 12px offset
-                                s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${sideW - 8}px; height: ${sideH - 8}px; opacity: 1; z-index: 10;`;
+                                const y = (sideIndex * sideH) + gap;
+                                s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${sideW - gap}px; height: ${sideH - gap}px; opacity: 1; z-index: 10;`;
                                 sideIndex++;
                             }
                         });
@@ -1043,11 +1108,11 @@
                             const row = Math.floor(i / cols);
                             const col = i % cols;
                             const isLastRow = row === rows - 1;
-                            const x = (col * w) + (isLastRow ? lastRowOffset : 0) + 12;
-                            const y = (row * h) + 12;
+                            const x = (col * w) + (isLastRow ? lastRowOffset : 0) + gap;
+                            const y = (row * h) + gap;
                             s._row = row;
                             s._totalRows = rows;
-                            s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - 8}px; height: ${h - 8}px; opacity: 1;`;
+                            s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - gap}px; height: ${h - gap}px; opacity: 1;`;
                         });
                     }
                 },
