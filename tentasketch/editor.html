@@ -401,6 +401,40 @@
     .layer-list {
       list-style: none;
     }
+    /* Drag and drop */
+    .layer-item, .layer-folder-header { cursor: grab; }
+    .layer-item.dragging, .layer-folder.dragging { opacity: 0.35; }
+    .layer-item.multi-selected {
+      outline: 1px solid var(--accent);
+      outline-offset: -1px;
+    }
+    .drop-indicator {
+      height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin: 0 4px;
+      pointer-events: none;
+      transition: opacity 0.1s;
+    }
+    .drop-indicator-folder {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+      border-radius: 6px;
+    }
+    .layer-drag-handle {
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: grab;
+      flex-shrink: 0;
+      width: 12px;
+      text-align: center;
+      user-select: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .layer-item:hover .layer-drag-handle,
+    .layer-folder-header:hover .layer-drag-handle { opacity: 0.6; }
+    .layer-drag-handle:hover { opacity: 1 !important; }
     /* Folder */
     .layer-folder {
       margin-bottom: 2px;
@@ -964,8 +998,7 @@
     <div class="panel-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
       <h3>Layers</h3>
       <div class="layers-toolbar">
-        <button id="btn-new-folder" title="New folder">📁+</button>
-        <button id="btn-move-to-folder" title="Move selected to folder">→📁</button>
+        <button id="btn-new-folder" title="New folder">📁+ New Folder</button>
       </div>
       <div class="layers-master-opacity">
         <span>👁 Draft opacity</span>
@@ -1010,6 +1043,7 @@
 <!-- ═══════════════ SCRIPTS ═══════════════ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
@@ -1042,6 +1076,34 @@
   // ─── Firebase init ───
   firebase.initializeApp(window.FIREBASE_CONFIG);
   const db = firebase.database();
+  const auth = firebase.auth();
+
+  // ─── Anonymous auth — required before writing to DB ───
+  let authReady = false;
+  let authUid = null;
+
+  auth.signInAnonymously().then((cred) => {
+    authReady = true;
+    authUid = cred.user.uid;
+    console.log('Authenticated anonymously:', authUid);
+    // Enable the enter button once auth is ready
+    const goBtn = document.getElementById('setup-go');
+    goBtn.disabled = false;
+    goBtn.textContent = 'Enter Room →';
+  }).catch((err) => {
+    console.error('Auth failed:', err);
+    // Show error on the setup screen
+    const goBtn = document.getElementById('setup-go');
+    goBtn.textContent = '⚠ Auth failed — check Firebase console';
+    goBtn.disabled = true;
+  });
+
+  // Disable the button until auth completes
+  (() => {
+    const goBtn = document.getElementById('setup-go');
+    goBtn.disabled = true;
+    goBtn.textContent = 'Connecting...';
+  })();
 
   // ─── State ───
   let roomId = 'default';
@@ -1098,12 +1160,17 @@
   // ─── Folders & visibility state ───
   // folders: { id, name, collapsed, items: [firebaseId, ...] }
   let folders = [];
+  // layerOrder: array of top-level IDs (mix of folder IDs prefixed 'f:' and object firebase IDs)
+  // Objects/folders not in layerOrder appear at the end
+  let layerOrder = [];
   let masterDraftOpacity = 0.4;
   // Visibility: 'all' | 'editor' | 'hidden'  (stored on obj._visibility)
   const VIS_ALL = 'all';
   const VIS_EDITOR = 'editor';
   const VIS_HIDDEN = 'hidden';
   const VIS_CYCLE = [VIS_EDITOR, VIS_ALL, VIS_HIDDEN]; // default first
+  // Multi-select
+  let selectedLayerIds = new Set(); // Set of _firebaseId strings
 
   // ─── Populate color grid ───
   colors.forEach((c) => {
@@ -1263,7 +1330,11 @@
     };
   }
 
+  let hasEnteredRoom = false;
   function enterRoom(room, name, streamUrl, w, h) {
+    if (hasEnteredRoom) return;
+    hasEnteredRoom = true;
+
     roomId = room || 'default';
     userName = name || 'Anonymous';
     targetWidth = parseInt(w) || 1920;
@@ -1318,7 +1389,7 @@
     enterRoom(room, name, streamUrl, w, h);
   });
 
-  // ─── Auto-join from URL params ───
+  // ─── Auto-join from URL params (waits for auth) ───
   (() => {
     const saved = readSettingsFromUrl();
     if (saved.room) {
@@ -1338,8 +1409,16 @@
         document.getElementById('setup-res-w').value = saved.w || 1920;
         document.getElementById('setup-res-h').value = saved.h || 1080;
       }
-      // Auto-enter the room
-      enterRoom(saved.room, saved.name, saved.stream, saved.w, saved.h);
+      // Wait for auth, then auto-enter
+      auth.onAuthStateChanged((user) => {
+        if (user && !authReady) {
+          authReady = true;
+          authUid = user.uid;
+        }
+        if (authReady) {
+          enterRoom(saved.room, saved.name, saved.stream, saved.w, saved.h);
+        }
+      });
     }
   })();
 
@@ -1410,7 +1489,32 @@
 
     // Object events → sync to Firebase
     canvas.on('object:modified', (e) => {
-      if (!isSyncing && e.target) syncObject(e.target);
+      if (isSyncing || !e.target) return;
+      if (e.target.type === 'activeSelection') {
+        // Collect IDs before discarding
+        const ids = e.target.getObjects().map(o => o._firebaseId).filter(Boolean);
+        // Discard the group — this bakes the group transform into each child
+        canvas.discardActiveObject();
+        canvas.renderAll();
+        // Now sync each child with its baked-in position
+        ids.forEach(fbId => {
+          const obj = canvas.getObjects().find(o => o._firebaseId === fbId);
+          if (obj) syncObject(obj);
+        });
+        // Re-create the ActiveSelection so the user can keep working
+        const objs = canvas.getObjects().filter(o => o._firebaseId && ids.includes(o._firebaseId));
+        if (objs.length > 1) {
+          const sel = new fabric.ActiveSelection(objs, { canvas });
+          canvas.setActiveObject(sel);
+        } else if (objs.length === 1) {
+          canvas.setActiveObject(objs[0]);
+        }
+        canvas.renderAll();
+        selectedLayerIds = new Set(ids);
+        updateObjectList();
+      } else {
+        syncObject(e.target);
+      }
     });
     canvas.on('object:added', (e) => {
       if (!isSyncing && e.target && e.target._fromRemote !== true) {
@@ -1453,9 +1557,9 @@
     });
 
     // Selection events
-    canvas.on('selection:created', updateObjectList);
-    canvas.on('selection:updated', updateObjectList);
-    canvas.on('selection:cleared', updateObjectList);
+    canvas.on('selection:created', onCanvasSelectionChange);
+    canvas.on('selection:updated', onCanvasSelectionChange);
+    canvas.on('selection:cleared', onCanvasSelectionChange);
 
     // Shape drawing handlers
     canvas.on('mouse:down', onMouseDown);
@@ -1816,6 +1920,60 @@
     updateObjectList();
   }
 
+  // ─── Sync selectedLayerIds → Fabric ActiveSelection ───
+  function syncCanvasSelection() {
+    canvas.discardActiveObject();
+    if (selectedLayerIds.size === 0) {
+      canvas.renderAll();
+      return;
+    }
+    const objects = canvas.getObjects();
+    const selectedObjs = objects.filter(o => o._firebaseId && selectedLayerIds.has(o._firebaseId));
+    if (selectedObjs.length === 0) {
+      canvas.renderAll();
+      return;
+    }
+    if (selectedObjs.length === 1) {
+      canvas.setActiveObject(selectedObjs[0]);
+    } else {
+      const sel = new fabric.ActiveSelection(selectedObjs, { canvas });
+      canvas.setActiveObject(sel);
+    }
+    canvas.renderAll();
+  }
+
+  // Keep selectedLayerIds in sync when user interacts with canvas directly
+  let canvas_selection_sync_pending = false;
+  function onCanvasSelectionChange() {
+    if (canvas_selection_sync_pending) return;
+    canvas_selection_sync_pending = true;
+    requestAnimationFrame(() => {
+      canvas_selection_sync_pending = false;
+      const active = canvas.getActiveObject();
+      if (!active) {
+        if (selectedLayerIds.size > 0) {
+          selectedLayerIds.clear();
+          updateObjectList();
+        }
+        return;
+      }
+      const newIds = new Set();
+      if (active.type === 'activeSelection') {
+        active.getObjects().forEach(o => {
+          if (o._firebaseId) newIds.add(o._firebaseId);
+        });
+      } else {
+        if (active._firebaseId) newIds.add(active._firebaseId);
+      }
+      // Only update if changed
+      const changed = newIds.size !== selectedLayerIds.size || [...newIds].some(id => !selectedLayerIds.has(id));
+      if (changed) {
+        selectedLayerIds = newIds;
+        updateObjectList();
+      }
+    });
+  }
+
   function getVisIcon(vis) {
     if (vis === VIS_ALL) return '👁';
     if (vis === VIS_EDITOR) return '✏️';
@@ -1845,31 +2003,31 @@
   document.getElementById('btn-new-folder').addEventListener('click', () => {
     const name = prompt('Folder name:', `Folder ${folders.length + 1}`);
     if (!name) return;
-    folders.push({ id: generateId(), name, collapsed: false, items: [] });
+    const folderId = generateId();
+    folders.push({ id: folderId, name, collapsed: false, items: [] });
+    layerOrder.push('f:' + folderId);
     syncFolders();
-    updateObjectList();
-  });
-
-  document.getElementById('btn-move-to-folder').addEventListener('click', () => {
-    const active = canvas.getActiveObject();
-    if (!active || !active._firebaseId) { alert('Select a layer first'); return; }
-    if (folders.length === 0) { alert('Create a folder first'); return; }
-    const choices = folders.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
-    const pick = prompt(`Move to which folder?\n${choices}\n\nEnter number (or 0 to remove from folder):`);
-    if (pick === null) return;
-    const num = parseInt(pick);
-    // Remove from all folders first
-    folders.forEach(f => { f.items = f.items.filter(id => id !== active._firebaseId); });
-    if (num > 0 && num <= folders.length) {
-      folders[num - 1].items.push(active._firebaseId);
-    }
-    syncFolders();
+    syncLayerOrder();
     updateObjectList();
   });
 
   function syncFolders() {
     if (!roomRef) return;
     db.ref(`rooms/${roomId}/folders`).set(folders);
+  }
+  function syncLayerOrder() {
+    if (!roomRef) return;
+    db.ref(`rooms/${roomId}/layerOrder`).set(layerOrder);
+  }
+
+  // Ensure a top-level item is in layerOrder
+  function ensureInLayerOrder(id) {
+    if (!layerOrder.includes(id)) layerOrder.push(id);
+  }
+
+  // Remove an ID from all folders' items lists
+  function removeFromAllFolders(fbId) {
+    folders.forEach(f => { f.items = f.items.filter(id => id !== fbId); });
   }
 
   function getObjInfo(obj) {
@@ -1884,18 +2042,39 @@
     return { icon, name };
   }
 
-  // ─── Build layer item DOM ───
-  function buildLayerItem(obj) {
+  // ─── Drag & drop state ───
+  let dragData = null; // { type: 'layer'|'folder', id: string, sourceFolder: string|null }
+
+  function createDropIndicator() {
+    const div = document.createElement('div');
+    div.className = 'drop-indicator';
+    return div;
+  }
+
+  function clearDropIndicators() {
+    layerListEl.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+    layerListEl.querySelectorAll('.drop-indicator-folder').forEach(el => el.classList.remove('drop-indicator-folder'));
+  }
+
+  // ─── Build a draggable layer item ───
+  function buildLayerItem(obj, parentFolderId) {
     const { icon, name } = getObjInfo(obj);
     const vis = obj._visibility || VIS_EDITOR;
     const userOp = obj._userOpacity !== undefined ? obj._userOpacity : 1;
-    const active = canvas.getActiveObject();
-    const isSelected = obj === active;
+    const isSelected = selectedLayerIds.has(obj._firebaseId);
 
     const div = document.createElement('div');
-    div.className = 'layer-item' + (isSelected ? ' selected' : '') + (vis === VIS_EDITOR ? ' editor-only' : '') + (vis === VIS_HIDDEN ? ' hidden-all' : '');
+    div.className = 'layer-item'
+      + (isSelected ? ' selected multi-selected' : '')
+      + (vis === VIS_EDITOR ? ' editor-only' : '')
+      + (vis === VIS_HIDDEN ? ' hidden-all' : '');
+    div.dataset.fbId = obj._firebaseId;
+    div.dataset.type = 'layer';
+    if (parentFolderId) div.dataset.parentFolder = parentFolderId;
+    div.draggable = true;
 
     div.innerHTML = `
+      <span class="layer-drag-handle">⠿</span>
       <button class="layer-vis-btn ${getVisClass(vis)}" title="${getVisTitle(vis)}">${getVisIcon(vis)}</button>
       <span class="layer-icon">${icon}</span>
       <span class="layer-name">${name}</span>
@@ -1903,13 +2082,57 @@
       <button class="layer-delete-btn" title="Delete">✕</button>
     `;
 
-    // Visibility toggle
+    // ─ Drag start
+    div.addEventListener('dragstart', (e) => {
+      // If dragging a multi-selected item, drag all selected
+      if (selectedLayerIds.size > 1 && selectedLayerIds.has(obj._firebaseId)) {
+        dragData = { type: 'multi', ids: [...selectedLayerIds], sourceFolder: parentFolderId || null };
+      } else {
+        dragData = { type: 'layer', id: obj._firebaseId, sourceFolder: parentFolderId || null };
+      }
+      div.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+    });
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+      clearDropIndicators();
+      dragData = null;
+    });
+
+    // ─ Drop target (between layers)
+    div.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropIndicators();
+      const rect = div.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const indicator = createDropIndicator();
+      if (e.clientY < midY) {
+        div.parentNode.insertBefore(indicator, div);
+      } else {
+        div.parentNode.insertBefore(indicator, div.nextSibling);
+      }
+    });
+    div.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragData) return;
+      const rect = div.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const before = e.clientY < midY;
+      handleDrop(obj._firebaseId, parentFolderId, before);
+      clearDropIndicators();
+      dragData = null;
+    });
+
+    // ─ Visibility toggle
     div.querySelector('.layer-vis-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       cycleVisibility(obj);
     });
 
-    // Opacity slider — stop ALL events from propagating to prevent parent click/rebuild
+    // ─ Opacity slider
     const slider = div.querySelector('.layer-opacity-slider');
     let sliderDebounce = null;
     ['mousedown', 'pointerdown', 'touchstart', 'click'].forEach(evt => {
@@ -1921,38 +2144,51 @@
       e.target.title = `Layer opacity: ${Math.round(obj._userOpacity * 100)}%`;
       applyVisualOpacity(obj);
       canvas.renderAll();
-      // Debounce the Firebase sync to avoid DOM rebuild during drag
       clearTimeout(sliderDebounce);
       sliderDebounce = setTimeout(() => syncObject(obj), 300);
     });
     slider.addEventListener('change', (e) => {
       e.stopPropagation();
-      // Final sync on release
       clearTimeout(sliderDebounce);
       syncObject(obj);
     });
 
-    // Delete
+    // ─ Delete
     div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       const fbId = obj._firebaseId;
       canvas.remove(obj);
       if (fbId) {
         removeObjectFromFirebase(fbId);
-        folders.forEach(f => { f.items = f.items.filter(id => id !== fbId); });
+        removeFromAllFolders(fbId);
+        layerOrder = layerOrder.filter(id => id !== fbId);
+        selectedLayerIds.delete(fbId);
         syncFolders();
+        syncLayerOrder();
       }
       updateObjectList();
     });
 
-    // Select
-    div.addEventListener('click', () => {
-      canvas.setActiveObject(obj);
-      canvas.renderAll();
-      updateObjectList();
+    // ─ Click: select / multi-select
+    div.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.stopPropagation();
+        if (selectedLayerIds.has(obj._firebaseId)) {
+          selectedLayerIds.delete(obj._firebaseId);
+        } else {
+          selectedLayerIds.add(obj._firebaseId);
+        }
+        syncCanvasSelection();
+        updateObjectList();
+      } else {
+        selectedLayerIds.clear();
+        selectedLayerIds.add(obj._firebaseId);
+        syncCanvasSelection();
+        updateObjectList();
+      }
     });
 
-    // Hover tooltip — show creator after delay
+    // ─ Hover tooltip for creator
     div.addEventListener('mouseenter', (e) => {
       const creator = obj._createdBy || 'Unknown';
       showLayerTooltip(e, `Created by: ${creator}`);
@@ -1966,6 +2202,238 @@
     div.addEventListener('mouseleave', hideLayerTooltip);
 
     return div;
+  }
+
+  // ─── Build a draggable folder ───
+  function buildFolderEl(folder, objects) {
+    const folderDiv = document.createElement('div');
+    folderDiv.className = 'layer-folder';
+    folderDiv.dataset.folderId = folder.id;
+    folderDiv.dataset.type = 'folder';
+
+    const header = document.createElement('div');
+    header.className = 'layer-folder-header';
+    header.draggable = true;
+    header.innerHTML = `
+      <span class="layer-drag-handle">⠿</span>
+      <span class="folder-arrow ${folder.collapsed ? 'collapsed' : ''}">▼</span>
+      <span class="folder-icon">📁</span>
+      <span class="folder-name">${folder.name}</span>
+      <span style="font-size:9px; color:var(--text-muted); margin-left:auto;">${folder.items.length}</span>
+      <button class="layer-delete-btn" title="Delete folder">✕</button>
+    `;
+
+    // ─ Folder drag
+    header.addEventListener('dragstart', (e) => {
+      dragData = { type: 'folder', id: folder.id };
+      folderDiv.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+    });
+    header.addEventListener('dragend', () => {
+      folderDiv.classList.remove('dragging');
+      clearDropIndicators();
+      dragData = null;
+    });
+
+    // ─ Folder as drop target (drop items INTO the folder)
+    header.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropIndicators();
+      // If dragging a layer, highlight the folder header
+      if (dragData && (dragData.type === 'layer' || dragData.type === 'multi')) {
+        header.classList.add('drop-indicator-folder');
+      } else {
+        // Folder reorder: show indicator above/below
+        const rect = header.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const indicator = createDropIndicator();
+        if (e.clientY < midY) {
+          folderDiv.parentNode.insertBefore(indicator, folderDiv);
+        } else {
+          folderDiv.parentNode.insertBefore(indicator, folderDiv.nextSibling);
+        }
+      }
+    });
+    header.addEventListener('dragleave', () => {
+      header.classList.remove('drop-indicator-folder');
+    });
+    header.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragData) return;
+      header.classList.remove('drop-indicator-folder');
+
+      if (dragData.type === 'layer') {
+        // Move single layer into this folder
+        const fbId = dragData.id;
+        removeFromAllFolders(fbId);
+        layerOrder = layerOrder.filter(id => id !== fbId);
+        folder.items.push(fbId);
+      } else if (dragData.type === 'multi') {
+        // Move all selected layers into this folder
+        dragData.ids.forEach(fbId => {
+          removeFromAllFolders(fbId);
+          layerOrder = layerOrder.filter(id => id !== fbId);
+          if (!folder.items.includes(fbId)) folder.items.push(fbId);
+        });
+        selectedLayerIds.clear();
+      } else if (dragData.type === 'folder') {
+        // Reorder folder
+        const rect = header.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        handleFolderReorder(dragData.id, folder.id, before);
+      }
+      syncFolders();
+      syncLayerOrder();
+      updateObjectList();
+      clearDropIndicators();
+      dragData = null;
+    });
+
+    // ─ Toggle collapse
+    const toggleCollapse = (e) => {
+      e.stopPropagation();
+      folder.collapsed = !folder.collapsed;
+      syncFolders();
+      updateObjectList();
+    };
+    header.querySelector('.folder-arrow').addEventListener('click', toggleCollapse);
+
+    // ─ Ctrl+click: select all children
+    header.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.stopPropagation();
+        folder.items.forEach(fbId => selectedLayerIds.add(fbId));
+        syncCanvasSelection();
+        updateObjectList();
+      }
+    });
+
+    // ─ Delete folder
+    header.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`Delete folder "${folder.name}"? (layers inside will be moved out)`)) {
+        // Move items to top-level at the folder's position
+        const folderOrderId = 'f:' + folder.id;
+        const idx = layerOrder.indexOf(folderOrderId);
+        const itemsToPromote = [...folder.items];
+        folders = folders.filter(f => f.id !== folder.id);
+        layerOrder = layerOrder.filter(id => id !== folderOrderId);
+        // Insert the orphaned items where the folder was
+        layerOrder.splice(idx >= 0 ? idx : layerOrder.length, 0, ...itemsToPromote);
+        syncFolders();
+        syncLayerOrder();
+        updateObjectList();
+      }
+    });
+
+    folderDiv.appendChild(header);
+
+    // ─ Children container
+    const childrenDiv = document.createElement('div');
+    childrenDiv.className = 'layer-folder-children' + (folder.collapsed ? ' collapsed' : '');
+
+    // Drop target at the end of children list
+    childrenDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+    childrenDiv.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragData) return;
+      if (dragData.type === 'layer') {
+        const fbId = dragData.id;
+        removeFromAllFolders(fbId);
+        layerOrder = layerOrder.filter(id => id !== fbId);
+        folder.items.push(fbId);
+      } else if (dragData.type === 'multi') {
+        dragData.ids.forEach(fbId => {
+          removeFromAllFolders(fbId);
+          layerOrder = layerOrder.filter(id => id !== fbId);
+          if (!folder.items.includes(fbId)) folder.items.push(fbId);
+        });
+        selectedLayerIds.clear();
+      }
+      syncFolders();
+      syncLayerOrder();
+      updateObjectList();
+      clearDropIndicators();
+      dragData = null;
+    });
+
+    folder.items.forEach(fbId => {
+      const obj = objects.find(o => o._firebaseId === fbId);
+      if (obj) {
+        childrenDiv.appendChild(buildLayerItem(obj, folder.id));
+      }
+    });
+
+    folderDiv.appendChild(childrenDiv);
+    return folderDiv;
+  }
+
+  // ─── Handle drop for reordering layers and moving between folders/top-level ───
+  function handleDrop(targetFbId, targetFolderId, before) {
+    if (!dragData) return;
+
+    if (dragData.type === 'layer' || dragData.type === 'multi') {
+      const idsToMove = dragData.type === 'multi' ? dragData.ids : [dragData.id];
+
+      idsToMove.forEach(fbId => {
+        // Remove from old location
+        removeFromAllFolders(fbId);
+        layerOrder = layerOrder.filter(id => id !== fbId);
+      });
+
+      if (targetFolderId) {
+        // Dropping inside a folder
+        const folder = folders.find(f => f.id === targetFolderId);
+        if (folder) {
+          let idx = folder.items.indexOf(targetFbId);
+          if (idx === -1) idx = folder.items.length;
+          if (!before) idx++;
+          // Insert all moved items at position
+          folder.items.splice(idx, 0, ...idsToMove);
+        }
+      } else {
+        // Dropping at top-level
+        let idx = layerOrder.indexOf(targetFbId);
+        if (idx === -1) idx = layerOrder.length;
+        if (!before) idx++;
+        layerOrder.splice(idx, 0, ...idsToMove);
+      }
+      if (dragData.type === 'multi') selectedLayerIds.clear();
+    } else if (dragData.type === 'folder') {
+      handleFolderReorder(dragData.id, null, before, targetFbId);
+      return; // handleFolderReorder does its own sync
+    }
+
+    syncFolders();
+    syncLayerOrder();
+    updateObjectList();
+  }
+
+  function handleFolderReorder(dragFolderId, targetFolderId, before, targetItemId) {
+    const dragOrderId = 'f:' + dragFolderId;
+    layerOrder = layerOrder.filter(id => id !== dragOrderId);
+
+    let targetOrderId;
+    if (targetFolderId) {
+      targetOrderId = 'f:' + targetFolderId;
+    } else if (targetItemId) {
+      targetOrderId = targetItemId;
+    }
+
+    let idx = layerOrder.indexOf(targetOrderId);
+    if (idx === -1) idx = layerOrder.length;
+    if (!before) idx++;
+    layerOrder.splice(idx, 0, dragOrderId);
+
+    syncLayerOrder();
+    updateObjectList();
   }
 
   // ─── Layers panel rebuild ───
@@ -1984,63 +2452,66 @@
     const inFolder = new Set();
     folders.forEach(f => f.items.forEach(id => inFolder.add(id)));
 
-    // Render folders
-    folders.forEach((folder) => {
-      const folderDiv = document.createElement('div');
-      folderDiv.className = 'layer-folder';
+    // Build a set of all IDs that should be in layerOrder
+    const folderOrderIds = new Set(folders.map(f => 'f:' + f.id));
+    const topLevelObjIds = objects.filter(o => o._firebaseId && !inFolder.has(o._firebaseId)).map(o => o._firebaseId);
 
-      const header = document.createElement('div');
-      header.className = 'layer-folder-header';
-      header.innerHTML = `
-        <span class="folder-arrow ${folder.collapsed ? 'collapsed' : ''}">▼</span>
-        <span class="folder-icon">📁</span>
-        <span class="folder-name">${folder.name}</span>
-        <button class="layer-delete-btn" title="Delete folder">✕</button>
-      `;
+    // Ensure all items are in layerOrder (new items get appended)
+    topLevelObjIds.forEach(id => { if (!layerOrder.includes(id)) layerOrder.push(id); });
+    folders.forEach(f => { if (!layerOrder.includes('f:' + f.id)) layerOrder.push('f:' + f.id); });
+    // Remove stale entries
+    const validIds = new Set([...topLevelObjIds, ...Array.from(folderOrderIds)]);
+    layerOrder = layerOrder.filter(id => validIds.has(id));
 
-      header.querySelector('.folder-arrow').addEventListener('click', (e) => {
-        e.stopPropagation();
-        folder.collapsed = !folder.collapsed;
-        syncFolders();
-        updateObjectList();
-      });
-      header.querySelector('.folder-name').addEventListener('click', (e) => {
-        e.stopPropagation();
-        folder.collapsed = !folder.collapsed;
-        syncFolders();
-        updateObjectList();
-      });
-
-      header.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm(`Delete folder "${folder.name}"? (layers inside won't be deleted)`)) {
-          folders = folders.filter(f => f.id !== folder.id);
-          syncFolders();
-          updateObjectList();
+    // Render in order
+    layerOrder.forEach(orderId => {
+      if (orderId.startsWith('f:')) {
+        const folderId = orderId.slice(2);
+        const folder = folders.find(f => f.id === folderId);
+        if (folder) {
+          layerListEl.appendChild(buildFolderEl(folder, objects));
         }
-      });
-
-      folderDiv.appendChild(header);
-
-      const childrenDiv = document.createElement('div');
-      childrenDiv.className = 'layer-folder-children' + (folder.collapsed ? ' collapsed' : '');
-
-      folder.items.forEach(fbId => {
-        const obj = objects.find(o => o._firebaseId === fbId);
-        if (obj) {
-          childrenDiv.appendChild(buildLayerItem(obj));
+      } else {
+        const obj = objects.find(o => o._firebaseId === orderId);
+        if (obj && !inFolder.has(orderId)) {
+          layerListEl.appendChild(buildLayerItem(obj, null));
         }
-      });
-
-      folderDiv.appendChild(childrenDiv);
-      layerListEl.appendChild(folderDiv);
+      }
     });
 
-    // Render un-foldered objects
-    objects.forEach((obj) => {
-      if (!obj._firebaseId || inFolder.has(obj._firebaseId)) return;
-      layerListEl.appendChild(buildLayerItem(obj));
+    // Top-level drop zone at the end
+    const endZone = document.createElement('div');
+    endZone.style.height = '24px';
+    endZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropIndicators();
+      const indicator = createDropIndicator();
+      layerListEl.appendChild(indicator);
     });
+    endZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!dragData) return;
+      if (dragData.type === 'layer' || dragData.type === 'multi') {
+        const idsToMove = dragData.type === 'multi' ? dragData.ids : [dragData.id];
+        idsToMove.forEach(fbId => {
+          removeFromAllFolders(fbId);
+          layerOrder = layerOrder.filter(id => id !== fbId);
+        });
+        layerOrder.push(...idsToMove);
+        if (dragData.type === 'multi') selectedLayerIds.clear();
+        syncFolders();
+      } else if (dragData.type === 'folder') {
+        const dragOrderId = 'f:' + dragData.id;
+        layerOrder = layerOrder.filter(id => id !== dragOrderId);
+        layerOrder.push(dragOrderId);
+      }
+      syncLayerOrder();
+      updateObjectList();
+      clearDropIndicators();
+      dragData = null;
+    });
+    layerListEl.appendChild(endZone);
   }
 
   // ═══════════════════════════════════════════
@@ -2093,13 +2564,20 @@
     db.ref(`rooms/${roomId}/folders`).on('value', (snap) => {
       const data = snap.val();
       if (data) {
-        // Firebase may store arrays as objects with numeric keys
         folders = Array.isArray(data) ? data : Object.values(data);
-        // Ensure items arrays exist
         folders.forEach(f => {
           if (!f.items) f.items = [];
           else if (!Array.isArray(f.items)) f.items = Object.values(f.items);
         });
+        updateObjectList();
+      }
+    });
+
+    // Listen for layer order changes
+    db.ref(`rooms/${roomId}/layerOrder`).on('value', (snap) => {
+      const data = snap.val();
+      if (data) {
+        layerOrder = Array.isArray(data) ? data : Object.values(data);
         updateObjectList();
       }
     });
@@ -2223,6 +2701,20 @@
     if (!roomRef) return;
     roomRef.child(firebaseId).remove();
   }
+
+  // ─── Clear multi-select on background click ───
+  layerListEl.addEventListener('click', (e) => {
+    if (e.target === layerListEl) {
+      selectedLayerIds.clear();
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      updateObjectList();
+    }
+  });
+  // Clear drop indicators on dragleave from the list
+  layerListEl.addEventListener('dragleave', (e) => {
+    if (!layerListEl.contains(e.relatedTarget)) clearDropIndicators();
+  });
 
   // ─── User list popup ───
   const userCountEl = document.getElementById('user-count');

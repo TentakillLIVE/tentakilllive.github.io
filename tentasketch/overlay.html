@@ -94,6 +94,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <!-- Shared Firebase config -->
   <script src="firebase-config.js"></script>
@@ -114,6 +115,7 @@
     // ─── Init Firebase ───
     firebase.initializeApp(window.FIREBASE_CONFIG);
     const db = firebase.database();
+    const auth = firebase.auth();
 
     // ─── Get room from URL params ───
     const params = new URLSearchParams(window.location.search);
@@ -133,44 +135,57 @@
       height: canvasHeight,
     });
 
-    // CSS handles stretching to fill the viewport.
-    // Fabric's internal coordinate system stays at the logical resolution.
-
-    // ─── Listen for canvas size from editor ───
-    db.ref(`rooms/${roomId}/canvasSize`).on('value', (snapshot) => {
-      const size = snapshot.val();
-      if (size && size.width && size.height) {
-        canvasWidth = size.width;
-        canvasHeight = size.height;
-        canvas.setWidth(canvasWidth);
-        canvas.setHeight(canvasHeight);
-        // Re-render with new dimensions
-        if (Object.keys(objectCache).length > 0) {
-          renderObjects(objectCache);
-        }
-      }
-    });
-
-    // ─── Listen for real-time object changes ───
-    const roomRef = db.ref(`rooms/${roomId}/objects`);
-
+    // ─── Anonymous auth then start listeners ───
     statusEl.className = 'connecting';
-    statusEl.textContent = 'Connecting...';
+    statusEl.textContent = 'Authenticating...';
+
+    auth.signInAnonymously().then(() => {
+      console.log('Overlay authenticated');
+      startListeners();
+    }).catch((err) => {
+      console.error('Overlay auth failed:', err);
+      statusEl.className = 'error';
+      statusEl.textContent = 'Auth failed';
+      // Try to start listeners anyway — reads may still work with public rules
+      startListeners();
+    });
 
     let objectCache = {};
 
-    roomRef.on('value', (snapshot) => {
-      statusEl.className = 'connected';
-      statusEl.textContent = 'Connected';
+    function startListeners() {
+      statusEl.className = 'connecting';
+      statusEl.textContent = 'Connecting...';
 
-      const data = snapshot.val() || {};
-      objectCache = data;
-      renderObjects(data);
-    }, (error) => {
-      statusEl.className = 'error';
-      statusEl.textContent = 'Connection error';
-      console.error('Firebase error:', error);
-    });
+      // ─── Listen for canvas size from editor ───
+      db.ref(`rooms/${roomId}/canvasSize`).on('value', (snapshot) => {
+        const size = snapshot.val();
+        if (size && size.width && size.height) {
+          canvasWidth = size.width;
+          canvasHeight = size.height;
+          canvas.setWidth(canvasWidth);
+          canvas.setHeight(canvasHeight);
+          if (Object.keys(objectCache).length > 0) {
+            renderObjects(objectCache);
+          }
+        }
+      });
+
+      // ─── Listen for real-time object changes ───
+      const roomRef = db.ref(`rooms/${roomId}/objects`);
+
+      roomRef.on('value', (snapshot) => {
+        statusEl.className = 'connected';
+        statusEl.textContent = 'Connected';
+
+        const data = snapshot.val() || {};
+        objectCache = data;
+        renderObjects(data);
+      }, (error) => {
+        statusEl.className = 'error';
+        statusEl.textContent = 'Connection error';
+        console.error('Firebase error:', error);
+      });
+    }
 
     function renderObjects(objectsMap) {
       canvas.clear();
