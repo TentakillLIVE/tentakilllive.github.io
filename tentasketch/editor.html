@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamCanvas — Collaborative Overlay Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a26;
+      --bg-elevated: #22222f;
+      --border: #2a2a3a;
+      --border-hover: #3a3a50;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --text-muted: #555568;
+      --accent: #6c5ce7;
+      --accent-hover: #7c6cf7;
+      --accent-glow: rgba(108, 92, 231, 0.3);
+      --red: #ff6b6b;
+      --green: #51cf66;
+      --yellow: #fcc419;
+      --cyan: #22d3ee;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'DM Sans', sans-serif;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ─── LAYOUT ─── */
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr 44px;
+      grid-template-columns: 56px 1fr 260px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* ─── TOP BAR ─── */
+    .topbar {
+      grid-column: 1 / -1;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      z-index: 100;
+    }
+    .topbar .logo {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
+    .topbar .logo span { color: var(--text-muted); font-weight: 400; }
+    .topbar .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+    .topbar .room-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+    .topbar .room-info .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px rgba(81, 207, 102, 0.5);
+    }
+    .topbar .room-info .dot.disconnected { background: var(--red); box-shadow: 0 0 6px rgba(255,107,107,0.5); }
+    .topbar .spacer { flex: 1; }
+    .topbar-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg-elevated); border-color: var(--border-hover); }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn.primary:hover { background: var(--accent-hover); }
+    .btn.danger { border-color: #4a2020; color: var(--red); }
+    .btn.danger:hover { background: #2a1515; }
+
+    /* ─── TOOLBAR (left) ─── */
+    .toolbar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0;
+      gap: 4px;
+      z-index: 50;
+    }
+    .tool-btn {
+      width: 40px; height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .tool-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .tool-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .tool-btn svg { width: 20px; height: 20px; }
+    .tool-sep {
+      width: 28px;
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+    .tool-btn[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      left: 48px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-family: var(--font-sans);
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* ─── CANVAS AREA ─── */
+    .canvas-area {
+      position: relative;
+      background: #111118;
+      overflow: hidden;
+    }
+    #stream-embed {
+      position: absolute;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+    #stream-embed.interactive {
+      pointer-events: auto;
+      z-index: 20;
+    }
+    #stream-embed iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #stream-embed.hidden { display: none; }
+    /* Stream interaction hint */
+    #stream-interact-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    #stream-interact-bar.hidden { display: none; }
+    #stream-interact-bar .hint-pill {
+      background: rgba(0,0,0,0.7);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      backdrop-filter: blur(4px);
+    }
+    .canvas-wrapper {
+      position: absolute;
+      z-index: 10;
+    }
+    .canvas-wrapper canvas {
+      display: block;
+    }
+    /* Checkerboard for transparency indication */
+    .canvas-area::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(45deg, #15151f 25%, transparent 25%),
+        linear-gradient(-45deg, #15151f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #15151f 75%),
+        linear-gradient(-45deg, transparent 75%, #15151f 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      opacity: 0.3;
+    }
+
+    /* ─── RIGHT PANEL ─── */
+    .panel {
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 50;
+    }
+    .panel-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Color picker */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+    }
+    .color-swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 4px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+    .custom-color-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      align-items: center;
+    }
+    .custom-color-row input[type="color"] {
+      width: 32px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-tertiary);
+      cursor: pointer;
+      padding: 2px;
+    }
+    .custom-color-row span {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Sliders */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .slider-row label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 60px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--bg-elevated);
+      outline: none;
+    }
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .slider-row .val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      min-width: 28px;
+      text-align: right;
+    }
+
+    /* Text input */
+    .text-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .text-input:focus { border-color: var(--accent); }
+    .text-input::placeholder { color: var(--text-muted); }
+
+    /* Layers panel */
+    .layers-toolbar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .layers-toolbar button {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .layers-toolbar button:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+    .layers-master-opacity {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 6px 8px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .layers-master-opacity input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--bg-elevated);
+      outline: none;
+    }
+    .layers-master-opacity input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--yellow);
+      cursor: pointer;
+    }
+
+    .layer-list {
+      list-style: none;
+    }
+    /* Folder */
+    .layer-folder {
+      margin-bottom: 2px;
+    }
+    .layer-folder-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.1s;
+      border: 1px solid transparent;
+    }
+    .layer-folder-header:hover { background: var(--bg-tertiary); }
+    .layer-folder-header.selected { background: var(--bg-elevated); border-color: var(--border); }
+    .layer-folder-header .folder-arrow {
+      font-size: 10px;
+      width: 14px;
+      text-align: center;
+      transition: transform 0.15s;
+      color: var(--text-muted);
+    }
+    .layer-folder-header .folder-arrow.collapsed { transform: rotate(-90deg); }
+    .layer-folder-header .folder-icon { font-size: 13px; width: 18px; text-align: center; }
+    .layer-folder-header .folder-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .layer-folder-children {
+      padding-left: 16px;
+    }
+    .layer-folder-children.collapsed { display: none; }
+
+    /* Layer item */
+    .layer-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.1s;
+      position: relative;
+    }
+    .layer-item:hover { background: var(--bg-tertiary); }
+    .layer-item.selected { background: var(--bg-elevated); color: var(--text-primary); }
+    .layer-item.editor-only { opacity: 0.6; }
+    .layer-item.hidden-all { opacity: 0.3; }
+    .layer-item .layer-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+    .layer-item .layer-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    /* Visibility button */
+    .layer-vis-btn {
+      width: 22px; height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      transition: all 0.1s;
+      padding: 0;
+    }
+    .layer-vis-btn:hover { background: var(--bg-elevated); }
+    .layer-vis-btn.vis-all { color: var(--green); }
+    .layer-vis-btn.vis-editor { color: var(--yellow); }
+    .layer-vis-btn.vis-hidden { color: var(--text-muted); opacity: 0.4; }
+    /* Per-layer opacity */
+    .layer-opacity-slider {
+      width: 48px;
+      -webkit-appearance: none;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--bg-elevated);
+      outline: none;
+      flex-shrink: 0;
+    }
+    .layer-opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .layer-delete-btn {
+      width: 18px; height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 10px;
+      color: var(--red);
+      border-radius: 3px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.1s;
+      padding: 0;
+    }
+    .layer-item:hover .layer-delete-btn,
+    .layer-folder-header:hover .layer-delete-btn { opacity: 0.7; }
+    .layer-delete-btn:hover { opacity: 1 !important; background: rgba(255,107,107,0.1); }
+
+    /* ─── BOTTOM BAR ─── */
+    .bottombar {
+      grid-column: 1 / -1;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .bottombar .spacer { flex: 1; }
+
+    /* User list popup */
+    .user-list-popup {
+      position: absolute;
+      bottom: 32px;
+      right: 0;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 0;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 200;
+    }
+    .user-list-popup.hidden { display: none; }
+    .user-list-popup-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      padding: 4px 12px 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .user-list-popup ul { list-style: none; }
+    .user-list-popup li {
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .user-list-popup li .user-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+
+    /* Layer creator tooltip */
+    .layer-tooltip {
+      position: fixed;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 10000;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* ─── MODALS ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 440px;
+      width: 90%;
+    }
+    .modal h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .modal p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .modal .form-group {
+      margin-bottom: 14px;
+    }
+    .modal label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .modal .btn-row {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .modal .url-display {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      word-break: break-all;
+      line-height: 1.5;
+      user-select: all;
+    }
+
+    /* ─── SETUP SCREEN (pre-Firebase) ─── */
+    #setup-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-primary);
+      z-index: 50000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #setup-screen.hidden { display: none; }
+    .setup-card {
+      text-align: center;
+      max-width: 480px;
+      padding: 40px;
+    }
+    .setup-card .logo-big {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .setup-card .tagline {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+    .setup-card .form-group {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+    .setup-card label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .setup-card .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .setup-card .btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 8px; }
+
+    /* Stream toggle */
+    .stream-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .stream-toggle input[type="checkbox"] {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      background: var(--bg-elevated);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .stream-toggle input[type="checkbox"]::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: all 0.2s;
+    }
+    .stream-toggle input[type="checkbox"]:checked {
+      background: var(--accent);
+    }
+    .stream-toggle input[type="checkbox"]:checked::after {
+      left: 18px;
+      background: #fff;
+    }
+
+    /* Image upload drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .drop-zone:hover {
+      border-color: var(--accent);
+      color: var(--text-secondary);
+    }
+    .drop-zone.dragging {
+      border-color: var(--accent);
+      background: rgba(108, 92, 231, 0.1);
+    }
+
+    select.text-input {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="logo-big">StreamCanvas</div>
+    <div class="tagline">Collaborative stream overlay editor</div>
+
+    <div class="form-group">
+      <label>Room Name</label>
+      <input type="text" class="text-input" id="setup-room" placeholder="my-stream" value="">
+      <div class="hint">Viewers with this name can join your canvas</div>
+    </div>
+
+    <div class="form-group">
+      <label>Your Display Name</label>
+      <input type="text" class="text-input" id="setup-name" placeholder="Username">
+    </div>
+
+    <div class="form-group">
+      <label>OBS Canvas Resolution</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select class="text-input" id="setup-resolution" style="flex:1;">
+          <option value="1920x1080" selected>1920 × 1080 (16:9)</option>
+          <option value="2560x1440">2560 × 1440 (16:9)</option>
+          <option value="1280x720">1280 × 720 (16:9)</option>
+          <option value="1920x1200">1920 × 1200 (16:10)</option>
+          <option value="custom">Custom...</option>
+        </select>
+      </div>
+      <div id="custom-res-row" style="display:none; margin-top:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="number" class="text-input" id="setup-res-w" placeholder="1920" value="1920" style="width:90px;">
+          <span style="color:var(--text-muted);">×</span>
+          <input type="number" class="text-input" id="setup-res-h" placeholder="1080" value="1080" style="width:90px;">
+        </div>
+      </div>
+      <div class="hint">Match this to your OBS canvas size (Settings → Video → Base Resolution)</div>
+    </div>
+
+    <div class="form-group">
+      <label>Stream URL (optional)</label>
+      <input type="text" class="text-input" id="setup-stream" placeholder="https://www.twitch.tv/yourchannel">
+      <div class="hint">Embed your live stream behind the canvas for reference</div>
+    </div>
+
+    <button class="btn primary" id="setup-go">Enter Room →</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div class="app" id="main-app" style="display:none;">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="logo">StreamCanvas <span>v1.0</span></div>
+    <div class="divider"></div>
+    <div class="room-info">
+      <div class="dot" id="conn-dot"></div>
+      <span id="room-label">room: —</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="topbar-actions">
+      <label class="stream-toggle">
+        <input type="checkbox" id="toggle-stream" checked>
+        Stream Preview
+      </label>
+      <button class="btn" id="btn-stream-interact" title="Unlock stream to click play" style="display:none;">▶️ Unlock Stream</button>
+      <button class="btn" id="btn-obs-url" title="Get OBS Browser Source URL">📋 OBS URL</button>
+      <button class="btn danger" id="btn-clear-all">🗑 Clear All</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="tool-btn active" data-tool="select" title="Select (V)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 17 2.5-6.5L20 12z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="draw" title="Draw (B)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="line" title="Line (L)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="rect" title="Rectangle (R)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="circle" title="Circle (C)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="text" title="Text (T)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9.5" y1="20" x2="14.5" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-tool="image" title="Add Image (I)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="eraser" title="Eraser (E)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4z"/><path d="M6 11l8 8"/></svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-undo" title="Undo (Ctrl+Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+  </div>
+
+  <!-- CANVAS AREA -->
+  <div class="canvas-area" id="canvas-area">
+    <div id="stream-embed"></div>
+    <div id="stream-interact-bar" class="hidden">
+      <button class="btn" id="btn-stream-lock" style="font-size:11px; padding:4px 12px;">🔓 Click stream to play, then lock to draw</button>
+    </div>
+    <div class="canvas-wrapper" id="canvas-wrapper">
+      <canvas id="editor-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel">
+    <div class="panel-section">
+      <h3>Color</h3>
+      <div class="color-grid" id="color-grid"></div>
+      <div class="custom-color-row">
+        <input type="color" id="custom-color" value="#6c5ce7">
+        <span id="color-hex">#6c5ce7</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>Brush / Stroke</h3>
+      <div class="slider-row">
+        <label>Size</label>
+        <input type="range" id="brush-size" min="1" max="50" value="4">
+        <span class="val" id="brush-size-val">4</span>
+      </div>
+      <div class="slider-row">
+        <label>Opacity</label>
+        <input type="range" id="brush-opacity" min="0.1" max="1" step="0.05" value="1">
+        <span class="val" id="brush-opacity-val">100%</span>
+      </div>
+      <div class="slider-row" style="margin-top:4px;">
+        <label>Fill</label>
+        <label class="stream-toggle" style="flex:1;">
+          <input type="checkbox" id="toggle-fill">
+          <span style="font-size:12px;">Fill shapes</span>
+        </label>
+      </div>
+      <div id="fill-color-row" class="custom-color-row" style="display:none; margin-top:4px;">
+        <input type="color" id="fill-color" value="#6c5ce7">
+        <span style="font-size:11px;">Fill color</span>
+        <label class="stream-toggle" style="margin-left:auto;">
+          <input type="checkbox" id="fill-same-color" checked>
+          <span style="font-size:10px;">Same as stroke</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel-section" id="text-options" style="display:none;">
+      <h3>Text Options</h3>
+      <div class="form-group" style="margin-bottom:10px;">
+        <input type="text" class="text-input" id="text-content" placeholder="Type your text...">
+      </div>
+      <div class="slider-row">
+        <label>Font Size</label>
+        <input type="range" id="font-size" min="12" max="120" value="32">
+        <span class="val" id="font-size-val">32</span>
+      </div>
+      <div class="form-group">
+        <select class="text-input" id="font-family">
+          <option value="DM Sans">DM Sans</option>
+          <option value="Impact">Impact</option>
+          <option value="Arial Black">Arial Black</option>
+          <option value="Comic Sans MS">Comic Sans MS</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:4px; margin-top:8px;">
+        <button class="btn" id="text-bold" style="font-weight:800; width:36px;">B</button>
+        <button class="btn" id="text-italic" style="font-style:italic; width:36px;">I</button>
+      </div>
+    </div>
+
+    <div class="panel-section" id="image-options" style="display:none;">
+      <h3>Add Image</h3>
+      <div class="drop-zone" id="image-drop-zone">
+        📁 Click or drop an image<br>
+        <span style="font-size:10px; color:var(--text-muted);">(paste URL or upload file)</span>
+      </div>
+      <div class="form-group" style="margin-top:10px;">
+        <input type="text" class="text-input" id="image-url" placeholder="Paste image URL...">
+      </div>
+      <button class="btn primary" id="add-image-btn" style="width:100%; margin-top:6px;">Add Image</button>
+      <input type="file" id="image-file" accept="image/*" style="display:none;">
+    </div>
+
+    <div class="panel-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+      <h3>Layers</h3>
+      <div class="layers-toolbar">
+        <button id="btn-new-folder" title="New folder">📁+</button>
+        <button id="btn-move-to-folder" title="Move selected to folder">→📁</button>
+      </div>
+      <div class="layers-master-opacity">
+        <span>👁 Draft opacity</span>
+        <input type="range" id="master-draft-opacity" min="0.05" max="1" step="0.05" value="0.4">
+        <span id="master-draft-opacity-val">40%</span>
+      </div>
+      <div id="layer-list" class="layer-list" style="flex:1; overflow-y:auto;">
+        <div style="color:var(--text-muted); font-style:italic; font-size:11px; padding:8px;">No layers yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <span id="coord-display">0, 0</span>
+    <span>|</span>
+    <span id="canvas-size-display">0 × 0</span>
+    <span>|</span>
+    <span id="object-count">0 objects</span>
+    <div class="spacer"></div>
+    <span id="user-count" style="cursor:pointer; position:relative;" title="Click to see connected users">1 user</span>
+    <div id="user-list-popup" class="user-list-popup hidden">
+      <div class="user-list-popup-header">Connected Users</div>
+      <ul id="user-list-items"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ OBS URL MODAL ═══════════════ -->
+<div class="modal-overlay hidden" id="obs-modal">
+  <div class="modal">
+    <h2>OBS Browser Source URL</h2>
+    <p>Add this URL as a Browser Source in OBS. Set the resolution to match your canvas (e.g., 1920×1080) and check "Shutdown source when not visible."</p>
+    <div class="url-display" id="obs-url-display"></div>
+    <div class="btn-row">
+      <button class="btn" id="obs-modal-close">Close</button>
+      <button class="btn primary" id="obs-url-copy">Copy URL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCRIPTS ═══════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+<script>
+// ═════════════════════════════════════════════════
+// STREAMCANVAS — COLLABORATIVE OVERLAY EDITOR
+// ═════════════════════════════════════════════════
+
+(() => {
+  'use strict';
+
+  // ─── Config check ───
+  const hasConfig = window.FIREBASE_CONFIG &&
+    window.FIREBASE_CONFIG.apiKey &&
+    window.FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY_HERE';
+
+  if (!hasConfig) {
+    document.getElementById('setup-screen').innerHTML = `
+      <div class="setup-card">
+        <div class="logo-big">StreamCanvas</div>
+        <div class="tagline" style="color:var(--red);">Firebase not configured</div>
+        <p style="color:var(--text-secondary); font-size:13px; line-height:1.6; margin-top:16px;">
+          Open <code style="color:var(--cyan); background:var(--bg-tertiary); padding:2px 6px; border-radius:3px;">firebase-config.js</code> and add your Firebase project credentials.<br><br>
+          See the <code style="color:var(--cyan); background:var(--bg-tertiary); padding:2px 6px; border-radius:3px;">README.md</code> for step-by-step setup instructions.
+        </p>
+      </div>`;
+    return;
+  }
+
+  // ─── Firebase init ───
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // ─── State ───
+  let roomId = 'default';
+  let userName = 'Anonymous';
+  let currentTool = 'select';
+  let currentColor = '#6c5ce7';
+  let brushSize = 4;
+  let brushOpacity = 1;
+  let fontSize = 32;
+  let fontFamily = 'DM Sans';
+  let textBold = false;
+  let textItalic = false;
+  let fillEnabled = false;
+  let fillColor = '#6c5ce7';
+  let fillSameAsStroke = true;
+  let streamInteractive = false;
+  let targetWidth = 1920;
+  let targetHeight = 1080;
+  let isDrawingShape = false;
+  let shapeOrigin = null;
+  let activeShape = null;
+  let isSyncing = false;
+  let zIndexCounter = 0;
+
+  // ─── Color palette ───
+  const colors = [
+    '#ffffff', '#cccccc', '#888888', '#444444', '#222222', '#000000',
+    '#ff6b6b', '#ff8787', '#f06595', '#cc5de8', '#845ef7', '#6c5ce7',
+    '#5c7cfa', '#339af0', '#22b8cf', '#22d3ee', '#20c997', '#51cf66',
+    '#94d82d', '#fcc419', '#ff922b', '#fd7e14', '#f76707', '#e8590c',
+  ];
+
+  // ─── DOM refs ───
+  const setupScreen = document.getElementById('setup-screen');
+  const mainApp = document.getElementById('main-app');
+  const canvasArea = document.getElementById('canvas-area');
+  const roomLabel = document.getElementById('room-label');
+  const connDot = document.getElementById('conn-dot');
+  const coordDisplay = document.getElementById('coord-display');
+  const canvasSizeDisplay = document.getElementById('canvas-size-display');
+  const objectCountDisplay = document.getElementById('object-count');
+  const colorGrid = document.getElementById('color-grid');
+  const customColorInput = document.getElementById('custom-color');
+  const colorHex = document.getElementById('color-hex');
+  const brushSizeSlider = document.getElementById('brush-size');
+  const brushSizeVal = document.getElementById('brush-size-val');
+  const brushOpacitySlider = document.getElementById('brush-opacity');
+  const brushOpacityVal = document.getElementById('brush-opacity-val');
+  const textOptions = document.getElementById('text-options');
+  const imageOptions = document.getElementById('image-options');
+  const layerListEl = document.getElementById('layer-list');
+  const streamEmbed = document.getElementById('stream-embed');
+
+  // ─── Folders & visibility state ───
+  // folders: { id, name, collapsed, items: [firebaseId, ...] }
+  let folders = [];
+  let masterDraftOpacity = 0.4;
+  // Visibility: 'all' | 'editor' | 'hidden'  (stored on obj._visibility)
+  const VIS_ALL = 'all';
+  const VIS_EDITOR = 'editor';
+  const VIS_HIDDEN = 'hidden';
+  const VIS_CYCLE = [VIS_EDITOR, VIS_ALL, VIS_HIDDEN]; // default first
+
+  // ─── Populate color grid ───
+  colors.forEach((c) => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch' + (c === currentColor ? ' active' : '');
+    swatch.style.background = c;
+    swatch.addEventListener('click', () => {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+      setColor(c);
+    });
+    colorGrid.appendChild(swatch);
+  });
+
+  function setColor(c) {
+    currentColor = c;
+    customColorInput.value = c;
+    colorHex.textContent = c;
+    if (canvas && canvas.isDrawingMode) {
+      canvas.freeDrawingBrush.color = c;
+    }
+    // Update selected object
+    const obj = canvas?.getActiveObject();
+    if (obj && currentTool === 'select') {
+      if (obj.type === 'i-text' || obj.type === 'text') {
+        obj.set('fill', c);
+      } else {
+        obj.set('stroke', c);
+        // Also update fill if fill-same-as-stroke is on
+        if (fillEnabled && fillSameAsStroke && obj.type !== 'path' && obj.type !== 'line') {
+          obj.set('fill', c);
+        }
+      }
+      canvas.renderAll();
+      syncObject(obj);
+    }
+  }
+
+  customColorInput.addEventListener('input', (e) => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    setColor(e.target.value);
+  });
+
+  // ─── Sliders ───
+  brushSizeSlider.addEventListener('input', (e) => {
+    brushSize = parseInt(e.target.value);
+    brushSizeVal.textContent = brushSize;
+    if (canvas && canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.width = brushSize;
+    }
+  });
+  brushOpacitySlider.addEventListener('input', (e) => {
+    brushOpacity = parseFloat(e.target.value);
+    brushOpacityVal.textContent = Math.round(brushOpacity * 100) + '%';
+    if (canvas && canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = hexToRgba(currentColor, brushOpacity);
+    }
+  });
+
+  // ─── Font controls ───
+  document.getElementById('font-size').addEventListener('input', (e) => {
+    fontSize = parseInt(e.target.value);
+    document.getElementById('font-size-val').textContent = fontSize;
+  });
+  document.getElementById('font-family').addEventListener('change', (e) => {
+    fontFamily = e.target.value;
+  });
+  document.getElementById('text-bold').addEventListener('click', (e) => {
+    textBold = !textBold;
+    e.target.style.background = textBold ? 'var(--accent)' : '';
+  });
+  document.getElementById('text-italic').addEventListener('click', (e) => {
+    textItalic = !textItalic;
+    e.target.style.background = textItalic ? 'var(--accent)' : '';
+  });
+
+  // ─── Fill controls ───
+  const toggleFill = document.getElementById('toggle-fill');
+  const fillColorRow = document.getElementById('fill-color-row');
+  const fillColorInput = document.getElementById('fill-color');
+  const fillSameCheckbox = document.getElementById('fill-same-color');
+
+  toggleFill.addEventListener('change', (e) => {
+    fillEnabled = e.target.checked;
+    fillColorRow.style.display = fillEnabled ? 'flex' : 'none';
+  });
+  fillColorInput.addEventListener('input', (e) => {
+    fillColor = e.target.value;
+  });
+  fillSameCheckbox.addEventListener('change', (e) => {
+    fillSameAsStroke = e.target.checked;
+    fillColorInput.disabled = fillSameAsStroke;
+    fillColorInput.style.opacity = fillSameAsStroke ? '0.4' : '1';
+  });
+
+  function getShapeFill() {
+    if (!fillEnabled) return 'transparent';
+    const color = fillSameAsStroke ? currentColor : fillColor;
+    if (brushOpacity < 1) return hexToRgba(color, brushOpacity);
+    return color;
+  }
+
+  // ─── Stream interaction ───
+  const streamInteractBtn = document.getElementById('btn-stream-interact');
+  const streamInteractBar = document.getElementById('stream-interact-bar');
+  const streamLockBtn = document.getElementById('btn-stream-lock');
+
+  function setStreamInteractive(interactive) {
+    streamInteractive = interactive;
+    streamEmbed.classList.toggle('interactive', interactive);
+    if (interactive) {
+      streamInteractBtn.textContent = '🔒 Lock Stream';
+      streamInteractBtn.title = 'Lock stream so you can draw over it';
+      streamLockBtn.textContent = '🔒 Click to lock & return to drawing';
+      streamInteractBar.classList.remove('hidden');
+      // Temporarily bump opacity so user can see the player controls
+      streamEmbed.style.opacity = '0.7';
+    } else {
+      streamInteractBtn.textContent = '▶️ Unlock Stream';
+      streamInteractBtn.title = 'Unlock stream to click play';
+      streamInteractBar.classList.add('hidden');
+      streamEmbed.style.opacity = '';
+    }
+  }
+
+  streamInteractBtn.addEventListener('click', () => {
+    setStreamInteractive(!streamInteractive);
+  });
+  streamLockBtn.addEventListener('click', () => {
+    setStreamInteractive(false);
+  });
+
+  // ─── Setup screen — resolution toggle ───
+  document.getElementById('setup-resolution').addEventListener('change', (e) => {
+    document.getElementById('custom-res-row').style.display = (e.target.value === 'custom') ? 'block' : 'none';
+  });
+
+  // ─── Setup screen ───
+  // ─── URL parameter helpers ───
+  function writeSettingsToUrl(settings) {
+    const url = new URL(window.location.href);
+    Object.entries(settings).forEach(([k, v]) => {
+      if (v) url.searchParams.set(k, v);
+      else url.searchParams.delete(k);
+    });
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  function readSettingsFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+      room: p.get('room') || '',
+      name: p.get('name') || '',
+      stream: p.get('stream') || '',
+      w: p.get('w') || '',
+      h: p.get('h') || '',
+    };
+  }
+
+  function enterRoom(room, name, streamUrl, w, h) {
+    roomId = room || 'default';
+    userName = name || 'Anonymous';
+    targetWidth = parseInt(w) || 1920;
+    targetHeight = parseInt(h) || 1080;
+
+    // Write to URL so reload preserves settings
+    writeSettingsToUrl({
+      room: roomId,
+      name: userName,
+      stream: streamUrl || '',
+      w: String(targetWidth),
+      h: String(targetHeight),
+    });
+
+    setupScreen.classList.add('hidden');
+    mainApp.style.display = 'grid';
+    roomLabel.textContent = `room: ${roomId}`;
+
+    if (streamUrl) {
+      setupStreamEmbed(streamUrl);
+    } else {
+      streamEmbed.classList.add('hidden');
+      document.getElementById('toggle-stream').checked = false;
+    }
+
+    // Use rAF to ensure the grid layout has been computed before measuring canvas
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        initCanvas();
+        initFirebase();
+      });
+    });
+  }
+
+  // ─── Setup screen — enter button ───
+  document.getElementById('setup-go').addEventListener('click', () => {
+    const room = document.getElementById('setup-room').value.trim().replace(/[^a-zA-Z0-9_-]/g, '') || 'default';
+    const name = document.getElementById('setup-name').value.trim() || 'Anonymous';
+    const streamUrl = document.getElementById('setup-stream').value.trim();
+
+    const resSelect = document.getElementById('setup-resolution').value;
+    let w, h;
+    if (resSelect === 'custom') {
+      w = parseInt(document.getElementById('setup-res-w').value) || 1920;
+      h = parseInt(document.getElementById('setup-res-h').value) || 1080;
+    } else {
+      const parts = resSelect.split('x');
+      w = parseInt(parts[0]);
+      h = parseInt(parts[1]);
+    }
+
+    enterRoom(room, name, streamUrl, w, h);
+  });
+
+  // ─── Auto-join from URL params ───
+  (() => {
+    const saved = readSettingsFromUrl();
+    if (saved.room) {
+      // Pre-fill the setup form in case user wants to edit
+      document.getElementById('setup-room').value = saved.room;
+      document.getElementById('setup-name').value = saved.name;
+      document.getElementById('setup-stream').value = saved.stream;
+      // Set resolution dropdown
+      const resKey = `${saved.w || 1920}x${saved.h || 1080}`;
+      const resSelect = document.getElementById('setup-resolution');
+      const matchOption = Array.from(resSelect.options).find(o => o.value === resKey);
+      if (matchOption) {
+        resSelect.value = resKey;
+      } else {
+        resSelect.value = 'custom';
+        document.getElementById('custom-res-row').style.display = 'block';
+        document.getElementById('setup-res-w').value = saved.w || 1920;
+        document.getElementById('setup-res-h').value = saved.h || 1080;
+      }
+      // Auto-enter the room
+      enterRoom(saved.room, saved.name, saved.stream, saved.w, saved.h);
+    }
+  })();
+
+  // Allow Enter key in setup
+  document.querySelectorAll('#setup-screen .text-input').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('setup-go').click();
+    });
+  });
+
+  // ─── Stream embed ───
+  function setupStreamEmbed(url) {
+    let embedHtml = '';
+    if (url.includes('twitch.tv')) {
+      const channel = url.split('/').pop().split('?')[0];
+      const parent = window.location.hostname || 'localhost';
+      embedHtml = `<iframe src="https://player.twitch.tv/?channel=${channel}&parent=${parent}&muted=true&autoplay=true" allowfullscreen></iframe>`;
+    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      let videoId = '';
+      if (url.includes('v=')) videoId = url.split('v=')[1].split('&')[0];
+      else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
+      if (videoId) {
+        embedHtml = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1" allowfullscreen></iframe>`;
+      }
+    }
+    if (embedHtml) {
+      streamEmbed.innerHTML = embedHtml;
+      streamEmbed.classList.remove('hidden');
+      streamInteractBtn.style.display = '';
+      // Auto-unlock so user can click play on the embed
+      setStreamInteractive(true);
+    } else {
+      streamEmbed.classList.add('hidden');
+      streamInteractBtn.style.display = 'none';
+    }
+  }
+
+  document.getElementById('toggle-stream').addEventListener('change', (e) => {
+    streamEmbed.classList.toggle('hidden', !e.target.checked);
+    if (!e.target.checked) {
+      setStreamInteractive(false);
+      streamInteractBtn.style.display = 'none';
+    } else {
+      streamInteractBtn.style.display = '';
+    }
+  });
+
+  // ─── Canvas setup ───
+  let canvas;
+
+  function initCanvas() {
+    canvas = new fabric.Canvas('editor-canvas', {
+      backgroundColor: 'transparent',
+      selection: true,
+      preserveObjectStacking: true,
+      width: targetWidth,
+      height: targetHeight,
+    });
+
+    fitCanvasToContainer();
+    window.addEventListener('resize', fitCanvasToContainer);
+
+    // Mouse tracking — report in logical (target) coordinates
+    canvas.on('mouse:move', (opt) => {
+      const pointer = canvas.getPointer(opt.e);
+      coordDisplay.textContent = `${Math.round(pointer.x)}, ${Math.round(pointer.y)}`;
+    });
+
+    // Object events → sync to Firebase
+    canvas.on('object:modified', (e) => {
+      if (!isSyncing && e.target) syncObject(e.target);
+    });
+    canvas.on('object:added', (e) => {
+      if (!isSyncing && e.target && e.target._fromRemote !== true) {
+        if (!e.target._firebaseId) {
+          e.target._firebaseId = generateId();
+        }
+        if (!e.target._zIndex) {
+          e.target._zIndex = ++zIndexCounter;
+        }
+        // Default visibility: editor-only
+        if (!e.target._visibility) {
+          e.target._visibility = VIS_EDITOR;
+        }
+        // Store the user-set opacity separately
+        if (e.target._userOpacity === undefined) {
+          e.target._userOpacity = e.target.opacity || 1;
+        }
+        applyVisualOpacity(e.target);
+        syncObject(e.target);
+      }
+    });
+    canvas.on('object:removed', (e) => {
+      if (!isSyncing && e.target && e.target._firebaseId) {
+        removeObjectFromFirebase(e.target._firebaseId);
+      }
+    });
+
+    // Path created (freehand drawing)
+    canvas.on('path:created', (e) => {
+      if (e.path) {
+        e.path.set('fill', 'rgba(0,0,0,0)');
+        e.path._firebaseId = generateId();
+        e.path._zIndex = ++zIndexCounter;
+        e.path._visibility = VIS_EDITOR;
+        e.path._userOpacity = e.path.opacity || 1;
+        applyVisualOpacity(e.path);
+        syncObject(e.path);
+        updateObjectList();
+      }
+    });
+
+    // Selection events
+    canvas.on('selection:created', updateObjectList);
+    canvas.on('selection:updated', updateObjectList);
+    canvas.on('selection:cleared', updateObjectList);
+
+    // Shape drawing handlers
+    canvas.on('mouse:down', onMouseDown);
+    canvas.on('mouse:move', onMouseMoveShape);
+    canvas.on('mouse:up', onMouseUp);
+
+    setTool('select');
+  }
+
+  function fitCanvasToContainer() {
+    if (!canvas) return;
+    const containerRect = canvasArea.getBoundingClientRect();
+    const containerW = containerRect.width;
+    const containerH = containerRect.height;
+
+    // Calculate scale to fit target resolution inside the container with correct aspect ratio
+    const scale = Math.min(containerW / targetWidth, containerH / targetHeight);
+    const displayW = targetWidth * scale;
+    const displayH = targetHeight * scale;
+
+    // Fabric canvas stays at the logical resolution
+    canvas.setWidth(targetWidth);
+    canvas.setHeight(targetHeight);
+
+    // Use CSS to scale the canvas element to fit the container
+    const wrapper = document.getElementById('canvas-wrapper');
+    wrapper.style.width = displayW + 'px';
+    wrapper.style.height = displayH + 'px';
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = ((containerW - displayW) / 2) + 'px';
+    wrapper.style.top = ((containerH - displayH) / 2) + 'px';
+
+    // Scale the underlying canvas elements via CSS
+    const canvasEls = wrapper.querySelectorAll('canvas');
+    canvasEls.forEach(el => {
+      el.style.width = displayW + 'px';
+      el.style.height = displayH + 'px';
+    });
+
+    // Also scale the stream embed to match the canvas area
+    streamEmbed.style.width = displayW + 'px';
+    streamEmbed.style.height = displayH + 'px';
+    streamEmbed.style.left = ((containerW - displayW) / 2) + 'px';
+    streamEmbed.style.top = ((containerH - displayH) / 2) + 'px';
+
+    canvasSizeDisplay.textContent = `${targetWidth} × ${targetHeight} (${Math.round(scale * 100)}%)`;
+    canvas.renderAll();
+  }
+
+  // ─── Tool switching ───
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => setTool(btn.dataset.tool));
+  });
+
+  function setTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`.tool-btn[data-tool="${tool}"]`);
+    if (btn) btn.classList.add('active');
+
+    if (!canvas) return;
+
+    canvas.isDrawingMode = (tool === 'draw');
+    canvas.selection = (tool === 'select');
+
+    if (tool === 'draw') {
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.width = brushSize;
+      canvas.freeDrawingBrush.color = brushOpacity < 1 ? hexToRgba(currentColor, brushOpacity) : currentColor;
+      canvas.freeDrawingBrush.strokeLineCap = 'round';
+      canvas.freeDrawingBrush.strokeLineJoin = 'round';
+    }
+
+    if (tool === 'eraser') {
+      canvas.defaultCursor = 'crosshair';
+      canvas.hoverCursor = 'crosshair';
+    } else if (tool === 'text' || tool === 'image') {
+      canvas.defaultCursor = 'crosshair';
+    } else if (tool === 'select') {
+      canvas.defaultCursor = 'default';
+      canvas.hoverCursor = 'move';
+    } else if (tool === 'draw') {
+      canvas.defaultCursor = 'crosshair';
+    } else {
+      canvas.defaultCursor = 'crosshair';
+      canvas.hoverCursor = 'crosshair';
+    }
+
+    // Toggle panels
+    textOptions.style.display = (tool === 'text') ? 'block' : 'none';
+    imageOptions.style.display = (tool === 'image') ? 'block' : 'none';
+
+    // Make objects non-selectable when not in select mode
+    canvas.getObjects().forEach(obj => {
+      obj.selectable = (tool === 'select');
+      obj.evented = (tool === 'select' || tool === 'eraser');
+    });
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  }
+
+  // ─── Shape drawing ───
+  function onMouseDown(opt) {
+    if (['line', 'rect', 'circle'].includes(currentTool)) {
+      const pointer = canvas.getPointer(opt.e);
+      shapeOrigin = { x: pointer.x, y: pointer.y };
+      isDrawingShape = true;
+
+      const shapeOpts = {
+        left: pointer.x,
+        top: pointer.y,
+        stroke: currentColor,
+        strokeWidth: brushSize,
+        fill: (currentTool === 'line') ? 'transparent' : getShapeFill(),
+        opacity: brushOpacity,
+        selectable: false,
+        evented: false,
+      };
+
+      if (currentTool === 'line') {
+        activeShape = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], shapeOpts);
+      } else if (currentTool === 'rect') {
+        activeShape = new fabric.Rect({ ...shapeOpts, width: 0, height: 0 });
+      } else if (currentTool === 'circle') {
+        activeShape = new fabric.Ellipse({ ...shapeOpts, rx: 0, ry: 0 });
+      }
+
+      if (activeShape) {
+        activeShape._firebaseId = generateId();
+        activeShape._zIndex = ++zIndexCounter;
+        isSyncing = true;
+        canvas.add(activeShape);
+        isSyncing = false;
+      }
+    } else if (currentTool === 'text') {
+      const pointer = canvas.getPointer(opt.e);
+      const textVal = document.getElementById('text-content').value || 'Text';
+      const text = new fabric.IText(textVal, {
+        left: pointer.x,
+        top: pointer.y,
+        fontSize: fontSize,
+        fontFamily: fontFamily,
+        fontWeight: textBold ? 'bold' : 'normal',
+        fontStyle: textItalic ? 'italic' : 'normal',
+        fill: currentColor,
+        opacity: brushOpacity,
+        selectable: true,
+        editable: true,
+      });
+      text._firebaseId = generateId();
+      text._zIndex = ++zIndexCounter;
+      canvas.add(text);
+      canvas.setActiveObject(text);
+      setTool('select');
+      updateObjectList();
+    } else if (currentTool === 'eraser') {
+      const target = canvas.findTarget(opt.e);
+      if (target) {
+        const fbId = target._firebaseId;
+        canvas.remove(target);
+        if (fbId) removeObjectFromFirebase(fbId);
+        updateObjectList();
+      }
+    }
+  }
+
+  function onMouseMoveShape(opt) {
+    if (!isDrawingShape || !activeShape) return;
+    const pointer = canvas.getPointer(opt.e);
+
+    if (currentTool === 'line') {
+      activeShape.set({ x2: pointer.x, y2: pointer.y });
+    } else if (currentTool === 'rect') {
+      const left = Math.min(shapeOrigin.x, pointer.x);
+      const top = Math.min(shapeOrigin.y, pointer.y);
+      activeShape.set({
+        left, top,
+        width: Math.abs(pointer.x - shapeOrigin.x),
+        height: Math.abs(pointer.y - shapeOrigin.y),
+      });
+    } else if (currentTool === 'circle') {
+      const rx = Math.abs(pointer.x - shapeOrigin.x) / 2;
+      const ry = Math.abs(pointer.y - shapeOrigin.y) / 2;
+      activeShape.set({
+        left: Math.min(shapeOrigin.x, pointer.x),
+        top: Math.min(shapeOrigin.y, pointer.y),
+        rx, ry,
+      });
+    }
+    canvas.renderAll();
+  }
+
+  function onMouseUp() {
+    if (isDrawingShape && activeShape) {
+      activeShape.setCoords();
+      syncObject(activeShape);
+      updateObjectList();
+    }
+    isDrawingShape = false;
+    activeShape = null;
+  }
+
+  // ─── Image handling ───
+  const imageDropZone = document.getElementById('image-drop-zone');
+  const imageFileInput = document.getElementById('image-file');
+
+  imageDropZone.addEventListener('click', () => imageFileInput.click());
+  imageDropZone.addEventListener('dragover', (e) => { e.preventDefault(); imageDropZone.classList.add('dragging'); });
+  imageDropZone.addEventListener('dragleave', () => imageDropZone.classList.remove('dragging'));
+  imageDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    imageDropZone.classList.remove('dragging');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) addImageFromFile(file);
+  });
+
+  imageFileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) addImageFromFile(e.target.files[0]);
+  });
+
+  document.getElementById('add-image-btn').addEventListener('click', () => {
+    const url = document.getElementById('image-url').value.trim();
+    if (url) addImageFromUrl(url);
+  });
+
+  function addImageFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => addImageFromUrl(e.target.result);
+    reader.readAsDataURL(file);
+  }
+
+  function addImageFromUrl(url) {
+    fabric.Image.fromURL(url, (img) => {
+      if (!img || !img.width) {
+        alert('Failed to load image. Try a different URL or file.');
+        return;
+      }
+      // Scale to fit
+      const maxW = canvas.width * 0.4;
+      const maxH = canvas.height * 0.4;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      img.set({
+        left: canvas.width / 2 - (img.width * scale) / 2,
+        top: canvas.height / 2 - (img.height * scale) / 2,
+        scaleX: scale,
+        scaleY: scale,
+      });
+      img._firebaseId = generateId();
+      img._zIndex = ++zIndexCounter;
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      setTool('select');
+      updateObjectList();
+    }, { crossOrigin: 'anonymous' });
+  }
+
+  // ─── Keyboard shortcuts ───
+  document.addEventListener('keydown', (e) => {
+    // Don't trigger shortcuts when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.target.isContentEditable) return;
+
+    switch(e.key.toLowerCase()) {
+      case 'v': setTool('select'); break;
+      case 'b': setTool('draw'); break;
+      case 'l': setTool('line'); break;
+      case 'r': setTool('rect'); break;
+      case 'c': setTool('circle'); break;
+      case 't': setTool('text'); break;
+      case 'i': setTool('image'); break;
+      case 'e': setTool('eraser'); break;
+      case 'delete':
+      case 'backspace':
+        const active = canvas.getActiveObject();
+        if (active && document.activeElement === document.body) {
+          const fbId = active._firebaseId;
+          canvas.remove(active);
+          if (fbId) removeObjectFromFirebase(fbId);
+          updateObjectList();
+        }
+        break;
+      case 'z':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleUndo();
+        }
+        break;
+    }
+  });
+
+  // ─── Undo (simple: remove last object) ───
+  document.getElementById('btn-undo').addEventListener('click', handleUndo);
+  function handleUndo() {
+    const objects = canvas.getObjects();
+    if (objects.length > 0) {
+      const last = objects[objects.length - 1];
+      const fbId = last._firebaseId;
+      canvas.remove(last);
+      if (fbId) removeObjectFromFirebase(fbId);
+      updateObjectList();
+    }
+  }
+
+  // ─── Clear all ───
+  document.getElementById('btn-clear-all').addEventListener('click', () => {
+    if (confirm('Clear ALL objects from this room? This cannot be undone.')) {
+      canvas.clear();
+      canvas.backgroundColor = 'transparent';
+      canvas.renderAll();
+      db.ref(`rooms/${roomId}/objects`).remove();
+      updateObjectList();
+    }
+  });
+
+  // ─── OBS URL modal ───
+  document.getElementById('btn-obs-url').addEventListener('click', () => {
+    const base = window.location.href.replace('editor.html', 'overlay.html');
+    const url = `${base.split('?')[0]}?room=${encodeURIComponent(roomId)}`;
+    document.getElementById('obs-url-display').textContent = url;
+    document.getElementById('obs-modal').classList.remove('hidden');
+  });
+  document.getElementById('obs-modal-close').addEventListener('click', () => {
+    document.getElementById('obs-modal').classList.add('hidden');
+  });
+  document.getElementById('obs-url-copy').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('obs-url-display').textContent);
+    document.getElementById('obs-url-copy').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('obs-url-copy').textContent = 'Copy URL', 1500);
+  });
+
+  // ─── Visibility & opacity helpers ───
+  function applyVisualOpacity(obj) {
+    const vis = obj._visibility || VIS_EDITOR;
+    const userOp = obj._userOpacity !== undefined ? obj._userOpacity : 1;
+    if (vis === VIS_HIDDEN) {
+      obj.set('visible', false);
+    } else if (vis === VIS_EDITOR) {
+      obj.set('visible', true);
+      obj.set('opacity', userOp * masterDraftOpacity);
+    } else {
+      obj.set('visible', true);
+      obj.set('opacity', userOp);
+    }
+  }
+
+  function applyAllVisualOpacity() {
+    canvas.getObjects().forEach(obj => applyVisualOpacity(obj));
+    canvas.renderAll();
+  }
+
+  function cycleVisibility(obj) {
+    const current = obj._visibility || VIS_EDITOR;
+    const idx = VIS_CYCLE.indexOf(current);
+    obj._visibility = VIS_CYCLE[(idx + 1) % VIS_CYCLE.length];
+    applyVisualOpacity(obj);
+    canvas.renderAll();
+    syncObject(obj);
+    updateObjectList();
+  }
+
+  function getVisIcon(vis) {
+    if (vis === VIS_ALL) return '👁';
+    if (vis === VIS_EDITOR) return '✏️';
+    return '🚫';
+  }
+  function getVisClass(vis) {
+    if (vis === VIS_ALL) return 'vis-all';
+    if (vis === VIS_EDITOR) return 'vis-editor';
+    return 'vis-hidden';
+  }
+  function getVisTitle(vis) {
+    if (vis === VIS_ALL) return 'Visible to all (click to cycle)';
+    if (vis === VIS_EDITOR) return 'Editor only (click to cycle)';
+    return 'Hidden (click to cycle)';
+  }
+
+  // ─── Master draft opacity ───
+  const masterDraftSlider = document.getElementById('master-draft-opacity');
+  const masterDraftVal = document.getElementById('master-draft-opacity-val');
+  masterDraftSlider.addEventListener('input', (e) => {
+    masterDraftOpacity = parseFloat(e.target.value);
+    masterDraftVal.textContent = Math.round(masterDraftOpacity * 100) + '%';
+    applyAllVisualOpacity();
+  });
+
+  // ─── Folder management ───
+  document.getElementById('btn-new-folder').addEventListener('click', () => {
+    const name = prompt('Folder name:', `Folder ${folders.length + 1}`);
+    if (!name) return;
+    folders.push({ id: generateId(), name, collapsed: false, items: [] });
+    syncFolders();
+    updateObjectList();
+  });
+
+  document.getElementById('btn-move-to-folder').addEventListener('click', () => {
+    const active = canvas.getActiveObject();
+    if (!active || !active._firebaseId) { alert('Select a layer first'); return; }
+    if (folders.length === 0) { alert('Create a folder first'); return; }
+    const choices = folders.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+    const pick = prompt(`Move to which folder?\n${choices}\n\nEnter number (or 0 to remove from folder):`);
+    if (pick === null) return;
+    const num = parseInt(pick);
+    // Remove from all folders first
+    folders.forEach(f => { f.items = f.items.filter(id => id !== active._firebaseId); });
+    if (num > 0 && num <= folders.length) {
+      folders[num - 1].items.push(active._firebaseId);
+    }
+    syncFolders();
+    updateObjectList();
+  });
+
+  function syncFolders() {
+    if (!roomRef) return;
+    db.ref(`rooms/${roomId}/folders`).set(folders);
+  }
+
+  function getObjInfo(obj) {
+    let icon = '◽';
+    let name = 'Object';
+    if (obj.type === 'path') { icon = '✏️'; name = 'Drawing'; }
+    else if (obj.type === 'rect') { icon = '⬜'; name = 'Rectangle'; }
+    else if (obj.type === 'ellipse') { icon = '⭕'; name = 'Ellipse'; }
+    else if (obj.type === 'line') { icon = '📏'; name = 'Line'; }
+    else if (obj.type === 'i-text' || obj.type === 'text') { icon = '📝'; name = obj.text?.substring(0, 14) || 'Text'; }
+    else if (obj.type === 'image') { icon = '🖼'; name = 'Image'; }
+    return { icon, name };
+  }
+
+  // ─── Build layer item DOM ───
+  function buildLayerItem(obj) {
+    const { icon, name } = getObjInfo(obj);
+    const vis = obj._visibility || VIS_EDITOR;
+    const userOp = obj._userOpacity !== undefined ? obj._userOpacity : 1;
+    const active = canvas.getActiveObject();
+    const isSelected = obj === active;
+
+    const div = document.createElement('div');
+    div.className = 'layer-item' + (isSelected ? ' selected' : '') + (vis === VIS_EDITOR ? ' editor-only' : '') + (vis === VIS_HIDDEN ? ' hidden-all' : '');
+
+    div.innerHTML = `
+      <button class="layer-vis-btn ${getVisClass(vis)}" title="${getVisTitle(vis)}">${getVisIcon(vis)}</button>
+      <span class="layer-icon">${icon}</span>
+      <span class="layer-name">${name}</span>
+      <input type="range" class="layer-opacity-slider" min="0.05" max="1" step="0.05" value="${userOp}" title="Layer opacity: ${Math.round(userOp * 100)}%">
+      <button class="layer-delete-btn" title="Delete">✕</button>
+    `;
+
+    // Visibility toggle
+    div.querySelector('.layer-vis-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleVisibility(obj);
+    });
+
+    // Opacity slider — stop ALL events from propagating to prevent parent click/rebuild
+    const slider = div.querySelector('.layer-opacity-slider');
+    let sliderDebounce = null;
+    ['mousedown', 'pointerdown', 'touchstart', 'click'].forEach(evt => {
+      slider.addEventListener(evt, (e) => e.stopPropagation());
+    });
+    slider.addEventListener('input', (e) => {
+      e.stopPropagation();
+      obj._userOpacity = parseFloat(e.target.value);
+      e.target.title = `Layer opacity: ${Math.round(obj._userOpacity * 100)}%`;
+      applyVisualOpacity(obj);
+      canvas.renderAll();
+      // Debounce the Firebase sync to avoid DOM rebuild during drag
+      clearTimeout(sliderDebounce);
+      sliderDebounce = setTimeout(() => syncObject(obj), 300);
+    });
+    slider.addEventListener('change', (e) => {
+      e.stopPropagation();
+      // Final sync on release
+      clearTimeout(sliderDebounce);
+      syncObject(obj);
+    });
+
+    // Delete
+    div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const fbId = obj._firebaseId;
+      canvas.remove(obj);
+      if (fbId) {
+        removeObjectFromFirebase(fbId);
+        folders.forEach(f => { f.items = f.items.filter(id => id !== fbId); });
+        syncFolders();
+      }
+      updateObjectList();
+    });
+
+    // Select
+    div.addEventListener('click', () => {
+      canvas.setActiveObject(obj);
+      canvas.renderAll();
+      updateObjectList();
+    });
+
+    // Hover tooltip — show creator after delay
+    div.addEventListener('mouseenter', (e) => {
+      const creator = obj._createdBy || 'Unknown';
+      showLayerTooltip(e, `Created by: ${creator}`);
+    });
+    div.addEventListener('mousemove', (e) => {
+      if (layerTooltipEl && layerTooltipEl.style.display === 'block') {
+        layerTooltipEl.style.left = (e.clientX + 12) + 'px';
+        layerTooltipEl.style.top = (e.clientY - 8) + 'px';
+      }
+    });
+    div.addEventListener('mouseleave', hideLayerTooltip);
+
+    return div;
+  }
+
+  // ─── Layers panel rebuild ───
+  function updateObjectList() {
+    const objects = canvas.getObjects();
+    objectCountDisplay.textContent = `${objects.length} object${objects.length !== 1 ? 's' : ''}`;
+
+    if (objects.length === 0 && folders.length === 0) {
+      layerListEl.innerHTML = '<div style="color:var(--text-muted); font-style:italic; font-size:11px; padding:8px;">No layers yet</div>';
+      return;
+    }
+
+    layerListEl.innerHTML = '';
+
+    // Track which objects are in folders
+    const inFolder = new Set();
+    folders.forEach(f => f.items.forEach(id => inFolder.add(id)));
+
+    // Render folders
+    folders.forEach((folder) => {
+      const folderDiv = document.createElement('div');
+      folderDiv.className = 'layer-folder';
+
+      const header = document.createElement('div');
+      header.className = 'layer-folder-header';
+      header.innerHTML = `
+        <span class="folder-arrow ${folder.collapsed ? 'collapsed' : ''}">▼</span>
+        <span class="folder-icon">📁</span>
+        <span class="folder-name">${folder.name}</span>
+        <button class="layer-delete-btn" title="Delete folder">✕</button>
+      `;
+
+      header.querySelector('.folder-arrow').addEventListener('click', (e) => {
+        e.stopPropagation();
+        folder.collapsed = !folder.collapsed;
+        syncFolders();
+        updateObjectList();
+      });
+      header.querySelector('.folder-name').addEventListener('click', (e) => {
+        e.stopPropagation();
+        folder.collapsed = !folder.collapsed;
+        syncFolders();
+        updateObjectList();
+      });
+
+      header.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete folder "${folder.name}"? (layers inside won't be deleted)`)) {
+          folders = folders.filter(f => f.id !== folder.id);
+          syncFolders();
+          updateObjectList();
+        }
+      });
+
+      folderDiv.appendChild(header);
+
+      const childrenDiv = document.createElement('div');
+      childrenDiv.className = 'layer-folder-children' + (folder.collapsed ? ' collapsed' : '');
+
+      folder.items.forEach(fbId => {
+        const obj = objects.find(o => o._firebaseId === fbId);
+        if (obj) {
+          childrenDiv.appendChild(buildLayerItem(obj));
+        }
+      });
+
+      folderDiv.appendChild(childrenDiv);
+      layerListEl.appendChild(folderDiv);
+    });
+
+    // Render un-foldered objects
+    objects.forEach((obj) => {
+      if (!obj._firebaseId || inFolder.has(obj._firebaseId)) return;
+      layerListEl.appendChild(buildLayerItem(obj));
+    });
+  }
+
+  // ═══════════════════════════════════════════
+  // FIREBASE SYNC
+  // ═══════════════════════════════════════════
+
+  let roomRef;
+  let presenceRef;
+
+  function initFirebase() {
+    roomRef = db.ref(`rooms/${roomId}/objects`);
+
+    // Write canvas resolution so the overlay knows the coordinate system
+    db.ref(`rooms/${roomId}/canvasSize`).set({
+      width: targetWidth,
+      height: targetHeight,
+    });
+
+    // Presence
+    presenceRef = db.ref(`rooms/${roomId}/presence/${generateId()}`);
+    presenceRef.set({ name: userName, joined: firebase.database.ServerValue.TIMESTAMP });
+    presenceRef.onDisconnect().remove();
+
+    // Track user count + user list
+    let connectedUsers = [];
+    db.ref(`rooms/${roomId}/presence`).on('value', (snap) => {
+      const count = snap.numChildren();
+      document.getElementById('user-count').textContent = `${count} user${count !== 1 ? 's' : ''}`;
+      connectedUsers = [];
+      snap.forEach((child) => {
+        const u = child.val();
+        if (u && u.name) connectedUsers.push(u.name);
+      });
+      // Update popup if visible
+      const items = document.getElementById('user-list-items');
+      items.innerHTML = '';
+      connectedUsers.forEach(name => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="user-dot"></span>${name}`;
+        items.appendChild(li);
+      });
+    });
+
+    // Listen for remote changes
+    roomRef.on('child_added', onRemoteAdd);
+    roomRef.on('child_changed', onRemoteChange);
+    roomRef.on('child_removed', onRemoteRemove);
+
+    // Listen for folder changes
+    db.ref(`rooms/${roomId}/folders`).on('value', (snap) => {
+      const data = snap.val();
+      if (data) {
+        // Firebase may store arrays as objects with numeric keys
+        folders = Array.isArray(data) ? data : Object.values(data);
+        // Ensure items arrays exist
+        folders.forEach(f => {
+          if (!f.items) f.items = [];
+          else if (!Array.isArray(f.items)) f.items = Object.values(f.items);
+        });
+        updateObjectList();
+      }
+    });
+
+    connDot.classList.remove('disconnected');
+
+    // Track connection state
+    db.ref('.info/connected').on('value', (snap) => {
+      connDot.classList.toggle('disconnected', !snap.val());
+    });
+  }
+
+  function onRemoteAdd(snap) {
+    const data = snap.val();
+    if (!data || !data.fabricData) return;
+    const key = snap.key;
+
+    const existing = canvas.getObjects().find(o => o._firebaseId === key);
+    if (existing) return;
+
+    isSyncing = true;
+    fabric.util.enlivenObjects([data.fabricData], (objects) => {
+      objects.forEach(obj => {
+        obj._firebaseId = key;
+        obj._zIndex = data.zIndex || 0;
+        obj._visibility = data.visibility || VIS_EDITOR;
+        obj._userOpacity = data.userOpacity !== undefined ? data.userOpacity : (obj.opacity || 1);
+        obj._createdBy = data.createdBy || '';
+        obj._fromRemote = true;
+        obj.selectable = (currentTool === 'select');
+        obj.evented = (currentTool === 'select' || currentTool === 'eraser');
+        if (obj.type === 'path') {
+          const f = obj.fill;
+          if (!f || f === '#000000' || f === 'black' || f === 'rgb(0,0,0)' || f === '') {
+            obj.set('fill', 'rgba(0,0,0,0)');
+          }
+        }
+        applyVisualOpacity(obj);
+        canvas.add(obj);
+        delete obj._fromRemote;
+      });
+      canvas.renderAll();
+      updateObjectList();
+      isSyncing = false;
+    });
+  }
+
+  function onRemoteChange(snap) {
+    const data = snap.val();
+    if (!data || !data.fabricData) return;
+    const key = snap.key;
+
+    const existing = canvas.getObjects().find(o => o._firebaseId === key);
+    if (!existing) return;
+
+    isSyncing = true;
+    const wasActive = canvas.getActiveObject() === existing;
+    canvas.remove(existing);
+
+    fabric.util.enlivenObjects([data.fabricData], (objects) => {
+      objects.forEach(obj => {
+        obj._firebaseId = key;
+        obj._zIndex = data.zIndex || 0;
+        obj._visibility = data.visibility || VIS_EDITOR;
+        obj._userOpacity = data.userOpacity !== undefined ? data.userOpacity : (obj.opacity || 1);
+        obj._createdBy = data.createdBy || '';
+        obj._fromRemote = true;
+        obj.selectable = (currentTool === 'select');
+        obj.evented = (currentTool === 'select' || currentTool === 'eraser');
+        if (obj.type === 'path') {
+          const f = obj.fill;
+          if (!f || f === '#000000' || f === 'black' || f === 'rgb(0,0,0)' || f === '') {
+            obj.set('fill', 'rgba(0,0,0,0)');
+          }
+        }
+        applyVisualOpacity(obj);
+        canvas.add(obj);
+        if (wasActive) canvas.setActiveObject(obj);
+        delete obj._fromRemote;
+      });
+      canvas.renderAll();
+      updateObjectList();
+      isSyncing = false;
+    });
+  }
+
+  function onRemoteRemove(snap) {
+    const key = snap.key;
+    const existing = canvas.getObjects().find(o => o._firebaseId === key);
+    if (existing) {
+      isSyncing = true;
+      canvas.remove(existing);
+      canvas.renderAll();
+      updateObjectList();
+      isSyncing = false;
+    }
+  }
+
+  function syncObject(obj) {
+    if (!roomRef || !obj._firebaseId) return;
+    const data = obj.toObject(['_firebaseId']);
+    delete data._firebaseId;
+    if (data.type === 'path' && (!data.fill || data.fill === '' || data.fill === 'black' || data.fill === '#000000')) {
+      data.fill = 'rgba(0,0,0,0)';
+    }
+    data.opacity = obj._userOpacity !== undefined ? obj._userOpacity : (obj.opacity || 1);
+    // Track creator — only set on first creation, preserve existing
+    if (!obj._createdBy) obj._createdBy = userName;
+    roomRef.child(obj._firebaseId).set({
+      fabricData: data,
+      zIndex: obj._zIndex || 0,
+      visibility: obj._visibility || VIS_EDITOR,
+      userOpacity: obj._userOpacity !== undefined ? obj._userOpacity : 1,
+      createdBy: obj._createdBy,
+      updatedBy: userName,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+    });
+  }
+
+  function removeObjectFromFirebase(firebaseId) {
+    if (!roomRef) return;
+    roomRef.child(firebaseId).remove();
+  }
+
+  // ─── User list popup ───
+  const userCountEl = document.getElementById('user-count');
+  const userListPopup = document.getElementById('user-list-popup');
+
+  userCountEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    userListPopup.classList.toggle('hidden');
+  });
+  document.addEventListener('click', () => {
+    userListPopup.classList.add('hidden');
+  });
+  userListPopup.addEventListener('click', (e) => e.stopPropagation());
+
+  // ─── Layer creator tooltip ───
+  let layerTooltipEl = null;
+  let layerTooltipTimer = null;
+
+  function showLayerTooltip(e, text) {
+    clearTimeout(layerTooltipTimer);
+    layerTooltipTimer = setTimeout(() => {
+      if (!layerTooltipEl) {
+        layerTooltipEl = document.createElement('div');
+        layerTooltipEl.className = 'layer-tooltip';
+        document.body.appendChild(layerTooltipEl);
+      }
+      layerTooltipEl.textContent = text;
+      layerTooltipEl.style.left = (e.clientX + 12) + 'px';
+      layerTooltipEl.style.top = (e.clientY - 8) + 'px';
+      layerTooltipEl.style.display = 'block';
+    }, 800);
+  }
+
+  function hideLayerTooltip() {
+    clearTimeout(layerTooltipTimer);
+    if (layerTooltipEl) layerTooltipEl.style.display = 'none';
+  }
+
+  // ─── Utilities ───
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+  }
+
+  function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+})();
+</script>
+</body>
+</html>
