@@ -321,12 +321,13 @@
         </div>
     </div>
 
-    <div class="relative z-[100] flex flex-col transition-all duration-500 ease-in-out"
+    <div class="relative z-[100] flex flex-col transition-all duration-500 ease-in-out overflow-hidden"
          x-ref="headerContainer"
          :style="headerVisible ? 'margin-top: 0px;' : `margin-top: -${$refs.headerContent?.offsetHeight || 100}px;`"
          :class="headerVisible ? '' : 'pointer-events-none'">
         
         <div x-ref="headerContent" class="bg-theme-card border-b border-theme relative z-20 p-4 transition-colors duration-300 shadow-2xl">
+
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap gap-4 items-center justify-between">
                     <div class="flex items-center gap-4">
@@ -367,21 +368,13 @@
                         </div>
                     </div>
                     
-                    <!-- Play buttons -->
-                    <div class="flex items-center gap-1" style="display: none;">
-                        <button @click="playTab()"
-                                class="flex items-center gap-1.5 bg-theme-element border border-theme hover:border-green-500/50 hover:bg-green-600/10 text-theme-muted hover:text-green-400 transition-all px-2.5 py-1.5 rounded-lg text-xs font-bold"
-                                title="Play all streams on this tab">
-                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                            Tab
-                        </button>
-                        <button @click="playAll()"
-                                class="flex items-center gap-1.5 bg-theme-element border border-theme hover:border-green-500/50 hover:bg-green-600/10 text-theme-muted hover:text-green-400 transition-all px-2.5 py-1.5 rounded-lg text-xs font-bold"
-                                title="Play all streams across all tabs">
-                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                            All
-                        </button>
-                    </div>
+                    <!-- Play button -->
+                    <button @click="playTab()"
+                            class="flex items-center gap-1.5 bg-theme-element border border-theme hover:border-green-500/50 hover:bg-green-600/10 text-theme-muted hover:text-green-400 transition-all px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                            title="Play all streams on this tab">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Play
+                    </button>
 
                     <nav class="flex items-center gap-1 p-1 rounded-xl border border-transparent transition-colors" style="background-color: var(--nav-bg); border-color: var(--border-color);">
                         <template x-for="tab in tabs" :key="tab.id">
@@ -525,20 +518,20 @@
                 </div>
             </div>
         </div>
-        
-        <div class="flex justify-center -mt-[1px] relative z-10 h-0 pointer-events-none">
-            <button @click.stop="headerVisible = !headerVisible; $nextTick(() => updateLayout())" 
-                    class="bg-theme-card border-x border-b border-theme px-10 py-1 rounded-b-xl group hover-bg-theme transition-colors shadow-lg pointer-events-auto"
-                    :class="headerVisible ? '' : 'pointer-events-auto'">
-                <div class="w-12 h-1 bg-zinc-600 group-hover:bg-[#f95a1f] rounded-full mb-0.5 transition-colors"></div>
-            </button>
-        </div>
+    </div>
+
+    <!-- Hide/show header toggle — outside overflow-hidden container so it isn't clipped -->
+    <div class="hide-tab-button flex justify-center relative z-[99] h-0 pointer-events-none -mt-[1px]">
+        <button @click.stop="headerVisible = !headerVisible; $nextTick(() => updateLayout())"
+                class="bg-theme-card border-x border-b border-theme px-10 py-1 rounded-b-xl group hover-bg-theme transition-colors shadow-lg pointer-events-auto">
+            <div class="w-12 h-1 bg-zinc-600 group-hover:bg-[#f95a1f] rounded-full mb-0.5 transition-colors"></div>
+        </button>
     </div>
 
     <div class="flex-1 flex overflow-hidden relative w-full">
         
         <main class="flex-1 bg-black flex flex-col relative overflow-hidden">
-            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 pr-4 w-full h-full">
+            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full" :style="chatOpen ? 'padding-right: 36px' : 'padding-right: 36px'">
                 
                 <div x-show="getActiveTab()?.focusId"
                      class="resizer-handle"
@@ -641,10 +634,10 @@
             </div>
         </main>
 
-        <!-- Chat panel toggle — sibling of aside so overflow-hidden on aside doesn't clip it -->
-        <div class="relative z-40 flex-shrink-0 w-0 self-stretch">
+        <!-- Chat panel toggle — positioned at the left edge of the aside, not bleeding into grid -->
+        <div class="chat-toggle-wrapper relative z-40 flex-shrink-0 w-0 self-stretch pointer-events-none">
             <button @click="chatOpen = !chatOpen; $nextTick(() => updateLayout())" 
-                    class="absolute -left-[24px] top-1/2 -translate-y-1/2 bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg">
+                    class="pointer-events-auto absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg">
                 <div class="icon-container w-4 h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
             </button>
         </div>
@@ -816,49 +809,47 @@
                 },
 
                 async playStreams(streams) {
-                    // Twitch's embed has an occlusion rule: it will not start playing if any
-                    // element is visually covering the player iframe. Overlay titles sit on top
-                    // of the iframe, so we must hide them, trigger play, then restore them.
-                    const wasOverlay = this.showTitles && this.titleMode === 'overlay';
-                    if (wasOverlay) this.titleMode = '__hidden__'; // temporarily suppress overlay
+                    // Twitch uses document.elementFromPoint() at the iframe center to detect
+                    // occlusion. Any element whose bounding box covers that point blocks play(),
+                    // regardless of pointer-events. We must make all structural overlays
+                    // invisible (not just lower z-index) before calling play().
 
-                    // Allow the DOM to update (titles hidden) before calling play
-                    await this.$nextTick();
+                    const wasOverlay = this.showTitles && this.titleMode === 'overlay';
+                    if (wasOverlay) this.titleMode = '__hidden__';
+
+                    // Collect every structural element that could sit above an iframe
+                    const headerEl   = this.$refs.headerContainer;
+                    const hideTabEl  = document.querySelector('.hide-tab-button');
+                    const chatToggleEl = document.querySelector('.chat-toggle-wrapper');
+                    const asideEl    = document.querySelector('aside');
+
+                    // Temporarily make them invisible to elementFromPoint
+                    const hidden = [headerEl, hideTabEl, chatToggleEl, asideEl].filter(Boolean);
+                    hidden.forEach(el => el.style.visibility = 'hidden');
+
+                    // Two rAF frames = guaranteed browser repaint before Twitch's check fires
+                    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
                     streams.forEach(s => {
                         if (s.type === 't') {
                             const p = window.twitchPlayers[s.id];
-                            if (p) {
-                                s.muted = false;
-                                p.setMuted(false);
-                                p.setVolume(1.0);
-                                try { p.play(); } catch(e) {}
-                            }
+                            if (p) try { p.play(); } catch(e) {}
                         } else if (s.type === 'y') {
-                            s.muted = false;
                             const f = document.getElementById('iframe-' + s.id);
-                            if (f && f.contentWindow) {
-                                f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute',    args: [] }), '*');
+                            if (f && f.contentWindow)
                                 f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
-                            }
                         }
                     });
 
-                    this.updateUrl();
-
-                    // Restore overlay titles after a short delay to ensure play() has fired
-                    if (wasOverlay) {
-                        setTimeout(() => { this.titleMode = 'overlay'; }, 600);
-                    }
+                    // Restore everything after play() has registered
+                    setTimeout(() => {
+                        hidden.forEach(el => el.style.visibility = '');
+                        if (wasOverlay) this.titleMode = 'overlay';
+                    }, 800);
                 },
 
                 playTab() {
                     const streams = this.allStreams.filter(s => s.tabId === this.activeTabId && !s.hidden);
-                    this.playStreams(streams);
-                },
-
-                playAll() {
-                    const streams = this.allStreams.filter(s => !s.hidden);
                     this.playStreams(streams);
                 },
 
@@ -1135,9 +1126,18 @@
                 
                 toggleFocus(id) { 
                     const t = this.getActiveTab(); 
-                    t.focusId = (t.focusId === id) ? null : id; 
-                    // Auto-switch chat on focus
-                    if (t.focusId) {
+                    if (t.focusId === id) {
+                        // Exiting focus — restore saved title placement
+                        t.focusId = null;
+                        if (this._preFocusPlacement !== undefined) {
+                            this.titlePlacement = this._preFocusPlacement;
+                            delete this._preFocusPlacement;
+                        }
+                    } else {
+                        // Entering focus — save current placement and force top
+                        this._preFocusPlacement = this.titlePlacement;
+                        this.titlePlacement = 'top';
+                        t.focusId = id;
                         this.activeChatStreamId = id;
                     }
                     this.updateLayout(); 
