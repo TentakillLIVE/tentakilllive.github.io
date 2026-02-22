@@ -202,7 +202,7 @@
                     <ul class="text-theme-muted text-sm space-y-2 list-disc list-inside">
                         <li><strong>Rename Tabs:</strong> Double-click any tab name to rename it (e.g., "FPS Games", "Music").</li>
                         <li><strong>Rename Streams:</strong> Click the pencil icon (<svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>) on any stream chip to give it a custom label.</li>
-                        <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all.</li>
+                        <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all, <code class="bg-black/40 px-1 rounded">1</code>–<code class="bg-black/40 px-1 rounded">9</code> to jump directly to a tab.</li>
                     </ul>
                 </div>
                 <div class="w-full h-px bg-[var(--border-color)]"></div>
@@ -634,6 +634,9 @@
                         this.navigateTabs(1);  // Go Right
                     } else if (key === 'm') {
                         this.muteAll();        // Mute All
+                    } else if (e.code >= 'Digit1' && e.code <= 'Digit9') {
+                        const idx = parseInt(e.code.replace('Digit', '')) - 1;
+                        if (idx < this.tabs.length) this.switchTab(this.tabs[idx].id);
                     }
                 },
 
@@ -839,11 +842,17 @@
                             if (totalArea > bestScore) { bestScore = totalArea; bestLayout = { cols: c, rows: r, w: cellW, h: cellH }; }
                         }
                         const cols = bestLayout.cols; const w = bestLayout.w; const h = bestLayout.h;
+                        const rows = bestLayout.rows;
                         const sorted = activeStreams.slice().sort((a, b) => a.vIdx - b.vIdx);
+                        const lastRowCount = count - (cols * (rows - 1)); // tiles on the final row
+                        const lastRowOffset = ((cols - lastRowCount) * w) / 2; // centre them
                         sorted.forEach((s, i) => {
                             if (this.draggedId === s.id && this.dragType === 'tile') return;
-                            const x = ((i % cols) * w) + 12;
-                            const y = (Math.floor(i / cols) * h) + 12;
+                            const row = Math.floor(i / cols);
+                            const col = i % cols;
+                            const isLastRow = row === rows - 1;
+                            const x = (col * w) + (isLastRow ? lastRowOffset : 0) + 12;
+                            const y = (row * h) + 12;
                             s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - 8}px; height: ${h - 8}px; opacity: 1;`;
                         });
                     }
