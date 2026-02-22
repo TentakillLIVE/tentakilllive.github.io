@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — EightEyes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:      #09090b;
+            --card:    #18181b;
+            --element: #27272a;
+            --border:  #27272a;
+            --text:    #f4f4f5;
+            --muted:   #a1a1aa;
+            --accent:  #f95a1f;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 300;
+            line-height: 1.7;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        /* ── Animated noise grain overlay ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Accent glow blob ── */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(249,90,31,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 80px 32px 120px;
+        }
+
+        /* ── Header ── */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            margin-bottom: 56px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--accent); }
+        .back-link svg { width: 14px; height: 14px; }
+
+        .logo {
+            font-family: 'Bungee', sans-serif;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo-dot {
+            width: 7px; height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.8); }
+        }
+        .logo span { color: var(--accent); }
+
+        h1 {
+            font-family: 'Bungee', sans-serif;
+            font-size: clamp(36px, 7vw, 56px);
+            line-height: 1.05;
+            letter-spacing: -0.01em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        h1 em {
+            font-style: normal;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 15px;
+            margin-bottom: 56px;
+            font-weight: 300;
+        }
+
+        /* ── Divider ── */
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, var(--accent), transparent);
+            margin-bottom: 56px;
+            opacity: 0.4;
+        }
+
+        /* ── Sections ── */
+        .section {
+            margin-bottom: 48px;
+            animation: fadeUp 0.5s ease both;
+        }
+        .section:nth-child(1) { animation-delay: 0.05s; }
+        .section:nth-child(2) { animation-delay: 0.10s; }
+        .section:nth-child(3) { animation-delay: 0.15s; }
+        .section:nth-child(4) { animation-delay: 0.20s; }
+        .section:nth-child(5) { animation-delay: 0.25s; }
+        .section:nth-child(6) { animation-delay: 0.30s; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-label {
+            font-family: 'Bungee', sans-serif;
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        p {
+            color: var(--muted);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        p:last-child { margin-bottom: 0; }
+
+        strong {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* ── Callout cards ── */
+        .callout {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 16px;
+        }
+        .callout.accent {
+            background: rgba(249,90,31,0.06);
+            border-color: rgba(249,90,31,0.25);
+        }
+        .callout p { font-size: 14px; }
+
+        .callout-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .callout-row:last-child { margin-bottom: 0; }
+        .callout-icon {
+            width: 32px; height: 32px;
+            background: rgba(249,90,31,0.1);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            color: var(--accent);
+        }
+        .callout-icon svg { width: 15px; height: 15px; }
+        .callout-text strong { display: block; font-size: 13px; margin-bottom: 2px; }
+        .callout-text span { color: var(--muted); font-size: 13px; }
+
+        /* ── Footer ── */
+        footer {
+            margin-top: 80px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: gap;
+            gap: 12px;
+        }
+        footer p {
+            font-size: 12px;
+            color: var(--element);
+            margin: 0;
+        }
+        footer a {
+            font-size: 12px;
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        footer a:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="page">
+
+        <a href="javascript:history.back()" class="back-link" onclick="window.close(); return false;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Back
+        </a>
+
+        <div class="logo">
+            <div class="logo-dot"></div>
+            Eight<span>Eyes</span>
+        </div>
+
+        <h1>Privacy<br><em>Policy</em></h1>
+        <p class="subtitle">Short version: we don't want your data, we don't collect your data.</p>
+
+        <div class="divider"></div>
+
+        <div class="section">
+            <div class="section-label">The short version</div>
+            <h2>We collect nothing.</h2>
+            <p>EightEyes does not collect, store, transmit, or process any personal data. We have no servers receiving your information, no databases storing your activity, and no interest whatsoever in knowing who you are or how you use this site.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Your preferences</div>
+            <h2>Everything stays on your machine.</h2>
+            <p>Your layout preferences, stream tabs, and theme choice are saved using your browser's local storage. This data <strong>never leaves your device</strong> — it is not transmitted to us or anyone else. You can clear it at any time through your browser settings.</p>
+            <div class="callout">
+                <div class="callout-row">
+                    <div class="callout-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                    <div class="callout-text">
+                        <strong>Stored locally</strong>
+                        <span>Theme, tabs, stream URLs and labels live in your browser's localStorage — on your computer, under your control.</span>
+                    </div>
+                </div>
+                <div class="callout-row">
+                    <div class="callout-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></div>
+                    <div class="callout-text">
+                        <strong>Delete anytime</strong>
+                        <span>Clear your browser's site data for this page and everything EightEyes has stored is gone immediately.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Analytics</div>
+            <h2>We don't track usage.</h2>
+            <p>There are no analytics scripts, no tracking pixels, no session recording tools, and no third-party monitoring services embedded in EightEyes. We genuinely do not care how many people use this site, where they come from, or what they do with it.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Third-party embeds</div>
+            <h2>Twitch and YouTube have their own policies.</h2>
+            <p>EightEyes embeds streams from Twitch and YouTube using their official embed players. Once those players load, you are subject to <strong>their</strong> respective privacy policies. We have no control over what Twitch or YouTube collect within their embeds, and that data never passes through us.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-label">The extension</div>
+            <h2>The Turbo Helper extension is also fully local.</h2>
+            <p>The optional EightEyes Turbo Helper browser extension reads your Twitch authentication token directly from your browser's cookie store. That token is only ever used to authenticate requests going directly to Twitch's own servers — it is never sent to us, logged, or stored anywhere outside your browser.</p>
+        </div>
+
+        <div class="section">
+            <div class="callout accent">
+                <div class="callout-row">
+                    <div class="callout-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                    <div class="callout-text">
+                        <strong>The bottom line</strong>
+                        <span>We built EightEyes to watch streams, not to harvest data. Your privacy is not a feature — it's simply a consequence of how this site is built.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>EightEyes &mdash; Privacy Policy</p>
+            <a href="javascript:history.back()" onclick="window.close(); return false;">← Back to EightEyes</a>
+        </footer>
+
+    </div>
+</body>
+</html>

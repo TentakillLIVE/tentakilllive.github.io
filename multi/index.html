@@ -200,6 +200,7 @@
                         Customization Tips
                     </h3>
                     <ul class="text-theme-muted text-sm space-y-2 list-disc list-inside">
+                        <li><strong>Settings:</strong> Click the gear icon (⚙) in the toolbar to open the Settings panel. Adjust theme, stream title visibility, style, placement, and size from there.</li>
                         <li><strong>Rename Tabs:</strong> Double-click any tab name to rename it (e.g., "FPS Games", "Music").</li>
                         <li><strong>Rename Streams:</strong> Click the pencil icon (<svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>) on any stream chip to give it a custom label.</li>
                         <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all, <code class="bg-black/40 px-1 rounded">1</code>–<code class="bg-black/40 px-1 rounded">9</code> to jump directly to a tab.</li>
@@ -314,12 +315,16 @@
             </div>
 
             <button @click="showHelp = false" class="mt-8 w-full bg-theme-element hover-bg-theme py-3 rounded-lg font-bold transition-colors">Close</button>
+            <div class="mt-3 text-center">
+                <a href="privacy.html" target="_blank" class="text-xs text-theme-muted hover:text-[#f95a1f] transition-colors">Privacy Policy</a>
+            </div>
         </div>
     </div>
 
     <div class="relative z-[100] flex flex-col transition-all duration-500 ease-in-out"
          x-ref="headerContainer"
-         :style="headerVisible ? 'margin-top: 0px;' : `margin-top: -${$refs.headerContent?.offsetHeight || 100}px;`">
+         :style="headerVisible ? 'margin-top: 0px;' : `margin-top: -${$refs.headerContent?.offsetHeight || 100}px;`"
+         :class="headerVisible ? '' : 'pointer-events-none'">
         
         <div x-ref="headerContent" class="bg-theme-card border-b border-theme relative z-20 p-4 transition-colors duration-300 shadow-2xl">
             <div class="flex flex-col gap-4">
@@ -349,26 +354,35 @@
                                 <div class="icon-container w-5 h-5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
                             </button>
 
-                            <!-- Stream Titles Toggle + Size Slider -->
-                            <div class="flex items-center">
-                                <button @click="showTitles = !showTitles" 
-                                        class="text-theme-muted hover:text-theme-main transition-colors p-1 rounded" 
-                                        :class="showTitles ? 'text-[#f95a1f]' : ''" 
-                                        title="Toggle Stream Titles">
-                                    <div class="icon-container w-5 h-5">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
-                                        </svg>
-                                    </div>
-                                </button>
-                                <div class="title-slider-wrap" :class="showTitles ? 'visible' : ''">
-                                    <input type="range" min="9" max="48" x-model="titleSize" class="title-range" title="Title Size">
-                                    <span class="text-theme-muted text-[10px] font-mono w-5 text-right select-none" x-text="titleSize + 'px'"></span>
+                            <button @click="showSettings = !showSettings" 
+                                    class="text-theme-muted hover:text-theme-main transition-colors p-1 rounded"
+                                    :class="showSettings ? 'text-[#f95a1f]' : ''"
+                                    title="Settings">
+                                <div class="icon-container w-5 h-5">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                    </svg>
                                 </div>
-                            </div>
+                            </button>
                         </div>
                     </div>
                     
+                    <!-- Play buttons -->
+                    <div class="flex items-center gap-1" style="display: none;">
+                        <button @click="playTab()"
+                                class="flex items-center gap-1.5 bg-theme-element border border-theme hover:border-green-500/50 hover:bg-green-600/10 text-theme-muted hover:text-green-400 transition-all px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                                title="Play all streams on this tab">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Tab
+                        </button>
+                        <button @click="playAll()"
+                                class="flex items-center gap-1.5 bg-theme-element border border-theme hover:border-green-500/50 hover:bg-green-600/10 text-theme-muted hover:text-green-400 transition-all px-2.5 py-1.5 rounded-lg text-xs font-bold"
+                                title="Play all streams across all tabs">
+                            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            All
+                        </button>
+                    </div>
+
                     <nav class="flex items-center gap-1 p-1 rounded-xl border border-transparent transition-colors" style="background-color: var(--nav-bg); border-color: var(--border-color);">
                         <template x-for="tab in tabs" :key="tab.id">
                             <div class="group flex items-center rounded-lg mr-1 last:mr-0 border border-transparent transition-all"
@@ -395,6 +409,72 @@
                     <div class="flex max-w-sm gap-2">
                         <input type="text" x-model="newUrl" @keydown.enter="addStream()" @paste="$nextTick(() => addStream())" @click.stop placeholder="URL..." class="bg-theme-element border-theme px-4 py-2 rounded-lg outline-none text-sm text-theme-main focus:ring-1 focus:ring-[#f95a1f]">
                         <button @click.stop="addStream()" class="bg-[#f95a1f] text-white hover:brightness-110 px-6 py-2 rounded-lg font-medium text-sm transition-all">Add</button>
+                    </div>
+                </div>
+
+                <!-- Settings Panel -->
+                <div x-show="showSettings" x-collapse class="border-t border-theme pt-3" x-cloak>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+
+                        <!-- Theme -->
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Theme</div>
+                            <div class="flex gap-1.5">
+                                <template x-for="t in ['dark','light','catppuccin']" :key="t">
+                                    <button @click="theme = t; localStorage.setItem('theme', t)"
+                                            class="flex-1 py-1.5 rounded-lg text-xs font-bold capitalize transition-all border"
+                                            :class="theme === t ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">
+                                        <span x-text="t === 'catppuccin' ? 'Catppuccin' : t.charAt(0).toUpperCase() + t.slice(1)"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Titles toggle -->
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Stream Titles</div>
+                            <div class="flex gap-1.5">
+                                <button @click="showTitles = false; saveTitleSettings()"
+                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                                        :class="!showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Off</button>
+                                <button @click="showTitles = true; saveTitleSettings()"
+                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                                        :class="showTitles ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
+                            </div>
+                        </div>
+
+                        <!-- Title mode -->
+                        <div x-show="showTitles">
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Style</div>
+                            <div class="flex gap-1.5">
+                                <button @click="titleMode = 'header'; saveTitleSettings()"
+                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                                        :class="titleMode === 'header' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Header</button>
+                                <button @click="titleMode = 'overlay'; saveTitleSettings()"
+                                        class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                                        :class="titleMode === 'overlay' ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Overlay</button>
+                            </div>
+                        </div>
+
+                        <!-- Title placement -->
+                        <div x-show="showTitles">
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Placement</div>
+                            <div class="flex gap-1.5">
+                                <template x-for="opt in [{v:'top',l:'Top'},{v:'bottom',l:'Bottom'},{v:'top-avoid',l:'Top Avoid'},{v:'bottom-avoid',l:'Btm Avoid'}]" :key="opt.v">
+                                    <button @click="titlePlacement = opt.v; saveTitleSettings()"
+                                            class="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border leading-tight"
+                                            :class="titlePlacement === opt.v ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'"
+                                            x-text="opt.l"></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Title size -->
+                        <div x-show="showTitles" class="col-span-2">
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-theme-muted mb-2">Title Size — <span x-text="titleSize + 'px'" class="text-theme-main font-mono"></span></div>
+                            <input type="range" min="9" max="48" x-model="titleSize" @input="saveTitleSettings()" class="title-range w-full" title="Title Size">
+                        </div>
+
                     </div>
                 </div>
 
@@ -448,7 +528,8 @@
         
         <div class="flex justify-center -mt-[1px] relative z-10 h-0 pointer-events-none">
             <button @click.stop="headerVisible = !headerVisible; $nextTick(() => updateLayout())" 
-                    class="bg-theme-card border-x border-b border-theme px-10 py-1 rounded-b-xl group hover-bg-theme transition-colors shadow-lg pointer-events-auto">
+                    class="bg-theme-card border-x border-b border-theme px-10 py-1 rounded-b-xl group hover-bg-theme transition-colors shadow-lg pointer-events-auto"
+                    :class="headerVisible ? '' : 'pointer-events-auto'">
                 <div class="w-12 h-1 bg-zinc-600 group-hover:bg-[#f95a1f] rounded-full mb-0.5 transition-colors"></div>
             </button>
         </div>
@@ -457,7 +538,7 @@
     <div class="flex-1 flex overflow-hidden relative w-full">
         
         <main class="flex-1 bg-black flex flex-col relative overflow-hidden">
-            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 w-full h-full">
+            <div x-ref="grid" @dragover.prevent="if(dragType==='tile') handleDrag($event)" class="grid-viewport p-3 pr-4 w-full h-full">
                 
                 <div x-show="getActiveTab()?.focusId"
                      class="resizer-handle"
@@ -471,13 +552,22 @@
                     <div class="stream-card bg-theme-card rounded-xl border border-theme overflow-hidden group shadow-2xl flex flex-col"
                          :class="[draggedId === stream.id ? 'is-tile-dragging' : '', isFocused(stream.id) ? 'z-40' : 'z-10', stream.tabId !== activeTabId ? 'is-hidden' : '']"
                          :style="stream.style">
-                         
-                        <div x-show="showTitles" class="stream-title w-full text-center py-1.5 px-2 bg-theme-element border-b border-theme text-theme-main truncate shrink-0 select-none"
-                             :style="`font-size: ${titleSize}px;`">
+
+                        <!-- HEADER title: TOP position -->
+                        <div x-show="showTitles && titleMode === 'header' && (
+                                titlePlacement === 'top' ||
+                                (titlePlacement === 'bottom-avoid' && stream._row === stream._totalRows - 1) ||
+                                (titlePlacement === 'top-avoid'    && stream._row > 0)
+                             )"
+                             class="stream-title w-full text-center py-1.5 px-2 bg-theme-element border-b border-theme text-theme-main truncate shrink-0 select-none"
+                             :style="{ fontSize: titleSize + 'px' }">
                             <span x-text="stream.label"></span>
                         </div>
-                        
+
+                        <!-- Content area -->
                         <div class="relative flex-1 min-h-0 w-full bg-black">
+
+                            <!-- Hover controls: top-left -->
                             <div class="absolute top-2 left-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all z-50">
                                 <div class="bg-zinc-900/95 border border-zinc-700 px-2.5 py-1.5 rounded-lg cursor-move flex items-center gap-2 transition-colors shadow-xl hover:bg-[#f95a1f] text-zinc-100"
                                      draggable="true" @dragstart="startDrag($event, stream.id, 'tile')" @dragend="endDrag()">
@@ -494,41 +584,73 @@
                                     <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg></div>
                                 </button>
                             </div>
+
+                            <!-- Hover controls: top-right -->
                             <div class="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all z-50">
-                                <button @click.stop="toggleHidden(stream.id)" 
+                                <button @click.stop="toggleHidden(stream.id)"
                                         class="bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg transition-colors shadow-xl"
                                         :class="stream.hidden ? 'text-[#f95a1f] border-[#f95a1f]/50' : 'text-zinc-300 hover:text-white hover:bg-zinc-700'"
                                         :title="stream.hidden ? 'Show stream' : 'Hide stream'">
                                     <div class="icon-container">
-                                        <template x-if="!stream.hidden">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                        </template>
-                                        <template x-if="stream.hidden">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                                        </template>
+                                        <template x-if="!stream.hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></template>
+                                        <template x-if="stream.hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></template>
                                     </div>
                                 </button>
                                 <button @click.stop="removeStream(stream.id)" class="bg-zinc-900/95 border border-zinc-700 p-1.5 rounded-lg hover:bg-red-600 text-zinc-300 hover:text-white shadow-xl transition-colors">
                                     <div class="icon-container"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
                                 </button>
                             </div>
+
+                            <!-- Embeds -->
                             <div x-show="stream.type === 'y'" class="w-full h-full">
                                 <iframe :id="'iframe-' + stream.id" :src="stream.embedUrl" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                             </div>
                             <div x-show="stream.type === 't'" x-init="initTwitchPlayer(stream)" :id="'twitch-' + stream.id" class="twitch-container"></div>
+
+                            <!-- OVERLAY title: uses :style object so it never clobbers x-show's display:none -->
+                            <div x-show="showTitles && titleMode === 'overlay'"
+                                 class="absolute left-0 right-0 z-20 px-3 py-1.5 text-center text-white truncate select-none pointer-events-none"
+                                 :class="(titlePlacement === 'bottom' ||
+                                          (titlePlacement === 'bottom-avoid' && stream._row < stream._totalRows - 1) ||
+                                          (titlePlacement === 'top-avoid'    && stream._row === 0)
+                                         ) ? 'bottom-0' : 'top-0'"
+                                 :style="{
+                                     fontSize: titleSize + 'px',
+                                     backgroundColor: 'rgba(0,0,0,0.55)',
+                                     fontFamily: 'Bungee, sans-serif',
+                                     letterSpacing: '0.03em'
+                                 }">
+                                <span x-text="stream.label"></span>
+                            </div>
+
                         </div>
+
+                        <!-- HEADER title: BOTTOM position — :style object prevents clobbering display:none -->
+                        <div x-show="showTitles && titleMode === 'header' && (
+                                titlePlacement === 'bottom' ||
+                                (titlePlacement === 'top-avoid'    && stream._row === 0) ||
+                                (titlePlacement === 'bottom-avoid' && stream._row < stream._totalRows - 1)
+                             )"
+                             class="stream-title w-full text-center py-1.5 px-2 bg-theme-element border-t border-theme text-theme-main truncate shrink-0 select-none"
+                             :style="{ fontSize: titleSize + 'px' }">
+                            <span x-text="stream.label"></span>
+                        </div>
+
                     </div>
                 </template>
             </div>
         </main>
 
-        <aside class="bg-theme-card border-l border-theme flex flex-col transition-all duration-300 relative z-30"
-               :class="chatOpen ? 'w-[350px]' : 'w-0'">
-            
+        <!-- Chat panel toggle — sibling of aside so overflow-hidden on aside doesn't clip it -->
+        <div class="relative z-40 flex-shrink-0 w-0 self-stretch">
             <button @click="chatOpen = !chatOpen; $nextTick(() => updateLayout())" 
-                    class="absolute -left-[24px] top-1/2 -translate-y-1/2 bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg z-50">
+                    class="absolute -left-[24px] top-1/2 -translate-y-1/2 bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg">
                 <div class="icon-container w-4 h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
             </button>
+        </div>
+
+        <aside class="bg-theme-card border-l border-theme flex flex-col transition-all duration-300 z-30 overflow-hidden"
+               :class="chatOpen ? 'w-[350px]' : 'w-0'">
 
             <div class="w-[350px] flex flex-col h-full overflow-hidden">
                 <div class="p-3 border-b border-theme bg-theme-card flex flex-col gap-2">
@@ -584,16 +706,22 @@
                 headerVisible: true, 
                 draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
-                showHelp: false, showError: false,
+                showHelp: false, showError: false, showSettings: false,
                 chatOpen: false, activeChatStreamId: null,
                 showTitles: false,
                 titleSize: 13,
+                titleMode: 'header',       // 'header' | 'overlay'
+                titlePlacement: 'top',     // 'top' | 'bottom' | 'top-avoid' | 'bottom-avoid'
                 // THEME
                 theme: 'dark', // 'dark', 'light', 'catppuccin'
 
                 init() {
                     // Load Theme
                     this.theme = localStorage.getItem('theme') || 'dark';
+                    this.showTitles    = localStorage.getItem('showTitles')    === 'true';
+                    this.titleSize     = parseInt(localStorage.getItem('titleSize'))     || 13;
+                    this.titleMode     = localStorage.getItem('titleMode')     || 'header';
+                    this.titlePlacement= localStorage.getItem('titlePlacement')|| 'top';
                     
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab(false);
@@ -608,6 +736,32 @@
                     else if (this.theme === 'light') this.theme = 'catppuccin';
                     else this.theme = 'dark';
                     localStorage.setItem('theme', this.theme);
+                },
+
+                saveTitleSettings() {
+                    localStorage.setItem('showTitles',     this.showTitles);
+                    localStorage.setItem('titleSize',      this.titleSize);
+                    localStorage.setItem('titleMode',      this.titleMode);
+                    localStorage.setItem('titlePlacement', this.titlePlacement);
+                    // Only header mode affects tile geometry (it takes up physical space).
+                    // Overlay mode, placement, and size are pure CSS — no layout recalc needed.
+                    // Calling updateLayout() needlessly reassigns stream.style, which causes
+                    // Alpine to re-render tiles and momentarily show all title variants.
+                    if (this.titleMode === 'header') {
+                        this.updateLayout();
+                    }
+                },
+
+                // Returns 'top' or 'bottom' for a given stream based on placement setting
+                getTitlePosition(stream) {
+                    const p = this.titlePlacement;
+                    if (p === 'top')    return 'top';
+                    if (p === 'bottom') return 'bottom';
+                    const rows = stream._totalRows || 1;
+                    const row  = stream._row       || 0;
+                    if (p === 'top-avoid')    return row === 0        ? 'bottom' : 'top';
+                    if (p === 'bottom-avoid') return row === rows - 1 ? 'top'    : 'bottom';
+                    return 'top';
                 },
 
                 // ADDED HELPER FOR CHAT POPOUT
@@ -659,6 +813,53 @@
                         this.applyMuteState(s);
                     });
                     this.updateUrl();
+                },
+
+                async playStreams(streams) {
+                    // Twitch's embed has an occlusion rule: it will not start playing if any
+                    // element is visually covering the player iframe. Overlay titles sit on top
+                    // of the iframe, so we must hide them, trigger play, then restore them.
+                    const wasOverlay = this.showTitles && this.titleMode === 'overlay';
+                    if (wasOverlay) this.titleMode = '__hidden__'; // temporarily suppress overlay
+
+                    // Allow the DOM to update (titles hidden) before calling play
+                    await this.$nextTick();
+
+                    streams.forEach(s => {
+                        if (s.type === 't') {
+                            const p = window.twitchPlayers[s.id];
+                            if (p) {
+                                s.muted = false;
+                                p.setMuted(false);
+                                p.setVolume(1.0);
+                                try { p.play(); } catch(e) {}
+                            }
+                        } else if (s.type === 'y') {
+                            s.muted = false;
+                            const f = document.getElementById('iframe-' + s.id);
+                            if (f && f.contentWindow) {
+                                f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'unMute',    args: [] }), '*');
+                                f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
+                            }
+                        }
+                    });
+
+                    this.updateUrl();
+
+                    // Restore overlay titles after a short delay to ensure play() has fired
+                    if (wasOverlay) {
+                        setTimeout(() => { this.titleMode = 'overlay'; }, 600);
+                    }
+                },
+
+                playTab() {
+                    const streams = this.allStreams.filter(s => s.tabId === this.activeTabId && !s.hidden);
+                    this.playStreams(streams);
+                },
+
+                playAll() {
+                    const streams = this.allStreams.filter(s => !s.hidden);
+                    this.playStreams(streams);
                 },
 
                 // ... [Standard Logic - addStream, etc.] ...
@@ -853,6 +1054,8 @@
                             const isLastRow = row === rows - 1;
                             const x = (col * w) + (isLastRow ? lastRowOffset : 0) + 12;
                             const y = (row * h) + 12;
+                            s._row = row;
+                            s._totalRows = rows;
                             s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - 8}px; height: ${h - 8}px; opacity: 1;`;
                         });
                     }
