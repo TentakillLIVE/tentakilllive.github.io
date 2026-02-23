@@ -216,7 +216,7 @@
                         <li><strong>Settings:</strong> Click the gear icon (⚙) in the toolbar to open the Settings panel. Adjust theme, stream title visibility, style, placement, and size from there.</li>
                         <li><strong>Rename Tabs:</strong> Double-click any tab name to rename it (e.g., "FPS Games", "Music").</li>
                         <li><strong>Rename Streams:</strong> Click the pencil icon (<svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>) on any stream chip to give it a custom label.</li>
-                        <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all, <code class="bg-black/40 px-1 rounded">1</code>–<code class="bg-black/40 px-1 rounded">9</code> to jump directly to a tab.</li>
+                        <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all, <code class="bg-black/40 px-1 rounded">T</code> to toggle titles, <code class="bg-black/40 px-1 rounded">V</code> to toggle the top pane, <code class="bg-black/40 px-1 rounded">C</code> to toggle chat (when enabled), <code class="bg-black/40 px-1 rounded">1</code>–<code class="bg-black/40 px-1 rounded">9</code> to jump directly to a tab.</li>
                     </ul>
                 </div>
                 <div class="w-full h-px bg-[var(--border-color)]"></div>
@@ -444,6 +444,19 @@
                                                 <button @click="animations = true; localStorage.setItem('animations','true')"
                                                         class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
                                                         :class="animations ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Chat -->
+                                        <div>
+                                            <div class="text-[9px] font-bold uppercase tracking-widest text-theme-muted mb-1.5">Chat</div>
+                                            <div class="flex gap-1">
+                                                <button @click="chatEnabled = false; chatOpen = false; localStorage.setItem('chatEnabled','false'); $nextTick(() => updateLayout())"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="!chatEnabled ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">Off</button>
+                                                <button @click="chatEnabled = true; localStorage.setItem('chatEnabled','true'); $nextTick(() => updateLayout())"
+                                                        class="flex-1 py-1 rounded-md text-[10px] font-bold border transition-all"
+                                                        :class="chatEnabled ? 'bg-[#f95a1f] text-white border-[#f95a1f]' : 'bg-theme-element text-theme-muted border-theme hover:text-theme-main'">On</button>
                                             </div>
                                         </div>
 
@@ -702,8 +715,8 @@
             </div>
         </main>
 
-        <!-- Chat panel toggle — positioned at the left edge of the aside, not bleeding into grid -->
-        <div class="chat-toggle-wrapper relative z-40 flex-shrink-0 w-0 self-stretch pointer-events-none">
+        <!-- Chat panel toggle — only shown when chat is enabled -->
+        <div x-show="chatEnabled" class="chat-toggle-wrapper relative z-40 flex-shrink-0 w-0 self-stretch pointer-events-none">
             <button @click="chatOpen = !chatOpen; $nextTick(() => updateLayout())" 
                     class="pointer-events-auto absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-theme-card border-l border-y border-theme rounded-l-lg p-1 text-theme-muted hover:text-[#f95a1f] w-6 h-12 flex items-center justify-center transition-colors shadow-lg">
                 <div class="icon-container w-4 h-4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
@@ -711,9 +724,9 @@
         </div>
 
         <aside class="bg-theme-card border-l border-theme flex flex-col transition-all duration-300 z-30 overflow-hidden"
-               :class="chatOpen ? 'w-[350px]' : 'w-0'">
+               :class="(chatEnabled && chatOpen) ? 'w-[350px]' : 'w-0'">
 
-            <div class="w-[350px] flex flex-col h-full overflow-hidden">
+            <div x-show="chatEnabled" class="w-[350px] flex flex-col h-full overflow-hidden">
                 <div class="p-3 border-b border-theme bg-theme-card flex flex-col gap-2">
                     <h3 class="text-xs font-bold text-theme-muted uppercase tracking-wider">Live Chat</h3>
                     <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -739,14 +752,15 @@
                     <template x-for="stream in sortedActiveStreams()" :key="'chat-' + stream.id">
                         <div class="chat-iframe-container" 
                              :class="activeChatStreamId === stream.id ? 'chat-active' : 'chat-inactive'">
-                             <template x-if="stream.type === 't'">
+                            <!-- x-if ensures iframes are fully removed from DOM (and memory) when chat is disabled -->
+                            <template x-if="chatEnabled && stream.type === 't'">
                                 <iframe :src="`https://www.twitch.tv/embed/${stream.val}/chat?parent=${window.location.hostname || 'localhost'}&darkpopout`"
                                         class="w-full h-full" frameborder="0"></iframe>
-                             </template>
-                             <template x-if="stream.type === 'y'">
+                            </template>
+                            <template x-if="chatEnabled && stream.type === 'y'">
                                 <iframe :src="`https://www.youtube.com/live_chat?v=${stream.val}&embed_domain=${window.location.hostname || 'localhost'}&dark_theme=1`"
                                         class="w-full h-full" frameborder="0"></iframe>
-                             </template>
+                            </template>
                         </div>
                     </template>
                     
@@ -769,6 +783,7 @@
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
                 showHelp: false, showError: false, showSettings: false,
                 chatOpen: false, activeChatStreamId: null,
+                chatEnabled: false,
                 showTitles: false,
                 titleSize: 13,
                 titleMode: 'header',
@@ -787,6 +802,7 @@
                     this.titlePlacement= localStorage.getItem('titlePlacement')|| 'top';
                     this.animations    = localStorage.getItem('animations') !== 'false';
                     this.compact       = localStorage.getItem('compact') === 'true';
+                    this.chatEnabled   = localStorage.getItem('chatEnabled') === 'true';
                     
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab(false);
@@ -861,6 +877,17 @@
                         this.navigateTabs(1);  // Go Right
                     } else if (key === 'm') {
                         this.muteAll();        // Mute All
+                    } else if (key === 't') {
+                        this.showTitles = !this.showTitles; // Toggle titles
+                        this.saveTitleSettings();
+                    } else if (key === 'v') {
+                        this.headerVisible = !this.headerVisible; // Toggle top pane
+                        this.$nextTick(() => this.updateLayout());
+                    } else if (key === 'c') {
+                        if (this.chatEnabled) {             // Toggle chat (only if enabled)
+                            this.chatOpen = !this.chatOpen;
+                            this.$nextTick(() => this.updateLayout());
+                        }
                     } else if (e.code >= 'Digit1' && e.code <= 'Digit9') {
                         const idx = parseInt(e.code.replace('Digit', '')) - 1;
                         if (idx < this.tabs.length) this.switchTab(this.tabs[idx].id);
