@@ -10,10 +10,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://embed.twitch.tv/embed/v1.js"></script>
+    <script defer src="https://embed.twitch.tv/embed/v1.js"></script>
     <style>
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { scrollbar-width: none; } /* Firefox */
         
         /* === THEME VARIABLES === */
         :root {
@@ -78,7 +79,8 @@
             position: absolute; 
             top: 0; left: 0;
             transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1), width 0.4s ease, height 0.4s ease;
-            will-change: transform, width, height;
+            will-change: transform;
+            contain: layout paint style;
         }
         
         .is-resizing iframe, .is-resizing .twitch-container { pointer-events: none !important; }
@@ -152,6 +154,12 @@
             transition: transform 0.15s;
         }
         .title-range::-webkit-slider-thumb:hover { transform: scale(1.25); }
+        .title-range::-moz-range-track {
+            height: 4px;
+            border-radius: 2px;
+            background: var(--bg-hover);
+            border: none;
+        }
         .title-range::-moz-range-thumb {
             width: 12px;
             height: 12px;
@@ -763,12 +771,12 @@
                 chatOpen: false, activeChatStreamId: null,
                 showTitles: false,
                 titleSize: 13,
-                titleMode: 'header',       // 'header' | 'overlay'
-                titlePlacement: 'top',     // 'top' | 'bottom' | 'top-avoid' | 'bottom-avoid'
+                titleMode: 'header',
+                titlePlacement: 'top',
                 animations: true,
                 compact: false,
-                // THEME
-                theme: 'dark', // 'dark', 'light', 'catppuccin'
+                theme: 'dark',
+                _cachedActiveStreams: [], // sorted cache updated only in updateLayout/switchTab
 
                 init() {
                     // Load Theme
@@ -782,7 +790,15 @@
                     
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab(false);
-                    const ro = new ResizeObserver(() => { this.updateLayout(); });
+                    this._refreshStreamCache();
+                    // Debounce ResizeObserver — firing updateLayout() on every resize
+                    // event causes repeated getBoundingClientRect() reflows and Alpine
+                    // reactive DOM writes at up to 60fps during window resize.
+                    let _roDebounce = null;
+                    const ro = new ResizeObserver(() => {
+                        if (_roDebounce) cancelAnimationFrame(_roDebounce);
+                        _roDebounce = requestAnimationFrame(() => { _roDebounce = null; this.updateLayout(); });
+                    });
                     ro.observe(this.$refs.grid);
                     ro.observe(this.$refs.headerContent);
                     this.updateDocTitle();
@@ -930,18 +946,18 @@
                     }
                     if (val) {
                         const newStream = { 
-                            id: Math.random().toString(36).substr(2, 9), 
+                            id: Math.random().toString(36).substring(2, 11), 
                             tabId: this.activeTabId, type, val, label: val, 
                             vIdx: this.getActiveTabStreams().length, style: '', editing: false, 
                             tempLabel: '', muted: true, hidden: false,
                             embedUrl: this.generateEmbedUrl({type, val, muted: true}) 
                         };
                         this.allStreams.push(newStream);
-                        // Auto-select chat if it's the first stream
                         if (!this.activeChatStreamId) this.activeChatStreamId = newStream.id;
                         
                         const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
-                        this.newUrl = ''; this.updateUrl(); 
+                        this.newUrl = ''; this.updateUrl();
+                        this._refreshStreamCache();
                         this.$nextTick(() => { this.updateLayout(); if(type === 't') this.$nextTick(() => this.initTwitchPlayer(newStream)); });
                     }
                 },
@@ -970,7 +986,8 @@
 
                 generateEmbedUrl(s) {
                     if (s.type === 't') return ''; 
-                    return `https://www.youtube.com/embed/${s.val}?autoplay=0&mute=${s.muted ? 1 : 0}&enablejsapi=1`;
+                    const origin = encodeURIComponent(window.location.origin || 'https://localhost');
+                    return `https://www.youtube.com/embed/${s.val}?autoplay=0&mute=${s.muted ? 1 : 0}&enablejsapi=1&origin=${origin}`;
                 },
 
                 muteTab(tabId) {
@@ -1018,22 +1035,29 @@
                 
                 handleResize(e) {
                     if (!this.isResizing || !this.resizeStartWidth) return;
-                    const container = this.$refs.grid;
-                    const rect = container.getBoundingClientRect();
-                    const availW = rect.width - 24;
-                    const delta = e.clientX - this.resizeStartX;
-                    let newMainW = this.resizeStartWidth + delta;
-                    const minSideW = 200; 
-                    const maxMainW = availW - minSideW;
-                    const minMainW = 300;
-                    if (newMainW > maxMainW) newMainW = maxMainW;
-                    if (newMainW < minMainW) newMainW = minMainW;
-                    const newSideW = availW - newMainW;
-                    const tab = this.getActiveTab();
-                    if (tab) {
-                        tab.customSidebarWidth = newSideW;
-                        this.updateLayout();
-                    }
+                    // Throttle to one update per animation frame — without this,
+                    // getBoundingClientRect() + updateLayout() fires on every mousemove
+                    // event (~hundreds/sec), causing severe jank in both Chromium and Gecko.
+                    if (this._resizeRaf) return;
+                    this._resizeRaf = requestAnimationFrame(() => {
+                        this._resizeRaf = null;
+                        const container = this.$refs.grid;
+                        const rect = container.getBoundingClientRect();
+                        const availW = rect.width - 24;
+                        const delta = e.clientX - this.resizeStartX;
+                        let newMainW = this.resizeStartWidth + delta;
+                        const minSideW = 200; 
+                        const maxMainW = availW - minSideW;
+                        const minMainW = 300;
+                        if (newMainW > maxMainW) newMainW = maxMainW;
+                        if (newMainW < minMainW) newMainW = minMainW;
+                        const newSideW = availW - newMainW;
+                        const tab = this.getActiveTab();
+                        if (tab) {
+                            tab.customSidebarWidth = newSideW;
+                            this.updateLayout();
+                        }
+                    });
                 },
 
                 stopResize() { this.isResizing = false; },
@@ -1115,6 +1139,7 @@
                             s.style = `transform: translate3d(${x}px, ${y}px, 0); width: ${w - gap}px; height: ${h - gap}px; opacity: 1;`;
                         });
                     }
+                    this._refreshStreamCache();
                 },
 
                 updateUrl() {
@@ -1149,13 +1174,13 @@
                 
                 switchTab(id) { 
                     this.activeTabId = id; 
-                    // Update Chat Selection
                     const streams = this.getActiveTabStreams();
                     if (streams.length > 0) {
                         this.activeChatStreamId = streams[0].id;
                     } else {
                         this.activeChatStreamId = null;
                     }
+                    this._refreshStreamCache();
                     this.updateDocTitle(); 
                     this.updateUrl(); 
                     this.$nextTick(() => { 
@@ -1171,12 +1196,12 @@
                 removeTab(id) { if (this.tabs.length <= 1) return; this.allStreams = this.allStreams.filter(s => s.tabId !== id); this.tabs = this.tabs.filter(t => t.id !== id); if (this.activeTabId === id) this.switchTab(this.tabs[0].id); else this.updateUrl(); },
                 getActiveTab() { return this.tabs.find(t => t.id === this.activeTabId); },
                 getActiveTabStreams() { return this.allStreams.filter(s => s.tabId === this.activeTabId); },
-                sortedActiveStreams() { return this.getActiveTabStreams().sort((a, b) => a.vIdx - b.vIdx); },
+                sortedActiveStreams() { return this._cachedActiveStreams; },
+                _refreshStreamCache() { this._cachedActiveStreams = this.allStreams.filter(s => s.tabId === this.activeTabId).sort((a, b) => a.vIdx - b.vIdx); },
                 isFocused(id) { return this.getActiveTab()?.focusId === id; },
                 
                 removeStream(id) { 
                     this.allStreams = this.allStreams.filter(s => s.id !== id); 
-                    // Update Chat if deleted stream was active
                     if (this.activeChatStreamId === id) {
                         const remaining = this.getActiveTabStreams();
                         this.activeChatStreamId = remaining.length > 0 ? remaining[0].id : null;
@@ -1184,6 +1209,7 @@
                     const tab = this.getActiveTab(); if(tab) tab.customSidebarWidth = null;
                     delete window.twitchPlayers[id]; 
                     this.getActiveTabStreams().forEach((s, i) => s.vIdx = i); 
+                    this._refreshStreamCache();
                     this.updateUrl(); this.updateLayout(); 
                 },
                 startEdit(s) { s.tempLabel = s.label; s.editing = true; },
@@ -1219,8 +1245,27 @@
                 },
                 updateDocTitle() { document.title = `EightEyes | ${this.getActiveTab()?.name || 'Home'}`; },
                 startDrag(e, id, type) { this.draggedId = id; this.dragType = type; e.dataTransfer.setData('text/plain', ''); e.dataTransfer.effectAllowed = 'move'; if (type === 'tile') { const cr = e.target.closest('.stream-card').getBoundingClientRect(); this.dragOffset = { x: e.clientX - cr.left, y: e.clientY - cr.top }; if (e.dataTransfer.setDragImage) { const img = new Image(); e.dataTransfer.setDragImage(img, 0, 0); } } },
-                handleDrag(e) { if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return; const cr = this.$refs.grid.getBoundingClientRect(); const mx = e.clientX - cr.left, my = e.clientY - cr.top; const s = this.allStreams.find(st => st.id === this.draggedId); const w = parseFloat(s.style.match(/width: (.*?)px/)[1]); const h = parseFloat(s.style.match(/height: (.*?)px/)[1]); s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`; this.getActiveTabStreams().forEach(other => { if (other.id === this.draggedId) return; const om = other.style.match(/translate3d\((.*?)px, (.*?)px/); if (!om) return; const ox = parseFloat(om[1]), oy = parseFloat(om[2]), ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]); if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx); }); },
-                reorder(targetVIdx) { const draggingStream = this.allStreams.find(s => s.id === this.draggedId); if (!draggingStream) return; const activeStreams = this.getActiveTabStreams(); const currentVIdx = draggingStream.vIdx; if (currentVIdx === targetVIdx) return; activeStreams.forEach(s => { if (s.id === this.draggedId) s.vIdx = targetVIdx; else if (currentVIdx < targetVIdx) { if (s.vIdx <= targetVIdx && s.vIdx > currentVIdx) s.vIdx--; } else { if (s.vIdx >= targetVIdx && s.vIdx < currentVIdx) s.vIdx++; } }); this.updateLayout(); },
+                handleDrag(e) { 
+                    if (!e.clientX || this.draggedId === null || this.dragType !== 'tile') return;
+                    if (this._dragRaf) return;
+                    this._dragRaf = requestAnimationFrame(() => {
+                        this._dragRaf = null;
+                        const cr = this.$refs.grid.getBoundingClientRect(); 
+                        const mx = e.clientX - cr.left, my = e.clientY - cr.top; 
+                        const s = this.allStreams.find(st => st.id === this.draggedId); 
+                        const w = parseFloat(s.style.match(/width: (.*?)px/)[1]); 
+                        const h = parseFloat(s.style.match(/height: (.*?)px/)[1]); 
+                        s.style = `transform: translate3d(${mx - this.dragOffset.x}px, ${my - this.dragOffset.y}px, 0); width: ${w}px; height: ${h}px; z-index: 100; opacity: 1;`; 
+                        this.getActiveTabStreams().forEach(other => { 
+                            if (other.id === this.draggedId) return; 
+                            const om = other.style.match(/translate3d\((.*?)px, (.*?)px/); 
+                            if (!om) return; 
+                            const ox = parseFloat(om[1]), oy = parseFloat(om[2]), ow = parseFloat(other.style.match(/width: (.*?)px/)[1]), oh = parseFloat(other.style.match(/height: (.*?)px/)[1]); 
+                            if (mx > ox && mx < ox + ow && my > oy && my < oy + oh) this.reorder(other.vIdx); 
+                        }); 
+                    });
+                },
+                reorder(targetVIdx) { const draggingStream = this.allStreams.find(s => s.id === this.draggedId); if (!draggingStream) return; const activeStreams = this.getActiveTabStreams(); const currentVIdx = draggingStream.vIdx; if (currentVIdx === targetVIdx) return; activeStreams.forEach(s => { if (s.id === this.draggedId) s.vIdx = targetVIdx; else if (currentVIdx < targetVIdx) { if (s.vIdx <= targetVIdx && s.vIdx > currentVIdx) s.vIdx--; } else { if (s.vIdx >= targetVIdx && s.vIdx < currentVIdx) s.vIdx++; } }); this._refreshStreamCache(); this.updateLayout(); },
                 endDrag() { this.draggedId = null; this.dragType = null; this.updateUrl(); this.updateLayout(); }
             }
         }
