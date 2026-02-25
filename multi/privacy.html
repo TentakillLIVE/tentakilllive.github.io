@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy — EightEyes</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=bungee:400|dm-sans:300,300i,400,400i,500,500i&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -83,26 +82,37 @@
 
         .logo {
             font-family: 'Bungee', sans-serif;
-            font-size: 13px;
-            letter-spacing: 0.08em;
+            font-size: 20px;
+            letter-spacing: -0.05em;
             text-transform: uppercase;
-            color: var(--muted);
+            color: var(--text);
             margin-bottom: 16px;
             display: flex;
-            align-items: center;
+            align-items: baseline;
             gap: 8px;
         }
         .logo-dot {
-            width: 7px; height: 7px;
+            width: 12px; height: 12px;
             background: var(--accent);
             border-radius: 50%;
-            animation: pulse 2.5s ease-in-out infinite;
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            align-self: center;
+            flex-shrink: 0;
         }
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%       { opacity: 0.5; transform: scale(0.8); }
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
         }
-        .logo span { color: var(--accent); }
+        .logo-wordmark { color: var(--accent); }
+        .logo-wordmark span { color: var(--text); }
+        .logo-sub {
+            font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
 
         h1 {
             font-family: 'Bungee', sans-serif;
@@ -249,7 +259,8 @@
 
         <div class="logo">
             <div class="logo-dot"></div>
-            Eight<span>Eyes</span>
+            <span class="logo-wordmark">Eight<span>Eyes</span></span>
+            <span class="logo-sub">Multi</span>
         </div>
 
         <h1>Privacy<br><em>Policy</em></h1>
