@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EightEyes Watch Party</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=bungee:400|space-mono:400,700&display=swap" rel="stylesheet">
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+<body>
+    <!-- Join/Create Room Panel -->
+    <div id="login-panel" class="panel">
+        <div class="login-container">
+            <div class="logo-section">
+                <h1 class="logo-main"><span class="logo-accent">Eight</span>Eyes</h1>
+                <p class="logo-subtext">Watch Party</p>
+            </div>
+            
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="username-input">Your Name</label>
+                    <input type="text" id="username-input" placeholder="Enter your name" maxlength="20">
+                </div>
+                
+                <div class="input-group">
+                    <label for="room-input">Room Name</label>
+                    <input type="text" id="room-input" placeholder="Enter room name">
+                </div>
+                
+                <button id="join-room-btn" class="btn-primary">
+                    <span>Enter Room</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="decoration">
+                <div class="circle c1"></div>
+                <div class="circle c2"></div>
+                <div class="circle c3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Watch Room -->
+    <div id="watch-room" class="hidden">
+        <!-- Header Bar -->
+        <header class="room-header">
+            <div class="header-left">
+                <div class="logo-header">
+                    <span class="logo-header-main"><span class="logo-accent">Eight</span>Eyes</span>
+                    <span class="logo-header-sub">Watch Party</span>
+                </div>
+                <div class="room-info">
+                    <span class="room-label">Room:</span>
+                    <span id="room-name-display" class="room-name"></span>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="add-video-section">
+                    <input type="text" id="video-url-input" placeholder="Paste YouTube link to add to queue...">
+                    <button id="add-video-btn" class="btn-add">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="user-badge">
+                    <div class="user-avatar" id="user-avatar"></div>
+                    <span id="username-display"></span>
+                </div>
+                <button id="share-btn" class="btn-icon" title="Share room link">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Video Queue -->
+        <div class="queue-container">
+            <div class="queue-section queue-history">
+                <h3>Previously Watched</h3>
+                <div id="history-queue" class="queue-scroll"></div>
+            </div>
+            
+            <div class="queue-section queue-current">
+                <div class="now-playing-badge">NOW PLAYING</div>
+                <div id="current-video-thumb" class="current-thumb">
+                    <div class="empty-state">No video</div>
+                </div>
+                <div id="current-video-tooltip" class="video-tooltip"></div>
+            </div>
+            
+            <div class="queue-section queue-upcoming">
+                <h3>Up Next</h3>
+                <div id="upcoming-queue" class="queue-scroll"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Video Player -->
+            <div class="player-section">
+                <div class="player-wrapper">
+                    <div id="player"></div>
+                    <div class="player-click-blocker" id="player-click-blocker"></div>
+                    <div id="player-overlay" class="player-overlay">
+                        <div class="overlay-content">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                            </svg>
+                            <p>Add a video to start watching</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Custom Player Controls -->
+                <div class="custom-controls">
+                    <button id="ctrl-prev" class="ctrl-btn" title="Previous">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                        </svg>
+                    </button>
+                    <button id="ctrl-rewind" class="ctrl-btn" title="Rewind 10s">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                        </svg>
+                    </button>
+                    <button id="ctrl-play" class="ctrl-btn ctrl-play-btn" title="Play/Pause">
+                        <svg id="icon-play" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <svg id="icon-pause" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                        </svg>
+                    </button>
+                    <button id="ctrl-forward" class="ctrl-btn" title="Forward 10s">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
+                        </svg>
+                    </button>
+                    <button id="ctrl-next" class="ctrl-btn" title="Next">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                        </svg>
+                    </button>
+                    
+                    <div class="ctrl-progress">
+                        <span id="ctrl-time-current">0:00</span>
+                        <div class="progress-bar-container" id="progress-container">
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="progress-fill"></div>
+                                <div class="progress-bar-thumb" id="progress-thumb"></div>
+                            </div>
+                            <div class="progress-hover-time" id="progress-hover-time">0:00</div>
+                        </div>
+                        <span id="ctrl-time-total">0:00</span>
+                    </div>
+                    
+                    <div class="ctrl-volume">
+                        <button id="ctrl-mute" class="ctrl-btn ctrl-btn-sm" title="Mute">
+                            <svg id="icon-volume" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                            </svg>
+                            <svg id="icon-muted" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="hidden">
+                                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                            </svg>
+                        </button>
+                        <input type="range" id="volume-slider" min="0" max="100" value="100" class="volume-slider">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="activity-section">
+                <div class="activity-header">
+                    <h3>Activity</h3>
+                    <div class="users-online">
+                        <div class="online-dot"></div>
+                        <span id="users-count">1</span> watching
+                    </div>
+                </div>
+                <div id="activity-feed" class="activity-feed">
+                    <div class="activity-empty">
+                        <p>Activity will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="close-modal">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <h2>Invite Friends</h2>
+            <p>Share this link to invite others to your room:</p>
+            <div class="share-link-box">
+                <input type="text" id="share-link" readonly>
+                <button id="copy-link-btn" class="btn-copy">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Idle Check Modal -->
+    <div id="idle-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content idle-modal-content">
+            <div class="idle-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+            </div>
+            <h2>Are you still watching?</h2>
+            <p>You've been inactive for a while. Click below to stay in the room.</p>
+            <div class="idle-countdown">Disconnecting in <span id="idle-countdown">60</span>s</div>
+            <button id="idle-confirm-btn" class="btn-primary">
+                <span>I'm still here!</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+    
+    <!-- Global Tooltip -->
+    <div id="global-tooltip" class="global-tooltip"></div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
