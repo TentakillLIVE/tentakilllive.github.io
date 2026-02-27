@@ -677,7 +677,7 @@ input[type="text"]:focus {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 1rem;
+    padding: 0.75rem 1rem;
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
@@ -864,6 +864,144 @@ input[type="text"]:focus {
     border-radius: 50%;
     cursor: pointer;
     border: none;
+}
+
+/* Quality Settings */
+.ctrl-quality-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+#quality-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.5rem;
+    width: auto;
+}
+
+.quality-label {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.quality-menu {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 0.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 120px;
+    z-index: 100;
+    overflow: hidden;
+}
+
+.quality-menu.hidden {
+    display: none;
+}
+
+.quality-menu-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.quality-always-best {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    transition: background var(--transition-fast);
+}
+
+.quality-always-best:hover {
+    background: var(--bg-tertiary);
+}
+
+.quality-always-best input[type="checkbox"] {
+    display: none;
+}
+
+.quality-always-best .checkbox-custom {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--text-muted);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.quality-always-best input[type="checkbox"]:checked + .checkbox-custom {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.quality-always-best input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '✓';
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+}
+
+.quality-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0;
+}
+
+.quality-options {
+    display: flex;
+    flex-direction: column;
+}
+
+.quality-option {
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quality-option:hover {
+    background: var(--bg-tertiary);
+}
+
+.quality-option.active {
+    color: var(--accent-primary);
+}
+
+.quality-option.active::after {
+    content: '✓';
+    font-size: 0.75rem;
+}
+
+/* Theater mode quality menu positioning */
+.theater-mode .quality-menu {
+    bottom: auto;
+    top: 100%;
+    margin-bottom: 0;
+    margin-top: 0.5rem;
 }
 
 /* ============================================
@@ -1226,8 +1364,8 @@ input[type="text"]:focus {
     
     #ctrl-time-current,
     #ctrl-time-total {
-        font-size: 0.65rem;
-        min-width: 32px;
+        font-size: 0.6rem;
+        min-width: 50px;
     }
     
     .player-section {
@@ -1235,11 +1373,118 @@ input[type="text"]:focus {
         gap: 0.5rem;
     }
     
-    .logo-small {
+    .logo-header-main {
         font-size: 1rem;
     }
     
     .room-info {
         display: none;
     }
+}
+
+/* ============================================
+   Theater Mode
+   ============================================ */
+
+.theater-mode {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9000 !important;
+    background: #000 !important;
+    height: 100vh !important;
+    width: 100vw !important;
+}
+
+.theater-mode .room-header,
+.theater-mode .queue-container,
+.theater-mode .activity-section {
+    display: none !important;
+}
+
+.theater-mode .main-content {
+    display: block !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    grid-template-columns: 1fr !important;
+}
+
+.theater-mode .player-section {
+    height: 100vh !important;
+    width: 100vw !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    position: relative !important;
+}
+
+.theater-mode .player-wrapper {
+    height: 100% !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    position: absolute !important;
+    inset: 0 !important;
+}
+
+.theater-mode .custom-controls {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.95)) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 3rem 1.5rem 1.5rem !important;
+    height: auto !important;
+    min-height: auto !important;
+    opacity: 1;
+    transition: opacity 0.4s ease;
+    z-index: 10;
+}
+
+.theater-mode.controls-hidden .custom-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.theater-mode .player-section:hover .custom-controls,
+.theater-mode .custom-controls:hover {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Theater mode exit button */
+.theater-exit-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-md);
+    color: white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.4s ease, background 0.2s ease;
+    z-index: 20;
+}
+
+.theater-mode .theater-exit-btn {
+    display: flex;
+}
+
+.theater-exit-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.theater-mode.controls-hidden .theater-exit-btn {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.theater-mode .player-section:hover .theater-exit-btn {
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }

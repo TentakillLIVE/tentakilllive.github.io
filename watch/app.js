@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, update, push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, set, get, onValue, update, push, remove, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================
 // Firebase Configuration
@@ -31,10 +31,15 @@ let syncState = {
     currentTime: 0,
     videoId: null,
     lastUpdate: 0,
-    updatedBy: null
+    updatedBy: null,
+    executeAt: 0  // Server timestamp when action should execute
 };
 let ignorePlayerEvents = false;
 let pendingPlayState = null; // Used to apply play state after video is cued
+
+// Server time synchronization
+let serverTimeOffset = 0; // Difference between server time and local time
+const SYNC_EXECUTION_DELAY = 500; // 500ms delay to allow all clients to receive the command
 
 // Queue state
 let videoQueue = [];
@@ -98,6 +103,24 @@ const progressFill = document.getElementById('progress-fill');
 const progressThumb = document.getElementById('progress-thumb');
 const progressHoverTime = document.getElementById('progress-hover-time');
 const timeCurrent = document.getElementById('ctrl-time-current');
+
+// Theater mode
+const theaterBtn = document.getElementById('theater-btn');
+const theaterExitBtn = document.getElementById('theater-exit-btn');
+let isTheaterMode = false;
+let theaterIdleTimeout = null;
+const THEATER_IDLE_DELAY = 3000; // 3 seconds before hiding controls
+
+// Quality settings
+const qualityBtn = document.getElementById('quality-btn');
+const qualityMenu = document.getElementById('quality-menu');
+const qualityOptions = document.getElementById('quality-options');
+const qualityLabel = document.getElementById('quality-label');
+const alwaysBestCheckbox = document.getElementById('always-best-checkbox');
+let currentQuality = 'default';
+let alwaysBestQuality = false;
+let manualQualityOverride = false; // True when user manually selects quality for current video
+let lastVideoId = null; // Track video changes to reset manual override
 const timeTotal = document.getElementById('ctrl-time-total');
 const iconPlay = document.getElementById('icon-play');
 const iconPause = document.getElementById('icon-pause');
@@ -179,10 +202,11 @@ function getVideoThumbnail(videoId) {
 }
 
 function formatTime(seconds) {
-    if (isNaN(seconds) || seconds < 0) return '0:00';
-    const mins = Math.floor(seconds / 60);
+    if (isNaN(seconds) || seconds < 0) return '0:00:00';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function getInitials(name) {
@@ -596,12 +620,18 @@ function playNextInQueue() {
 // Sync System - Firebase Communication
 // ============================================
 function broadcastSync(changes) {
+    // Calculate when all clients should execute this command
+    // Add delay to ensure all clients receive it before execution time
+    const serverTime = getServerTime();
+    const executeAt = serverTime + SYNC_EXECUTION_DELAY;
+    
     // Send to Firebase - ALL users (including this one) will receive via onValue listener
     const newState = {
         ...syncState,
         ...changes,
-        lastUpdate: Date.now(),
-        updatedBy: currentUser.id
+        lastUpdate: serverTime,
+        updatedBy: currentUser.id,
+        executeAt: executeAt
     };
     
     update(ref(db, `rooms/${currentRoom}/sync`), newState);
@@ -613,10 +643,31 @@ function applySync(newSync) {
         return;
     }
     
-    console.log('Applying sync:', newSync);
+    console.log('Received sync:', newSync);
     
     // Update local state
     syncState = { ...newSync };
+    
+    // Calculate delay until execution time
+    const serverTime = getServerTime();
+    const executeAt = newSync.executeAt || serverTime;
+    const delay = Math.max(0, executeAt - serverTime);
+    
+    console.log(`Scheduling sync execution in ${delay}ms`);
+    
+    // Schedule execution at the precise time
+    if (delay > 0) {
+        setTimeout(() => {
+            executeSync(newSync);
+        }, delay);
+    } else {
+        // Execute immediately if we're past the execution time
+        executeSync(newSync);
+    }
+}
+
+function executeSync(syncData) {
+    console.log('Executing sync:', syncData);
     
     // Apply to player
     if (!player || typeof player.cueVideoById !== 'function') {
@@ -629,33 +680,33 @@ function applySync(newSync) {
     const currentPlayerVideoId = player.getVideoData()?.video_id;
     
     // Load new video if needed
-    if (newSync.videoId && newSync.videoId !== currentPlayerVideoId) {
+    if (syncData.videoId && syncData.videoId !== currentPlayerVideoId) {
         // Always cue the video first (never auto-play)
         player.cueVideoById({
-            videoId: newSync.videoId,
-            startSeconds: newSync.currentTime
+            videoId: syncData.videoId,
+            startSeconds: syncData.currentTime
         });
         
         // Store pending play state to apply after video is cued
-        pendingPlayState = newSync.isPlaying;
+        pendingPlayState = syncData.isPlaying;
         
         updateControlsUI();
         setTimeout(() => { ignorePlayerEvents = false; }, 500);
-    } else if (newSync.videoId) {
+    } else if (syncData.videoId) {
         // Same video, sync time and state
         const currentTime = player.getCurrentTime() || 0;
-        const timeDiff = Math.abs(currentTime - newSync.currentTime);
+        const timeDiff = Math.abs(currentTime - syncData.currentTime);
         
-        // Seek if time difference > 1 second
-        if (timeDiff > 1) {
-            player.seekTo(newSync.currentTime, true);
+        // Seek if time difference > 0.5 seconds (tighter sync)
+        if (timeDiff > 0.5) {
+            player.seekTo(syncData.currentTime, true);
         }
         
         // Sync play state
         const currentState = player.getPlayerState();
-        if (newSync.isPlaying && currentState !== YT.PlayerState.PLAYING) {
+        if (syncData.isPlaying && currentState !== YT.PlayerState.PLAYING) {
             player.playVideo();
-        } else if (!newSync.isPlaying && currentState !== YT.PlayerState.PAUSED) {
+        } else if (!syncData.isPlaying && currentState !== YT.PlayerState.PAUSED) {
             player.pauseVideo();
         }
         
@@ -868,12 +919,21 @@ volumeSlider.addEventListener('input', (e) => {
 // ============================================
 // Room Management
 // ============================================
-function joinRoom(roomName, username) {
+async function joinRoom(roomName, username) {
     currentRoom = roomName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
     currentUser = {
         id: generateUserId(),
         name: username
     };
+    
+    // Check if room exists and if it needs cleanup before joining
+    const shouldCleanRoom = await checkRoomOnJoin();
+    
+    if (shouldCleanRoom) {
+        // Clean the room - delete all data and start fresh
+        await remove(ref(db, `rooms/${currentRoom}`));
+        console.log(`Room ${currentRoom} was stale, starting fresh`);
+    }
     
     // Update URL with both room and user (for refresh persistence)
     const fullUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoom}&user=${encodeURIComponent(username)}`;
@@ -906,6 +966,9 @@ function joinRoom(roomName, username) {
     
     addActivity('join', currentUser.name);
     
+    // Sync with server time
+    syncServerTime();
+    
     initializePlayer();
     listenToRoom();
     
@@ -914,6 +977,81 @@ function joinRoom(roomName, username) {
     
     // Start presence system
     startPresenceSystem();
+}
+
+// Check room state on join and determine if it should be cleaned
+async function checkRoomOnJoin() {
+    try {
+        const roomSnapshot = await get(ref(db, `rooms/${currentRoom}`));
+        const roomData = roomSnapshot.val();
+        
+        // Room doesn't exist, no cleanup needed
+        if (!roomData) {
+            return false;
+        }
+        
+        const now = Date.now();
+        const users = roomData.users || {};
+        
+        // Check for active users (with recent heartbeats)
+        const activeUsers = Object.values(users).filter(u => {
+            const lastHeartbeat = u.lastHeartbeat || u.joinedAt || 0;
+            return (now - lastHeartbeat) < USER_TIMEOUT;
+        });
+        
+        // If there are active users, join normally
+        if (activeUsers.length > 0) {
+            console.log(`Room ${currentRoom} has ${activeUsers.length} active user(s), joining normally`);
+            // Clean up any stale users while we're here
+            for (const [odellId, userData] of Object.entries(users)) {
+                const lastHeartbeat = userData.lastHeartbeat || userData.joinedAt || 0;
+                if ((now - lastHeartbeat) >= USER_TIMEOUT) {
+                    await remove(ref(db, `rooms/${currentRoom}/users/${odellId}`));
+                }
+            }
+            return false;
+        }
+        
+        // No active users - check last activity
+        const lastActivity = roomData.lastActivity || 0;
+        const timeSinceActivity = now - lastActivity;
+        
+        if (timeSinceActivity >= ROOM_CLEANUP_TIME) {
+            // Room is stale (no activity for 60+ minutes), clean it
+            console.log(`Room ${currentRoom} has been inactive for ${Math.round(timeSinceActivity / 60000)} minutes, cleaning`);
+            return true;
+        } else {
+            // Room is recent, preserve history/queue but clean stale users
+            console.log(`Room ${currentRoom} was recently active (${Math.round(timeSinceActivity / 60000)} minutes ago), preserving data`);
+            // Remove all stale users
+            for (const odellId of Object.keys(users)) {
+                await remove(ref(db, `rooms/${currentRoom}/users/${odellId}`));
+            }
+            return false;
+        }
+    } catch (e) {
+        console.error('Error checking room on join:', e);
+        return false;
+    }
+}
+
+// Calculate offset between local time and Firebase server time
+async function syncServerTime() {
+    try {
+        const offsetRef = ref(db, '.info/serverTimeOffset');
+        onValue(offsetRef, (snapshot) => {
+            serverTimeOffset = snapshot.val() || 0;
+            console.log('Server time offset:', serverTimeOffset, 'ms');
+        });
+    } catch (e) {
+        console.error('Failed to sync server time:', e);
+        serverTimeOffset = 0;
+    }
+}
+
+// Get current server time
+function getServerTime() {
+    return Date.now() + serverTimeOffset;
 }
 
 function initializePlayer() {
@@ -974,6 +1112,7 @@ function listenToRoom() {
 // ============================================
 function onPlayerReady(event) {
     console.log('Player ready');
+    updateQualityOptions();
 }
 
 function onPlayerStateChange(event) {
@@ -987,7 +1126,15 @@ function onPlayerStateChange(event) {
             setTimeout(() => { ignorePlayerEvents = false; }, 300);
         }
         pendingPlayState = null;
+        
+        // Update quality options when video is cued
+        updateQualityOptions();
         return;
+    }
+    
+    // Update quality options when video starts playing
+    if (state === YT.PlayerState.PLAYING) {
+        updateQualityOptions();
     }
     
     if (ignorePlayerEvents) return;
@@ -1495,3 +1642,273 @@ idleConfirmBtn.addEventListener('click', confirmStillHere);
 
 // Also confirm if clicking backdrop
 idleModal.querySelector('.modal-backdrop').addEventListener('click', confirmStillHere);
+
+// ============================================
+// Quality Settings
+// ============================================
+const qualityLabels = {
+    'hd2160': '4K (2160p)',
+    'hd1440': '1440p',
+    'hd1080': '1080p',
+    'hd720': '720p',
+    'large': '480p',
+    'medium': '360p',
+    'small': '240p',
+    'tiny': '144p',
+    'default': 'Auto'
+};
+
+// Quality priority order (highest to lowest)
+const qualityPriority = ['hd2160', 'hd1440', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
+
+function updateQualityOptions() {
+    if (!player || typeof player.getAvailableQualityLevels !== 'function') return;
+    
+    // Small delay to ensure quality levels are available
+    setTimeout(() => {
+        const levels = player.getAvailableQualityLevels();
+        const currentVideoId = player.getVideoData()?.video_id;
+        
+        if (!levels || levels.length === 0) return;
+        
+        // Reset manual override if video changed
+        if (lastVideoId !== currentVideoId) {
+            lastVideoId = currentVideoId;
+            manualQualityOverride = false;
+            
+            // Apply "Always Best" if enabled and no manual override
+            if (alwaysBestQuality && !manualQualityOverride) {
+                applyBestQuality(levels);
+            }
+        }
+        
+        // Build quality options HTML
+        let optionsHtml = '<button class="quality-option' + (currentQuality === 'default' && !alwaysBestQuality ? ' active' : '') + '" data-quality="default">Auto</button>';
+        
+        levels.forEach(level => {
+            if (level === 'auto') return; // Skip auto, we have our own
+            const label = qualityLabels[level] || level;
+            const isActive = currentQuality === level;
+            optionsHtml += `<button class="quality-option${isActive ? ' active' : ''}" data-quality="${level}">${label}</button>`;
+        });
+        
+        qualityOptions.innerHTML = optionsHtml;
+        
+        // Update label
+        updateQualityLabel();
+        
+        // Add click handlers
+        qualityOptions.querySelectorAll('.quality-option').forEach(option => {
+            option.addEventListener('click', () => {
+                manualQualityOverride = true; // User manually selected quality
+                setQuality(option.dataset.quality);
+                qualityMenu.classList.add('hidden');
+            });
+        });
+    }, 500);
+}
+
+function applyBestQuality(levels) {
+    if (!levels || levels.length === 0) return;
+    
+    // Find the best available quality
+    for (const quality of qualityPriority) {
+        if (levels.includes(quality)) {
+            currentQuality = quality;
+            if (player && typeof player.setPlaybackQuality === 'function') {
+                player.setPlaybackQuality(quality);
+            }
+            updateQualityLabel();
+            console.log('Applied best quality:', quality);
+            return;
+        }
+    }
+}
+
+function updateQualityLabel() {
+    if (alwaysBestQuality && !manualQualityOverride) {
+        qualityLabel.textContent = 'Best';
+    } else if (currentQuality === 'default') {
+        qualityLabel.textContent = 'Auto';
+    } else {
+        qualityLabel.textContent = qualityLabels[currentQuality] || currentQuality;
+    }
+}
+
+function setQuality(quality) {
+    if (!player || typeof player.setPlaybackQuality !== 'function') return;
+    
+    currentQuality = quality;
+    
+    if (quality === 'default') {
+        // Let YouTube choose automatically
+        player.setPlaybackQuality('default');
+    } else {
+        player.setPlaybackQuality(quality);
+    }
+    
+    // Update active state
+    qualityOptions.querySelectorAll('.quality-option').forEach(option => {
+        option.classList.toggle('active', option.dataset.quality === quality);
+    });
+    
+    updateQualityLabel();
+    showToast(`Quality set to ${qualityLabels[quality] || quality}`);
+}
+
+// Toggle quality menu
+qualityBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    qualityMenu.classList.toggle('hidden');
+    
+    // Update options when opening menu
+    if (!qualityMenu.classList.contains('hidden')) {
+        updateQualityOptions();
+    }
+});
+
+// Always Best checkbox
+alwaysBestCheckbox.addEventListener('change', (e) => {
+    alwaysBestQuality = e.target.checked;
+    manualQualityOverride = false; // Reset override when toggling setting
+    
+    if (alwaysBestQuality) {
+        // Apply best quality immediately
+        if (player && typeof player.getAvailableQualityLevels === 'function') {
+            const levels = player.getAvailableQualityLevels();
+            applyBestQuality(levels);
+        }
+        showToast('Always Best quality enabled');
+    } else {
+        // Revert to auto
+        currentQuality = 'default';
+        if (player && typeof player.setPlaybackQuality === 'function') {
+            player.setPlaybackQuality('default');
+        }
+        updateQualityLabel();
+        showToast('Auto quality enabled');
+    }
+    
+    // Save preference to localStorage
+    try {
+        localStorage.setItem('alwaysBestQuality', alwaysBestQuality);
+    } catch (e) {
+        // localStorage not available
+    }
+});
+
+// Load saved preference
+try {
+    const savedAlwaysBest = localStorage.getItem('alwaysBestQuality');
+    if (savedAlwaysBest === 'true') {
+        alwaysBestQuality = true;
+        alwaysBestCheckbox.checked = true;
+    }
+} catch (e) {
+    // localStorage not available
+}
+
+// Close quality menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!qualityBtn.contains(e.target) && !qualityMenu.contains(e.target)) {
+        qualityMenu.classList.add('hidden');
+    }
+});
+
+// ============================================
+// Theater Mode
+// ============================================
+const iconTheaterEnter = document.getElementById('icon-theater-enter');
+const iconTheaterExit = document.getElementById('icon-theater-exit');
+
+function enterTheaterMode() {
+    isTheaterMode = true;
+    watchRoom.classList.add('theater-mode');
+    document.body.style.overflow = 'hidden';
+    
+    // Update icon
+    iconTheaterEnter.classList.add('hidden');
+    iconTheaterExit.classList.remove('hidden');
+    
+    // Start idle detection for controls
+    resetTheaterIdleTimer();
+    
+    // Add mouse move listener for showing controls
+    document.addEventListener('mousemove', handleTheaterMouseMove);
+    document.addEventListener('click', handleTheaterMouseMove);
+    
+    showToast('Theater mode - Press Escape or F to exit');
+}
+
+function exitTheaterMode() {
+    isTheaterMode = false;
+    watchRoom.classList.remove('theater-mode');
+    watchRoom.classList.remove('controls-hidden');
+    document.body.style.overflow = '';
+    
+    // Update icon
+    iconTheaterEnter.classList.remove('hidden');
+    iconTheaterExit.classList.add('hidden');
+    
+    // Clear idle timer
+    if (theaterIdleTimeout) {
+        clearTimeout(theaterIdleTimeout);
+        theaterIdleTimeout = null;
+    }
+    
+    // Remove listeners
+    document.removeEventListener('mousemove', handleTheaterMouseMove);
+    document.removeEventListener('click', handleTheaterMouseMove);
+}
+
+function toggleTheaterMode() {
+    if (isTheaterMode) {
+        exitTheaterMode();
+    } else {
+        enterTheaterMode();
+    }
+}
+
+function handleTheaterMouseMove() {
+    if (!isTheaterMode) return;
+    
+    // Show controls
+    watchRoom.classList.remove('controls-hidden');
+    
+    // Reset idle timer
+    resetTheaterIdleTimer();
+}
+
+function resetTheaterIdleTimer() {
+    if (theaterIdleTimeout) {
+        clearTimeout(theaterIdleTimeout);
+    }
+    
+    theaterIdleTimeout = setTimeout(() => {
+        if (isTheaterMode) {
+            watchRoom.classList.add('controls-hidden');
+        }
+    }, THEATER_IDLE_DELAY);
+}
+
+// Theater mode button click - toggle mode
+theaterBtn.addEventListener('click', toggleTheaterMode);
+theaterExitBtn.addEventListener('click', exitTheaterMode);
+
+// Double-click on video to toggle theater mode
+playerClickBlocker.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    toggleTheaterMode();
+});
+
+// Escape key to exit theater mode
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isTheaterMode) {
+        exitTheaterMode();
+    }
+    
+    // 'F' key to toggle theater mode
+    if (e.key === 'f' && e.target.tagName !== 'INPUT' && !e.ctrlKey && !e.metaKey) {
+        toggleTheaterMode();
+    }
+});
