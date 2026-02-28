@@ -8,29 +8,64 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://embed.twitch.tv/embed/v1.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=bungee:400|fira-code:400&display=swap" rel="stylesheet">
     <style>
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* === THEME VARIABLES === */
+        /* === THEME VARIABLES (Matching EightEyes Multi) === */
         :root {
-            --bg-main: #09090b; --bg-card: #18181b; --bg-element: #27272a;
-            --bg-hover: #3f3f46; --border-color: #27272a; --text-main: #f4f4f5;
-            --text-muted: #a1a1aa; 
-            --accent: #ff6322; 
+            --bg-main: #09090b;
+            --bg-card: #18181b;
+            --bg-element: #27272a;
+            --bg-hover: #3f3f46;
+            --border-color: #3f3f46;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #f95a1f;
+            --code-bg: #0d0d0f;
         }
         .theme-light {
-            --bg-main: #f4f4f5; --bg-card: #ffffff; --bg-element: #e4e4e7;
-            --bg-hover: #d4d4d8; --border-color: #e4e4e7; --text-main: #18181b;
-            --text-muted: #71717a; --accent: #ff6322;
+            --bg-main: #f4f4f5;
+            --bg-card: #ffffff;
+            --bg-element: #e4e4e7;
+            --bg-hover: #d4d4d8;
+            --border-color: #d4d4d8;
+            --text-main: #18181b;
+            --text-muted: #71717a;
+            --accent: #f95a1f;
         }
         .theme-catppuccin {
-            --bg-main: #1e1e2e; --bg-card: #181825; --bg-element: #313244;
-            --bg-hover: #45475a; --border-color: #313244; --text-main: #cdd6f4;
-            --text-muted: #a6adc8; --accent: #ff6322;
+            --bg-main: #1e1e2e;
+            --bg-card: #181825;
+            --bg-element: #313244;
+            --bg-hover: #45475a;
+            --border-color: #45475a;
+            --text-main: #cdd6f4;
+            --text-muted: #a6adc8;
+            --accent: #f95a1f;
         }
 
-        body { background-color: var(--bg-main); color: var(--text-main); overflow: hidden; height: 100vh; font-family: sans-serif; transition: background 0.3s ease; }
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            font-family: ui-sans-serif, system-ui, sans-serif;
+            transition: background 0.3s ease;
+        }
+
+        /* ── Animated noise grain overlay ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+        }
         
         .stream-card { 
             position: absolute; 
@@ -45,51 +80,291 @@
         }
         
         .seek-btn {
-            padding: 4px 6px; font-size: 10px; font-weight: 700; color: var(--text-muted);
-            border-radius: 4px; transition: all 0.2s; min-width: 32px; text-align: center;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 6px;
+            transition: all 0.2s;
+            min-width: 36px;
+            text-align: center;
+            background: transparent;
         }
-        .seek-btn:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
+        .seek-btn:hover {
+            color: var(--accent);
+            background: rgba(249, 90, 31, 0.1);
+        }
 
-        .glass-panel { background: var(--bg-card); border-bottom: 1px solid var(--border-color); }
+        .glass-panel {
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .theme-light .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .theme-catppuccin .glass-panel {
+            background: rgba(30, 30, 46, 0.85);
+        }
 
         .play-pause-wrapper { position: relative; width: 24px; height: 24px; }
         .play-pause-icon { position: absolute; top: 0; left: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
         .nudge-btn {
-            padding: 2px 4px; font-size: 9px; font-family: monospace; font-weight: 600; color: #d4d4d8;
-            border-radius: 3px; transition: background 0.1s; min-width: 24px; text-align: center;
+            padding: 3px 6px;
+            font-size: 10px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-radius: 4px;
+            transition: all 0.15s;
+            min-width: 28px;
+            text-align: center;
         }
-        .nudge-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+        .nudge-btn:hover {
+            background: rgba(249, 90, 31, 0.15);
+            color: var(--accent);
+        }
+
+        /* Logo styling matching EightEyes Multi */
+        .logo-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .logo-wordmark {
+            font-family: 'Bungee', sans-serif;
+            font-size: 18px;
+            letter-spacing: -0.05em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+        .logo-wordmark span {
+            color: var(--text-main);
+        }
+        .logo-sub {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* Button styling */
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: none;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-icon {
+            padding: 8px;
+            border-radius: 6px;
+            background: var(--bg-element);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(249, 90, 31, 0.1);
+        }
+
+        /* Input styling */
+        .input-field {
+            background: var(--bg-element);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(249, 90, 31, 0.1);
+        }
+        .input-field::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Select styling */
+        .select-field {
+            background: var(--bg-element);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .select-field:hover {
+            border-color: var(--accent);
+        }
+        .select-field:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+        }
+        .modal-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .modal-title {
+            font-family: 'Bungee', sans-serif;
+            font-size: 14px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+        .modal-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .modal-input {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Control bar styling */
+        .control-bar {
+            background: var(--bg-element);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        /* Seek accumulator badge */
+        .seek-badge {
+            background: var(--accent);
+            color: white;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 16px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(249, 90, 31, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stream overlay controls */
+        .stream-controls {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        /* Warning text */
+        .warning-text {
+            font-family: 'Fira Code', monospace;
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #ef4444;
+        }
+
+        /* Helper link styling */
+        .help-link {
+            color: var(--accent);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .help-link:hover {
+            opacity: 0.8;
+        }
+
+        /* Copied notification */
+        .copied-badge {
+            background: var(--accent);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 
 <body x-data="app()" x-init="init()" :class="'theme-' + theme" class="flex flex-col h-screen w-screen relative">
 
-    <div x-show="showSettings" x-cloak class="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center" @click.self="showSettings = false">
-        <div class="bg-[var(--bg-card)] border border-[var(--border-color)] p-6 rounded-xl w-full max-w-md shadow-2xl relative">
-            <button @click="showSettings = false" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
-            <h2 class="text-xl font-bold mb-4 text-[var(--accent)] uppercase tracking-widest">API Settings</h2>
+    <!-- Settings Modal -->
+    <div x-show="showSettings" x-cloak class="fixed inset-0 z-[200] modal-overlay flex items-center justify-center" @click.self="showSettings = false">
+        <div class="modal-card p-6 w-full max-w-md relative">
+            <button @click="showSettings = false" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h2 class="modal-title mb-6">API Settings</h2>
             
-            <div class="space-y-4">
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-bold uppercase text-[var(--text-muted)] mb-1">Twitch Client ID</label>
-                    <input type="text" x-model="apiKeys.twitchClientId" class="w-full bg-black/20 border border-[var(--border-color)] rounded px-3 py-2 text-sm focus:border-[var(--accent)] outline-none text-white">
+                    <label class="modal-label block mb-2">Twitch Client ID</label>
+                    <input type="text" x-model="apiKeys.twitchClientId" class="modal-input w-full">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase text-[var(--text-muted)] mb-1">Twitch Access Token</label>
-                    <input type="password" x-model="apiKeys.twitchToken" class="w-full bg-black/20 border border-[var(--border-color)] rounded px-3 py-2 text-sm focus:border-[var(--accent)] outline-none text-white">
-                    <p class="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">
-                        Go to <a href="https://twitchtokengenerator.com/" target="_blank" class="underline hover:text-white text-[var(--accent)]">twitchtokengenerator.com</a>.
-                        <br>No scopes needed! Just click "Generate Token", then copy the <strong>Client ID</strong> and <strong>Access Token</strong> above.
+                    <label class="modal-label block mb-2">Twitch Access Token</label>
+                    <input type="password" x-model="apiKeys.twitchToken" class="modal-input w-full">
+                    <p class="text-[11px] text-[var(--text-muted)] mt-3 leading-relaxed">
+                        Go to <a href="https://twitchtokengenerator.com/" target="_blank" class="help-link">twitchtokengenerator.com</a>.
+                        <br>No scopes needed! Just click "Generate Token", then copy the <strong class="text-[var(--text-main)]">Client ID</strong> and <strong class="text-[var(--text-main)]">Access Token</strong> above.
                     </p>
                 </div>
-                <button @click="saveKeys()" class="w-full bg-[var(--accent)] text-white font-bold py-2 rounded mt-2 hover:opacity-90">Save Keys</button>
+                <button @click="saveKeys()" class="btn-primary w-full mt-2">Save Keys</button>
             </div>
         </div>
     </div>
 
+    <!-- Header -->
     <header 
-        class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-4 relative transition-colors duration-200"
+        class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-5 relative transition-colors duration-200"
         :class="isDragging ? 'bg-[var(--bg-hover)]' : ''"
         @dragenter.prevent="dragCounter++; isDragging = true"
         @dragleave.prevent="dragCounter--; if(dragCounter <= 0) isDragging = false"
@@ -97,61 +372,62 @@
         @drop.prevent="handleDrop($event)"
     >
         
+        <!-- Drag overlay -->
         <div x-show="isDragging" class="absolute inset-0 z-[110] bg-black/80 flex items-center justify-center pointer-events-none">
-            <div class="border-2 border-dashed border-[var(--accent)] px-8 py-2 rounded-lg bg-black/50">
-                <span class="text-[var(--accent)] font-bold uppercase tracking-widest animate-pulse">Drop Video File Here</span>
+            <div class="border-2 border-dashed border-[var(--accent)] px-8 py-3 rounded-lg bg-black/50">
+                <span class="text-[var(--accent)] font-bold text-sm uppercase tracking-widest animate-pulse">Drop Video File Here</span>
             </div>
         </div>
 
+        <!-- Left section: Logo and controls -->
         <div class="flex items-center gap-4 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
             <div class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" :style="'color: var(--accent)'">
-                    <path d="M8 5v14l11-7z" />
-                </svg>
-                <h1 class="text-xl font-bold tracking-tighter uppercase" 
-                    style="font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';">
-                    Eight<span :style="'color: var(--accent)'">Eyes</span>
-                    <span class="ml-1 text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] align-middle">VOD REVIEW</span>
-                </h1>
+                <div class="logo-dot"></div>
+                <div class="logo-wordmark">Eight<span>Eyes</span></div>
+                <div class="logo-sub">VOD Review</div>
             </div>
 
-            <button @click="showSettings = true" class="text-[var(--text-muted)] hover:text-[var(--accent)]" title="API Settings">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            </button>
-            <button @click="syncStreams()" class="text-[var(--text-muted)] hover:text-[var(--accent)]" title="Sync All Twitch VODs to First Video">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            </button>
+            <div class="flex items-center gap-1 ml-2">
+                <button @click="showSettings = true" class="btn-icon" title="API Settings">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </button>
+                <button @click="syncStreams()" class="btn-icon" title="Sync All Twitch VODs to First Video">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
 
-            <select x-model="theme" @change="saveSettings()" 
-                    class="bg-[var(--bg-element)] text-[10px] font-bold uppercase tracking-wider border border-white/5 rounded px-2 py-1 outline-none cursor-pointer hover:border-[var(--accent)]">
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-                <option value="catppuccin">Catppuccin</option>
-            </select>
+                <select x-model="theme" @change="saveSettings()" class="select-field ml-1">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="catppuccin">Catppuccin</option>
+                </select>
+            </div>
         </div>
 
+        <!-- Center section: Playback controls -->
         <div class="absolute left-1/2 -translate-x-1/2 flex flex-row items-center justify-center h-full gap-4 transition-opacity duration-200" 
              :class="isDragging ? 'opacity-20' : ''" 
              x-show="streams.length > 0">
             
-            <div class="hidden lg:block text-[9px] text-red-500 font-bold uppercase tracking-wider max-w-[130px] text-right leading-tight">
+            <div class="hidden lg:block warning-text max-w-[140px] text-right leading-tight">
                 Twitch Player Sucks. Sometimes Seek Doesn't Work. Sorry.
             </div>
 
-            <div class="flex items-center gap-1 bg-black/10 p-1 rounded-lg border border-white/5 relative">
+            <div class="control-bar flex items-center gap-1 relative">
                 
-                <div class="flex items-center mr-2 border-r border-white/5 pr-2">
+                <!-- Rewind controls -->
+                <div class="flex items-center border-r border-[var(--border-color)] pr-1 mr-1">
                     <button @click="masterSeek(-1800)" class="seek-btn" title="-30m">-30m</button>
                     <button @click="masterSeek(-600)" class="seek-btn" title="-10m">-10m</button>
                     <button @click="masterSeek(-60)" class="seek-btn" title="-1m">-1m</button>
                     <button @click="masterSeek(-30)" class="seek-btn" title="-30s">-30s</button>
-                    <button @click="masterSeek(-10)" class="p-1.5 hover:text-[var(--accent)] transition-colors" title="-10s">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
+                    <button @click="masterSeek(-10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title="-10s">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
                     </button>
                 </div>
 
+                <!-- Play/Pause -->
                 <button @click="toggleMasterPlayback()" 
-                        class="p-2 transition-transform hover:scale-105 active:scale-95 text-white" 
+                        class="p-2 transition-transform hover:scale-105 active:scale-95 text-[var(--text-main)]" 
                         :title="isPlaying ? 'Pause All' : 'Play All'">
                     <div class="play-pause-wrapper">
                         <svg class="w-6 h-6 play-pause-icon" 
@@ -163,9 +439,10 @@
                     </div>
                 </button>
 
-                <div class="flex items-center ml-2 border-l border-white/5 pl-2">
-                    <button @click="masterSeek(10)" class="p-1.5 hover:text-[var(--accent)] transition-colors" title="+10s">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/></svg>
+                <!-- Forward controls -->
+                <div class="flex items-center border-l border-[var(--border-color)] pl-1 ml-1">
+                    <button @click="masterSeek(10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title="+10s">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/></svg>
                     </button>
                     <button @click="masterSeek(30)" class="seek-btn" title="+30s">+30s</button>
                     <button @click="masterSeek(60)" class="seek-btn" title="+1m">+1m</button>
@@ -173,6 +450,7 @@
                     <button @click="masterSeek(1800)" class="seek-btn" title="+30m">+30m</button>
                 </div>
 
+                <!-- Seek accumulator indicator -->
                 <div x-show="seekAccumulator !== 0" 
                      x-transition:enter="transition ease-out duration-300"
                      x-transition:enter-start="opacity-0 translate-y-4 scale-90"
@@ -180,13 +458,13 @@
                      x-transition:leave="transition ease-in duration-200"
                      x-transition:leave-start="opacity-100 translate-y-0 scale-100"
                      x-transition:leave-end="opacity-0 translate-y-4 scale-90"
-                     class="absolute top-full mt-4 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl pointer-events-none whitespace-nowrap z-[9999] border border-white/20"
-                     style="box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                     class="absolute top-full mt-4 left-1/2 -translate-x-1/2 seek-badge pointer-events-none whitespace-nowrap z-[9999]">
                     <span x-text="seekAccumulator > 0 ? `+${seekAccumulator}s` : `${seekAccumulator}s`"></span>
                 </div>
             </div>
         </div>
 
+        <!-- Right section: Input and actions -->
         <div class="flex items-center gap-2 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
             <input type="file" x-ref="fileInput" multiple accept="video/*" class="hidden" @change="handleFileUpload">
             
@@ -194,21 +472,22 @@
                    @keyup.enter="addStreamFromInput()" 
                    @paste="setTimeout(() => addStreamFromInput(), 100)"
                    placeholder="Twitch / YT / Local..." 
-                   class="bg-black/10 border border-[var(--border-color)] px-3 py-1.5 rounded text-sm w-48 focus:outline-none focus:border-[var(--accent)] transition-colors">
+                   class="input-field w-44">
             
-            <button @click="addStreamFromInput()" class="px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider text-white transition-all shadow-md" :style="'background: var(--accent)'">Add</button>
+            <button @click="addStreamFromInput()" class="btn-primary">Add</button>
             
-            <button @click="$refs.fileInput.click()" class="px-3 py-1.5 rounded bg-[var(--bg-element)] border border-[var(--border-color)] hover:text-white hover:border-[var(--accent)] transition-colors text-[var(--text-muted)]" title="Upload Local Video">
+            <button @click="$refs.fileInput.click()" class="btn-icon" title="Upload Local Video">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
             </button>
 
-            <button @click="generateShareLink()" class="px-3 py-1.5 rounded bg-[var(--bg-element)] border border-[var(--border-color)] hover:text-white hover:border-[var(--accent)] transition-colors text-[var(--text-muted)] group relative" title="Copy Deep Link with Timestamps">
+            <button @click="generateShareLink()" class="btn-icon group relative" title="Copy Deep Link with Timestamps">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                <span x-show="showCopied" x-transition.opacity.duration.500ms class="absolute top-full right-0 mt-2 bg-[var(--accent)] text-white text-[10px] px-2 py-1 rounded whitespace-nowrap shadow-lg">Link Copied!</span>
+                <span x-show="showCopied" x-transition.opacity.duration.500ms class="absolute top-full right-0 mt-2 copied-badge whitespace-nowrap">Link Copied!</span>
             </button>
         </div>
     </header>
 
+    <!-- Main content -->
     <main class="flex-1 flex overflow-hidden relative z-0">
         
         <div id="vod-grid" class="flex-1 relative overflow-hidden bg-black/50 p-4">
@@ -217,6 +496,7 @@
                      class="stream-card rounded-lg group shadow-2xl"
                      :style="stream.style">
                     
+                    <!-- Per-stream seek indicator -->
                     <div x-show="stream.seekAccumulator !== 0" 
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 scale-90"
@@ -224,14 +504,17 @@
                          x-transition:leave="transition ease-in duration-150"
                          x-transition:leave-start="opacity-100 scale-100"
                          x-transition:leave-end="opacity-0 scale-90"
-                         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur text-white text-lg font-black px-6 py-2 rounded-xl shadow-2xl pointer-events-none z-[60] border border-[var(--accent)]">
+                         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur text-white text-lg font-black px-6 py-2 rounded-xl shadow-2xl pointer-events-none z-[60] border border-[var(--accent)]"
+                         style="font-family: 'Fira Code', monospace;">
                         <span x-text="stream.seekAccumulator > 0 ? `+${stream.seekAccumulator}s` : `${stream.seekAccumulator}s`"></span>
                     </div>
 
+                    <!-- Hover controls overlay -->
                     <div class="absolute top-0 left-0 w-full p-3 flex justify-center items-start opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none bg-gradient-to-b from-black/80 to-transparent">
                         
-                        <div class="flex items-center bg-black/60 backdrop-blur rounded p-1 pointer-events-auto border border-white/5 shadow-lg">
-                            <div class="flex gap-0.5 border-r border-white/10 pr-1 mr-1">
+                        <!-- Nudge buttons -->
+                        <div class="stream-controls flex items-center p-1.5 pointer-events-auto">
+                            <div class="flex gap-0.5 border-r border-white/10 pr-1.5 mr-1.5">
                                 <button @click="nudge(stream.id, -5)" class="nudge-btn">-5</button>
                                 <button @click="nudge(stream.id, -1)" class="nudge-btn">-1</button>
                                 <button @click="nudge(stream.id, -0.5)" class="nudge-btn">-.5</button>
@@ -245,16 +528,17 @@
                             </div>
                         </div>
 
-                        <div class="absolute top-3 right-3 flex gap-1 pointer-events-auto">
+                        <!-- Focus/Close buttons -->
+                        <div class="absolute top-3 right-3 flex gap-1.5 pointer-events-auto">
                             <button @click="focusStream(stream.id)" 
-                                    :class="focusedId === stream.id ? 'bg-[var(--accent)] text-white' : 'bg-black/60 text-zinc-300'"
-                                    class="p-1.5 backdrop-blur rounded hover:bg-[var(--accent)] border border-white/5 hover:text-white transition-colors"
+                                    :class="focusedId === stream.id ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-black/60 text-zinc-300 border-white/10'"
+                                    class="p-1.5 backdrop-blur rounded-md hover:bg-[var(--accent)] border hover:border-[var(--accent)] hover:text-white transition-all"
                                     :title="focusedId === stream.id ? 'Restore Grid' : 'Focus Stream'">
                                 <svg x-show="focusedId !== stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                                 <svg x-show="focusedId === stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9H4m5 0V4m0 5l-5-5m6 11h5m-5 0v5m0-5l5 5"/></svg>
                             </button>
                             
-                            <button @click="removeStream(stream.id)" class="p-1.5 bg-black/60 backdrop-blur rounded hover:bg-red-600 border border-white/5 text-white">
+                            <button @click="removeStream(stream.id)" class="p-1.5 bg-black/60 backdrop-blur rounded-md hover:bg-red-600 border border-white/10 hover:border-red-600 text-white transition-all">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
