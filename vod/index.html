@@ -4,17 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EightEyes VOD Review</title>
+    
+    <!-- Preconnect to external domains for faster resource loading -->
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://embed.twitch.tv">
+    <link rel="preconnect" href="https://www.youtube.com">
+    <link rel="dns-prefetch" href="https://player.twitch.tv">
+    <link rel="dns-prefetch" href="https://www.youtube.com">
+    
+    <!-- Critical CSS inline, fonts with display=swap for non-blocking -->
+    <link href="https://fonts.bunny.net/css?family=bungee:400|fira-code:400&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://embed.twitch.tv/embed/v1.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=bungee:400|fira-code:400&display=swap" rel="stylesheet">
+    
     <style>
         [x-cloak] { display: none !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
 
-        /* === THEME VARIABLES (Matching EightEyes Multi) === */
+        /* === THEME VARIABLES === */
         :root {
             --bg-main: #09090b;
             --bg-card: #18181b;
@@ -24,7 +34,6 @@
             --text-main: #f4f4f5;
             --text-muted: #a1a1aa;
             --accent: #f95a1f;
-            --code-bg: #0d0d0f;
         }
         .theme-light {
             --bg-main: #f4f4f5;
@@ -34,7 +43,6 @@
             --border-color: #d4d4d8;
             --text-main: #18181b;
             --text-muted: #71717a;
-            --accent: #f95a1f;
         }
         .theme-catppuccin {
             --bg-main: #1e1e2e;
@@ -44,48 +52,49 @@
             --border-color: #45475a;
             --text-main: #cdd6f4;
             --text-muted: #a6adc8;
-            --accent: #f95a1f;
         }
 
         body {
-            background-color: var(--bg-main);
+            background: var(--bg-main);
             color: var(--text-main);
             overflow: hidden;
             height: 100vh;
             font-family: ui-sans-serif, system-ui, sans-serif;
-            transition: background 0.3s ease;
         }
 
-        /* ── Animated noise grain overlay ── */
+        /* Noise overlay - use CSS instead of SVG for better performance */
         body::before {
             content: '';
             position: fixed;
             inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
             opacity: 0.03;
             pointer-events: none;
             z-index: 0;
         }
-        
-        .stream-card { 
-            position: absolute; 
-            background: var(--bg-card); 
-            border: 1px solid var(--border-color); 
+
+        /* Stream cards with CSS containment for rendering performance */
+        .stream-card {
+            position: absolute;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             overflow: hidden;
-            box-sizing: border-box;
-            transition: top 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
-                        left 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
-                        width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
+            contain: layout style;
+            will-change: transform;
+            transform: translate3d(0,0,0);
+        }
+        .stream-card.animating {
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+                        width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
                         height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        
+
         .seek-btn {
             padding: 4px 8px;
             font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
             border-radius: 6px;
-            transition: all 0.2s;
             min-width: 36px;
             text-align: center;
             background: transparent;
@@ -101,15 +110,15 @@
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color);
         }
-        .theme-light .glass-panel {
-            background: rgba(255, 255, 255, 0.9);
-        }
-        .theme-catppuccin .glass-panel {
-            background: rgba(30, 30, 46, 0.85);
-        }
+        .theme-light .glass-panel { background: rgba(255, 255, 255, 0.9); }
+        .theme-catppuccin .glass-panel { background: rgba(30, 30, 46, 0.85); }
 
         .play-pause-wrapper { position: relative; width: 24px; height: 24px; }
-        .play-pause-icon { position: absolute; top: 0; left: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .play-pause-icon {
+            position: absolute;
+            top: 0; left: 0;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+        }
 
         .nudge-btn {
             padding: 3px 6px;
@@ -118,7 +127,6 @@
             font-weight: 500;
             color: var(--text-muted);
             border-radius: 4px;
-            transition: all 0.15s;
             min-width: 28px;
             text-align: center;
         }
@@ -127,19 +135,14 @@
             color: var(--accent);
         }
 
-        /* Logo styling matching EightEyes Multi */
         .logo-dot {
-            width: 10px;
-            height: 10px;
+            width: 10px; height: 10px;
             background: var(--accent);
             border-radius: 50%;
             animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-            flex-shrink: 0;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        
         .logo-wordmark {
             font-family: 'Bungee', sans-serif;
             font-size: 18px;
@@ -147,9 +150,7 @@
             text-transform: uppercase;
             color: var(--accent);
         }
-        .logo-wordmark span {
-            color: var(--text-main);
-        }
+        .logo-wordmark span { color: var(--text-main); }
         .logo-sub {
             font-size: 9px;
             font-weight: 700;
@@ -158,7 +159,6 @@
             color: var(--text-muted);
         }
 
-        /* Button styling */
         .btn-primary {
             background: var(--accent);
             color: white;
@@ -168,13 +168,9 @@
             text-transform: uppercase;
             padding: 8px 16px;
             border-radius: 6px;
-            transition: all 0.2s;
             border: none;
         }
-        .btn-primary:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
+        .btn-primary:hover { opacity: 0.9; }
 
         .btn-icon {
             padding: 8px;
@@ -182,7 +178,6 @@
             background: var(--bg-element);
             border: 1px solid var(--border-color);
             color: var(--text-muted);
-            transition: all 0.2s;
         }
         .btn-icon:hover {
             color: var(--accent);
@@ -190,7 +185,6 @@
             background: rgba(249, 90, 31, 0.1);
         }
 
-        /* Input styling */
         .input-field {
             background: var(--bg-element);
             border: 1px solid var(--border-color);
@@ -198,18 +192,14 @@
             padding: 8px 14px;
             font-size: 13px;
             color: var(--text-main);
-            transition: all 0.2s;
         }
         .input-field:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(249, 90, 31, 0.1);
         }
-        .input-field::placeholder {
-            color: var(--text-muted);
-        }
+        .input-field::placeholder { color: var(--text-muted); }
 
-        /* Select styling */
         .select-field {
             background: var(--bg-element);
             border: 1px solid var(--border-color);
@@ -221,17 +211,12 @@
             text-transform: uppercase;
             color: var(--text-main);
             cursor: pointer;
-            transition: all 0.2s;
         }
-        .select-field:hover {
-            border-color: var(--accent);
-        }
-        .select-field:focus {
+        .select-field:hover, .select-field:focus {
             outline: none;
             border-color: var(--accent);
         }
 
-        /* Modal styling */
         .modal-overlay {
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(8px);
@@ -263,14 +248,12 @@
             padding: 10px 14px;
             font-size: 13px;
             color: var(--text-main);
-            transition: border-color 0.2s;
         }
         .modal-input:focus {
             outline: none;
             border-color: var(--accent);
         }
 
-        /* Control bar styling */
         .control-bar {
             background: var(--bg-element);
             border: 1px solid var(--border-color);
@@ -278,7 +261,6 @@
             padding: 4px;
         }
 
-        /* Seek accumulator badge */
         .seek-badge {
             background: var(--accent);
             color: white;
@@ -288,10 +270,8 @@
             padding: 6px 16px;
             border-radius: 20px;
             box-shadow: 0 4px 20px rgba(249, 90, 31, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Stream overlay controls */
         .stream-controls {
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(8px);
@@ -299,7 +279,6 @@
             border-radius: 8px;
         }
 
-        /* Warning text */
         .warning-text {
             font-family: 'Fira Code', monospace;
             font-size: 9px;
@@ -309,17 +288,12 @@
             color: #ef4444;
         }
 
-        /* Helper link styling */
         .help-link {
             color: var(--accent);
             text-decoration: underline;
             text-underline-offset: 2px;
         }
-        .help-link:hover {
-            opacity: 0.8;
-        }
 
-        /* Copied notification */
         .copied-badge {
             background: var(--accent);
             color: white;
@@ -339,11 +313,10 @@
     <!-- Settings Modal -->
     <div x-show="showSettings" x-cloak class="fixed inset-0 z-[200] modal-overlay flex items-center justify-center" @click.self="showSettings = false">
         <div class="modal-card p-6 w-full max-w-md relative">
-            <button @click="showSettings = false" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors">
+            <button @click="showSettings = false" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--accent)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
             <h2 class="modal-title mb-6">API Settings</h2>
-            
             <div class="space-y-5">
                 <div>
                     <label class="modal-label block mb-2">Twitch Client ID</label>
@@ -354,7 +327,7 @@
                     <input type="password" x-model="apiKeys.twitchToken" class="modal-input w-full">
                     <p class="text-[11px] text-[var(--text-muted)] mt-3 leading-relaxed">
                         Go to <a href="https://twitchtokengenerator.com/" target="_blank" class="help-link">twitchtokengenerator.com</a>.
-                        <br>No scopes needed! Just click "Generate Token", then copy the <strong class="text-[var(--text-main)]">Client ID</strong> and <strong class="text-[var(--text-main)]">Access Token</strong> above.
+                        <br>No scopes needed! Click "Generate Token", then copy the <strong class="text-[var(--text-main)]">Client ID</strong> and <strong class="text-[var(--text-main)]">Access Token</strong>.
                     </p>
                 </div>
                 <button @click="saveKeys()" class="btn-primary w-full mt-2">Save Keys</button>
@@ -363,14 +336,11 @@
     </div>
 
     <!-- Header -->
-    <header 
-        class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-5 relative transition-colors duration-200"
-        :class="isDragging ? 'bg-[var(--bg-hover)]' : ''"
+    <header class="flex-none z-[100] h-14 w-full glass-panel flex items-center justify-between px-5 relative"
         @dragenter.prevent="dragCounter++; isDragging = true"
         @dragleave.prevent="dragCounter--; if(dragCounter <= 0) isDragging = false"
         @dragover.prevent
-        @drop.prevent="handleDrop($event)"
-    >
+        @drop.prevent="handleDrop($event)">
         
         <!-- Drag overlay -->
         <div x-show="isDragging" class="absolute inset-0 z-[110] bg-black/80 flex items-center justify-center pointer-events-none">
@@ -379,22 +349,20 @@
             </div>
         </div>
 
-        <!-- Left section: Logo and controls -->
-        <div class="flex items-center gap-4 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
+        <!-- Left: Logo -->
+        <div class="flex items-center gap-4" :class="isDragging && 'opacity-20'">
             <div class="flex items-center gap-2">
                 <div class="logo-dot"></div>
                 <div class="logo-wordmark">Eight<span>Eyes</span></div>
                 <div class="logo-sub">VOD Review</div>
             </div>
-
             <div class="flex items-center gap-1 ml-2">
                 <button @click="showSettings = true" class="btn-icon" title="API Settings">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </button>
-                <button @click="syncStreams()" class="btn-icon" title="Sync All Twitch VODs to First Video">
+                <button @click="syncStreams()" class="btn-icon" title="Sync All Twitch VODs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 </button>
-
                 <select x-model="theme" @change="saveSettings()" class="select-field ml-1">
                     <option value="dark">Dark</option>
                     <option value="light">Light</option>
@@ -403,116 +371,68 @@
             </div>
         </div>
 
-        <!-- Center section: Playback controls -->
-        <div class="absolute left-1/2 -translate-x-1/2 flex flex-row items-center justify-center h-full gap-4 transition-opacity duration-200" 
-             :class="isDragging ? 'opacity-20' : ''" 
-             x-show="streams.length > 0">
-            
+        <!-- Center: Playback controls -->
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-4" :class="isDragging && 'opacity-20'" x-show="streams.length > 0">
             <div class="hidden lg:block warning-text max-w-[140px] text-right leading-tight">
                 Twitch Player Sucks. Sometimes Seek Doesn't Work. Sorry.
             </div>
-
             <div class="control-bar flex items-center gap-1 relative">
-                
-                <!-- Rewind controls -->
                 <div class="flex items-center border-r border-[var(--border-color)] pr-1 mr-1">
-                    <button @click="masterSeek(-1800)" class="seek-btn" title="-30m">-30m</button>
-                    <button @click="masterSeek(-600)" class="seek-btn" title="-10m">-10m</button>
-                    <button @click="masterSeek(-60)" class="seek-btn" title="-1m">-1m</button>
-                    <button @click="masterSeek(-30)" class="seek-btn" title="-30s">-30s</button>
-                    <button @click="masterSeek(-10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title="-10s">
+                    <button @click="masterSeek(-1800)" class="seek-btn">-30m</button>
+                    <button @click="masterSeek(-600)" class="seek-btn">-10m</button>
+                    <button @click="masterSeek(-60)" class="seek-btn">-1m</button>
+                    <button @click="masterSeek(-30)" class="seek-btn">-30s</button>
+                    <button @click="masterSeek(-10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
                     </button>
                 </div>
-
-                <!-- Play/Pause -->
-                <button @click="toggleMasterPlayback()" 
-                        class="p-2 transition-transform hover:scale-105 active:scale-95 text-[var(--text-main)]" 
-                        :title="isPlaying ? 'Pause All' : 'Play All'">
+                <button @click="toggleMasterPlayback()" class="p-2 text-[var(--text-main)]" :title="isPlaying ? 'Pause All' : 'Play All'">
                     <div class="play-pause-wrapper">
-                        <svg class="w-6 h-6 play-pause-icon" 
-                             :class="!isPlaying ? 'scale-100 rotate-0 opacity-100' : 'scale-50 -rotate-90 opacity-0'"
-                             fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                        <svg class="w-6 h-6 play-pause-icon" 
-                             :class="isPlaying ? 'scale-100 rotate-0 opacity-100' : 'scale-50 rotate-90 opacity-0'"
-                             fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg class="w-6 h-6 play-pause-icon" :class="!isPlaying ? 'scale-100 opacity-100' : 'scale-50 -rotate-90 opacity-0'" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="w-6 h-6 play-pause-icon" :class="isPlaying ? 'scale-100 opacity-100' : 'scale-50 rotate-90 opacity-0'" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </div>
                 </button>
-
-                <!-- Forward controls -->
                 <div class="flex items-center border-l border-[var(--border-color)] pl-1 ml-1">
-                    <button @click="masterSeek(10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" title="+10s">
+                    <button @click="masterSeek(10)" class="p-2 text-[var(--text-muted)] hover:text-[var(--accent)]">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"/></svg>
                     </button>
-                    <button @click="masterSeek(30)" class="seek-btn" title="+30s">+30s</button>
-                    <button @click="masterSeek(60)" class="seek-btn" title="+1m">+1m</button>
-                    <button @click="masterSeek(600)" class="seek-btn" title="+10m">+10m</button>
-                    <button @click="masterSeek(1800)" class="seek-btn" title="+30m">+30m</button>
+                    <button @click="masterSeek(30)" class="seek-btn">+30s</button>
+                    <button @click="masterSeek(60)" class="seek-btn">+1m</button>
+                    <button @click="masterSeek(600)" class="seek-btn">+10m</button>
+                    <button @click="masterSeek(1800)" class="seek-btn">+30m</button>
                 </div>
-
-                <!-- Seek accumulator indicator -->
-                <div x-show="seekAccumulator !== 0" 
-                     x-transition:enter="transition ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-4 scale-90"
-                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave="transition ease-in duration-200"
-                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-4 scale-90"
-                     class="absolute top-full mt-4 left-1/2 -translate-x-1/2 seek-badge pointer-events-none whitespace-nowrap z-[9999]">
-                    <span x-text="seekAccumulator > 0 ? `+${seekAccumulator}s` : `${seekAccumulator}s`"></span>
+                <div x-show="seekAccumulator !== 0" x-transition.opacity.duration.200ms class="absolute top-full mt-4 left-1/2 -translate-x-1/2 seek-badge pointer-events-none z-[9999]">
+                    <span x-text="(seekAccumulator > 0 ? '+' : '') + seekAccumulator + 's'"></span>
                 </div>
             </div>
         </div>
 
-        <!-- Right section: Input and actions -->
-        <div class="flex items-center gap-2 transition-opacity duration-200" :class="isDragging ? 'opacity-20' : ''">
+        <!-- Right: Input -->
+        <div class="flex items-center gap-2" :class="isDragging && 'opacity-20'">
             <input type="file" x-ref="fileInput" multiple accept="video/*" class="hidden" @change="handleFileUpload">
-            
-            <input type="text" x-model="input" 
-                   @keyup.enter="addStreamFromInput()" 
-                   @paste="setTimeout(() => addStreamFromInput(), 100)"
-                   placeholder="Twitch / YT / Local..." 
-                   class="input-field w-44">
-            
+            <input type="text" x-model="input" @keyup.enter="addStreamFromInput()" @paste="setTimeout(() => addStreamFromInput(), 100)" placeholder="Twitch / YT / Local..." class="input-field w-44">
             <button @click="addStreamFromInput()" class="btn-primary">Add</button>
-            
             <button @click="$refs.fileInput.click()" class="btn-icon" title="Upload Local Video">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
             </button>
-
-            <button @click="generateShareLink()" class="btn-icon group relative" title="Copy Deep Link with Timestamps">
+            <button @click="generateShareLink()" class="btn-icon relative" title="Copy Deep Link">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
-                <span x-show="showCopied" x-transition.opacity.duration.500ms class="absolute top-full right-0 mt-2 copied-badge whitespace-nowrap">Link Copied!</span>
+                <span x-show="showCopied" x-transition.opacity class="absolute top-full right-0 mt-2 copied-badge whitespace-nowrap">Copied!</span>
             </button>
         </div>
     </header>
 
-    <!-- Main content -->
-    <main class="flex-1 flex overflow-hidden relative z-0">
-        
-        <div id="vod-grid" class="flex-1 relative overflow-hidden bg-black/50 p-4">
+    <!-- Main grid -->
+    <main class="flex-1 overflow-hidden relative z-0">
+        <div id="vod-grid" class="w-full h-full relative bg-black/50 p-4">
             <template x-for="stream in streams" :key="stream.id">
-                <div :id="'wrap-' + stream.id" 
-                     class="stream-card rounded-lg group shadow-2xl"
-                     :style="stream.style">
-                    
-                    <!-- Per-stream seek indicator -->
-                    <div x-show="stream.seekAccumulator !== 0" 
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 scale-90"
-                         x-transition:enter-end="opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-150"
-                         x-transition:leave-start="opacity-100 scale-100"
-                         x-transition:leave-end="opacity-0 scale-90"
-                         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur text-white text-lg font-black px-6 py-2 rounded-xl shadow-2xl pointer-events-none z-[60] border border-[var(--accent)]"
-                         style="font-family: 'Fira Code', monospace;">
-                        <span x-text="stream.seekAccumulator > 0 ? `+${stream.seekAccumulator}s` : `${stream.seekAccumulator}s`"></span>
+                <div :id="'wrap-' + stream.id" class="stream-card rounded-lg group shadow-2xl" :style="stream.style">
+                    <!-- Seek indicator -->
+                    <div x-show="stream.seekAccumulator !== 0" x-transition.opacity class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur text-white text-lg font-black px-6 py-2 rounded-xl z-[60] border border-[var(--accent)]" style="font-family:'Fira Code',monospace">
+                        <span x-text="(stream.seekAccumulator > 0 ? '+' : '') + stream.seekAccumulator + 's'"></span>
                     </div>
-
-                    <!-- Hover controls overlay -->
+                    <!-- Hover controls -->
                     <div class="absolute top-0 left-0 w-full p-3 flex justify-center items-start opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none bg-gradient-to-b from-black/80 to-transparent">
-                        
-                        <!-- Nudge buttons -->
                         <div class="stream-controls flex items-center p-1.5 pointer-events-auto">
                             <div class="flex gap-0.5 border-r border-white/10 pr-1.5 mr-1.5">
                                 <button @click="nudge(stream.id, -5)" class="nudge-btn">-5</button>
@@ -527,50 +447,41 @@
                                 <button @click="nudge(stream.id, 5)" class="nudge-btn">+5</button>
                             </div>
                         </div>
-
-                        <!-- Focus/Close buttons -->
                         <div class="absolute top-3 right-3 flex gap-1.5 pointer-events-auto">
-                            <button @click="focusStream(stream.id)" 
-                                    :class="focusedId === stream.id ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-black/60 text-zinc-300 border-white/10'"
-                                    class="p-1.5 backdrop-blur rounded-md hover:bg-[var(--accent)] border hover:border-[var(--accent)] hover:text-white transition-all"
-                                    :title="focusedId === stream.id ? 'Restore Grid' : 'Focus Stream'">
+                            <button @click="focusStream(stream.id)" :class="focusedId === stream.id ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-black/60 text-zinc-300 border-white/10'" class="p-1.5 backdrop-blur rounded-md border hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-white">
                                 <svg x-show="focusedId !== stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                                 <svg x-show="focusedId === stream.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9H4m5 0V4m0 5l-5-5m6 11h5m-5 0v5m0-5l5 5"/></svg>
                             </button>
-                            
-                            <button @click="removeStream(stream.id)" class="p-1.5 bg-black/60 backdrop-blur rounded-md hover:bg-red-600 border border-white/10 hover:border-red-600 text-white transition-all">
+                            <button @click="removeStream(stream.id)" class="p-1.5 bg-black/60 backdrop-blur rounded-md hover:bg-red-600 border border-white/10 hover:border-red-600 text-white">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </button>
                         </div>
                     </div>
-
                     <div class="absolute inset-0 z-0" @click="activateStream(stream.id)"></div>
                     <div :id="'player-' + stream.id" class="w-full h-full relative z-10 pointer-events-auto bg-black flex items-center justify-center"></div>
                 </div>
             </template>
         </div>
-
     </main>
 
     <script>
-        window.playerRegistry = {};
+        const playerRegistry = {};
+        const hostname = window.location.hostname || 'localhost';
 
         function app() {
+            let gridEl = null;
+            let resizeObserver = null;
+            let layoutRAF = null;
+
             return {
                 streams: [],
                 input: '',
                 theme: localStorage.getItem('theme') || 'dark',
                 focusedId: null,
-                
-                // Drag State
                 isDragging: false,
                 dragCounter: 0,
-                
-                // Settings & Sync State
                 showSettings: false,
-                apiKeys: { twitchClientId: '', twitchToken: '' },
-                
-                // Seek Logic
+                apiKeys: JSON.parse(localStorage.getItem('apiKeys') || '{"twitchClientId":"","twitchToken":""}'),
                 seekAccumulator: 0,
                 seekTimer: null,
                 masterBaseTimes: {},
@@ -579,18 +490,21 @@
                 showCopied: false,
 
                 init() {
-                    const resizeObserver = new ResizeObserver(() => { this._performLayout(); });
-                    resizeObserver.observe(document.getElementById('vod-grid'));
-                    setInterval(() => this.updateUIProgress(), 500);
+                    gridEl = document.getElementById('vod-grid');
+                    resizeObserver = new ResizeObserver(() => this.scheduleLayout());
+                    resizeObserver.observe(gridEl);
                     setTimeout(() => this.loadFromUrl(), 100);
-                    
-                    const savedKeys = localStorage.getItem('apiKeys');
-                    if(savedKeys) this.apiKeys = JSON.parse(savedKeys);
                 },
 
-                getHostname() { return window.location.hostname || 'localhost'; },
+                scheduleLayout() {
+                    if (layoutRAF) return;
+                    layoutRAF = requestAnimationFrame(() => {
+                        this._performLayout();
+                        layoutRAF = null;
+                    });
+                },
+
                 saveSettings() { localStorage.setItem('theme', this.theme); },
-                
                 saveKeys() {
                     localStorage.setItem('apiKeys', JSON.stringify(this.apiKeys));
                     this.showSettings = false;
@@ -600,78 +514,56 @@
                     this.isDragging = false;
                     this.dragCounter = 0;
                     const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        Array.from(files).forEach(file => {
-                            if (file.type.startsWith('video/')) {
-                                const objectUrl = URL.createObjectURL(file);
-                                this.createStream(objectUrl, 'local', file.name);
-                            }
-                        });
+                    for (let i = 0; i < files.length; i++) {
+                        if (files[i].type.startsWith('video/')) {
+                            this.createStream(URL.createObjectURL(files[i]), 'local', files[i].name);
+                        }
                     }
+                },
+
+                handleFileUpload(e) {
+                    const files = e.target.files;
+                    for (let i = 0; i < files.length; i++) {
+                        this.createStream(URL.createObjectURL(files[i]), 'local', files[i].name);
+                    }
+                    e.target.value = '';
                 },
 
                 async fetchMetadata(stream) {
-                    if (stream.type === 'twitch' && this.apiKeys.twitchClientId && this.apiKeys.twitchToken) {
-                        try {
-                            const res = await fetch(`https://api.twitch.tv/helix/videos?id=${stream.vodId}`, {
-                                headers: { 'Client-ID': this.apiKeys.twitchClientId, 'Authorization': `Bearer ${this.apiKeys.twitchToken}` }
-                            });
-                            const data = await res.json();
-                            if (data.data && data.data[0]) {
-                                stream.startTimeAbsolute = new Date(data.data[0].created_at).getTime();
-                                console.log("Fetched Twitch Time:", stream.startTimeAbsolute);
-                            }
-                        } catch (e) { console.error("Twitch Fetch Error", e); }
-                    }
+                    if (stream.type !== 'twitch' || !this.apiKeys.twitchClientId || !this.apiKeys.twitchToken) return;
+                    try {
+                        const res = await fetch(`https://api.twitch.tv/helix/videos?id=${stream.vodId}`, {
+                            headers: { 'Client-ID': this.apiKeys.twitchClientId, 'Authorization': `Bearer ${this.apiKeys.twitchToken}` }
+                        });
+                        const data = await res.json();
+                        if (data.data?.[0]) stream.startTimeAbsolute = new Date(data.data[0].created_at).getTime();
+                    } catch (e) {}
                 },
 
-                // --- SYNC LOGIC (Twitch Only) ---
                 syncStreams() {
                     if (this.streams.length < 2) return;
-                    
-                    // 1. Identify Anchor (First VOD)
-                    const anchorStream = this.streams[0];
-                    if (!anchorStream.startTimeAbsolute) {
-                        alert("Reference VOD (First Tile) has no start time data. Please add Twitch API keys and reload.");
+                    const anchor = this.streams[0];
+                    if (!anchor.startTimeAbsolute) {
+                        alert("Reference VOD has no start time. Add Twitch API keys and reload.");
                         return;
                     }
-
-                    const anchorPlayer = window.playerRegistry[anchorStream.id];
+                    const anchorPlayer = playerRegistry[anchor.id];
                     if (!anchorPlayer) return;
-
-                    // 2. Calculate "Real World Time" of the Anchor
-                    const anchorCurrentTime = anchorPlayer.getCurrentTime();
-                    const realWorldTargetTime = anchorStream.startTimeAbsolute + (anchorCurrentTime * 1000);
-                    
-                    console.log("Syncing to Anchor Real Time:", new Date(realWorldTargetTime).toISOString());
-
-                    // 3. Sync all others to this Real World Time
-                    this.streams.forEach((s, index) => {
-                        if (index === 0) return; // Skip anchor
-                        if (!s.startTimeAbsolute) return; // Skip if no metadata
-
-                        const targetOffsetSeconds = (realWorldTargetTime - s.startTimeAbsolute) / 1000;
-                        const p = window.playerRegistry[s.id];
-                        
-                        if (p && targetOffsetSeconds >= 0) {
-                            console.log(`Syncing ${s.id} to ${targetOffsetSeconds}s`);
-                            p.seek(targetOffsetSeconds);
-                        }
-                    });
+                    const realTime = anchor.startTimeAbsolute + (anchorPlayer.getCurrentTime() * 1000);
+                    for (let i = 1; i < this.streams.length; i++) {
+                        const s = this.streams[i];
+                        if (!s.startTimeAbsolute) continue;
+                        const target = (realTime - s.startTimeAbsolute) / 1000;
+                        if (target >= 0) playerRegistry[s.id]?.seek(target);
+                    }
                 },
 
-                // --- SHARE ---
                 generateShareLink() {
-                    if (this.streams.length === 0) return;
+                    if (!this.streams.length) return;
                     const params = this.streams
                         .filter(s => s.type !== 'local')
-                        .map(s => {
-                            const p = window.playerRegistry[s.id];
-                            const time = p ? Math.floor(p.getCurrentTime()) : 0;
-                            return `${s.vodId}:${time}`;
-                        })
+                        .map(s => `${s.vodId}:${Math.floor(playerRegistry[s.id]?.getCurrentTime() || 0)}`)
                         .join(',');
-
                     if (!params) return;
                     const url = new URL(window.location);
                     url.searchParams.set('v', params);
@@ -681,14 +573,16 @@
                     });
                 },
 
-                // --- INPUT ---
                 addStreamFromInput() {
-                    let id = null, type = 'twitch';
-                    const ytMatch = this.input.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([^&?]+)/) || this.input.match(/^[a-zA-Z0-9_-]{11}$/);
-                    const twMatch = this.input.match(/twitch\.tv\/videos\/(\d+)/) || this.input.match(/^\d+$/);
+                    const input = this.input.trim();
+                    if (!input) return;
+                    
+                    let id, type = 'twitch';
+                    const ytMatch = input.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([^&?]+)/) || (input.length === 11 && /^[a-zA-Z0-9_-]+$/.test(input) ? [null, input] : null);
+                    const twMatch = input.match(/twitch\.tv\/videos\/(\d+)/) || (/^\d+$/.test(input) ? [null, input] : null);
 
-                    if (ytMatch) { id = ytMatch[1] || ytMatch[0]; type = 'youtube'; }
-                    else if (twMatch) { id = twMatch[1] || twMatch[0]; type = 'twitch'; }
+                    if (ytMatch) { id = ytMatch[1]; type = 'youtube'; }
+                    else if (twMatch) { id = twMatch[1]; type = 'twitch'; }
 
                     if (id) {
                         this.createStream(id, type);
@@ -696,88 +590,75 @@
                     }
                 },
 
-                handleFileUpload(event) {
-                    const files = event.target.files;
-                    if (!files) return;
-                    Array.from(files).forEach(file => {
-                        const objectUrl = URL.createObjectURL(file);
-                        this.createStream(objectUrl, 'local', file.name);
-                    });
-                    event.target.value = '';
-                },
-
                 createStream(source, type = 'twitch', title = '', startTime = 0) {
                     if (type !== 'local' && this.streams.some(s => s.vodId === source)) return;
 
-                    const id = 'stream-' + Date.now() + Math.random().toString(36).substr(2, 5);
-                    
-                    const newStream = {
-                        id: id, vodId: source, type: type, title: title,
+                    const id = 'stream-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+                    const stream = {
+                        id, vodId: source, type, title,
                         seekAccumulator: 0,
                         baseTime: null,
-                        style: 'display:none; opacity:0;',
+                        style: 'opacity:0;',
                         startTimeAbsolute: null
                     };
-                    
-                    this.streams.push(newStream);
-                    this.fetchMetadata(newStream);
+                    this.streams.push(stream);
+                    this.fetchMetadata(stream);
 
                     this.$nextTick(() => {
                         this._performLayout();
                         requestAnimationFrame(() => {
                             if (type === 'twitch') this.initTwitchPlayer(id, source, startTime);
                             else if (type === 'youtube') this.initYouTubePlayer(id, source, startTime);
-                            else if (type === 'local') this.initLocalPlayer(id, source);
+                            else this.initLocalPlayer(id, source);
                         });
                     });
-                    if(type !== 'local') this.updateUrl();
+                    if (type !== 'local') this.updateUrl();
                 },
 
-                // --- PLAYERS ---
                 initTwitchPlayer(id, vodId, startTime = 0) {
-                    const options = { width: '100%', height: '100%', video: vodId, parent: [this.getHostname()], autoplay: false, muted: false };
-                    const embed = new Twitch.Embed(`player-${id}`, options);
+                    const embed = new Twitch.Embed(`player-${id}`, {
+                        width: '100%', height: '100%', video: vodId,
+                        parent: [hostname], autoplay: false, muted: false
+                    });
                     embed.addEventListener(Twitch.Embed.VIDEO_READY, () => {
                         const player = embed.getPlayer();
                         if (startTime > 0) player.seek(startTime);
-                        window.playerRegistry[id] = {
-                            type: 'twitch', instance: player,
+                        playerRegistry[id] = {
                             play: () => player.play(),
                             pause: () => player.pause(),
-                            seek: (t) => player.seek(t),
+                            seek: t => player.seek(t),
                             getCurrentTime: () => player.getCurrentTime(),
                             isPaused: () => player.isPaused(),
-                            setMuted: (m) => player.setMuted(m)
+                            setMuted: m => player.setMuted(m)
                         };
-                        player.addEventListener(Twitch.Player.PLAY, () => { this.isPlaying = true; });
-                        player.addEventListener(Twitch.Player.PAUSE, () => { this.checkIfAnyPlaying(); });
+                        player.addEventListener(Twitch.Player.PLAY, () => this.isPlaying = true);
+                        player.addEventListener(Twitch.Player.PAUSE, () => this.checkIfAnyPlaying());
                         if (this.streams.length === 1) this.activateStream(id);
                     });
                 },
 
                 initYouTubePlayer(id, videoId, startTime = 0) {
-                    const onReady = (event) => {
-                         window.playerRegistry[id] = {
-                            type: 'youtube', instance: event.target,
-                            play: () => event.target.playVideo(),
-                            pause: () => event.target.pauseVideo(),
-                            seek: (t) => event.target.seekTo(t, true),
-                            getCurrentTime: () => event.target.getCurrentTime(),
-                            isPaused: () => event.target.getPlayerState() !== 1,
-                            setMuted: (m) => m ? event.target.mute() : event.target.unMute()
-                        };
-                        if (this.streams.length === 1) this.activateStream(id);
-                    };
-                    const onStateChange = (event) => {
-                        if (event.data === YT.PlayerState.PLAYING) this.isPlaying = true;
-                        if (event.data === YT.PlayerState.PAUSED) this.checkIfAnyPlaying();
-                    };
-                    const playerVars = { 'autoplay': 0, 'controls': 1 };
+                    const playerVars = { autoplay: 0, controls: 1 };
                     if (startTime > 0) playerVars.start = startTime;
                     new YT.Player(`player-${id}`, {
-                        width: '100%', height: '100%', videoId: videoId,
-                        playerVars: playerVars,
-                        events: { 'onReady': onReady, 'onStateChange': onStateChange }
+                        width: '100%', height: '100%', videoId, playerVars,
+                        events: {
+                            onReady: e => {
+                                playerRegistry[id] = {
+                                    play: () => e.target.playVideo(),
+                                    pause: () => e.target.pauseVideo(),
+                                    seek: t => e.target.seekTo(t, true),
+                                    getCurrentTime: () => e.target.getCurrentTime(),
+                                    isPaused: () => e.target.getPlayerState() !== 1,
+                                    setMuted: m => m ? e.target.mute() : e.target.unMute()
+                                };
+                                if (this.streams.length === 1) this.activateStream(id);
+                            },
+                            onStateChange: e => {
+                                if (e.data === YT.PlayerState.PLAYING) this.isPlaying = true;
+                                else if (e.data === YT.PlayerState.PAUSED) this.checkIfAnyPlaying();
+                            }
+                        }
                     });
                 },
 
@@ -785,53 +666,45 @@
                     const container = document.getElementById(`player-${id}`);
                     const video = document.createElement('video');
                     video.src = url;
-                    video.style.width = '100%'; video.style.height = '100%';
-                    video.style.objectFit = 'contain'; 
-                    video.controls = true; video.muted = true; 
-                    video.addEventListener('play', () => { this.isPlaying = true; });
-                    video.addEventListener('pause', () => { this.checkIfAnyPlaying(); });
+                    video.style.cssText = 'width:100%;height:100%;object-fit:contain';
+                    video.controls = true;
+                    video.muted = true;
+                    video.addEventListener('play', () => this.isPlaying = true);
+                    video.addEventListener('pause', () => this.checkIfAnyPlaying());
                     container.appendChild(video);
-                    window.playerRegistry[id] = {
-                        type: 'local', instance: video,
+                    playerRegistry[id] = {
                         play: () => video.play(),
                         pause: () => video.pause(),
-                        seek: (t) => video.currentTime = t,
+                        seek: t => video.currentTime = t,
                         getCurrentTime: () => video.currentTime,
                         isPaused: () => video.paused,
-                        setMuted: (m) => video.muted = m
+                        setMuted: m => video.muted = m
                     };
                     if (this.streams.length === 1) this.activateStream(id);
                 },
 
-                // --- STATE LOGIC ---
                 checkIfAnyPlaying() {
                     setTimeout(() => {
-                        const anyPlaying = Object.values(window.playerRegistry).some(p => !p.isPaused());
-                        this.isPlaying = anyPlaying;
+                        this.isPlaying = Object.values(playerRegistry).some(p => !p.isPaused());
                     }, 200);
                 },
 
                 removeStream(id) {
-                    const s = this.streams.find(st => st.id === id);
-                    if (s && s.type === 'local') URL.revokeObjectURL(s.vodId);
-
+                    const stream = this.streams.find(s => s.id === id);
+                    if (stream?.type === 'local') URL.revokeObjectURL(stream.vodId);
                     this.streams = this.streams.filter(s => s.id !== id);
-                    if (window.playerRegistry[id]) delete window.playerRegistry[id];
+                    delete playerRegistry[id];
                     if (this.focusedId === id) this.focusedId = null;
                     if (this.streamTimers[id]) clearTimeout(this.streamTimers[id]);
-                    
                     this.checkIfAnyPlaying();
                     this._performLayout();
                     this.updateUrl();
                 },
 
                 activateStream(id) {
-                    Object.keys(window.playerRegistry).forEach(pid => {
-                        const p = window.playerRegistry[pid];
-                        if (p && typeof p.setMuted === 'function') {
-                            p.setMuted(pid !== id);
-                        }
-                    });
+                    for (const pid in playerRegistry) {
+                        playerRegistry[pid].setMuted(pid !== id);
+                    }
                 },
 
                 focusStream(id) {
@@ -840,154 +713,119 @@
                     this._performLayout();
                 },
 
-                // === MASTER CONTROLS (Using Snapshot Logic) ===
                 toggleMasterPlayback() { this.isPlaying ? this.masterPause() : this.masterPlay(); },
-                masterPlay() { 
-                    Object.values(window.playerRegistry).forEach(p => { try { p.play() } catch(e){} }); 
+                masterPlay() {
+                    for (const p of Object.values(playerRegistry)) { try { p.play(); } catch(e){} }
                     this.isPlaying = true;
                 },
-                masterPause() { 
-                    Object.values(window.playerRegistry).forEach(p => { try { p.pause() } catch(e){} }); 
+                masterPause() {
+                    for (const p of Object.values(playerRegistry)) { try { p.pause(); } catch(e){} }
                     this.isPlaying = false;
                 },
+
                 masterSeek(delta) {
-                    // 1. Snapshot times if starting a new seek batch
                     if (this.seekAccumulator === 0) {
                         this.masterBaseTimes = {};
-                        Object.keys(window.playerRegistry).forEach(pid => {
-                            const p = window.playerRegistry[pid];
-                            if(p) this.masterBaseTimes[pid] = p.getCurrentTime();
-                        });
-                    }
-
-                    // 2. Add delta
-                    this.seekAccumulator += delta;
-
-                    // 3. Debounce execute
-                    if (this.seekTimer) clearTimeout(this.seekTimer);
-                    this.seekTimer = setTimeout(() => { this.executeSeek(); }, 300); 
-                },
-                executeSeek() {
-                    // 4. Execute using Snapshot + Accumulator
-                    Object.keys(window.playerRegistry).forEach(pid => { 
-                        const p = window.playerRegistry[pid];
-                        const base = this.masterBaseTimes[pid];
-                        if (p && base !== undefined) {
-                            try { p.seek(base + this.seekAccumulator); } catch(e){}
+                        for (const pid in playerRegistry) {
+                            this.masterBaseTimes[pid] = playerRegistry[pid].getCurrentTime();
                         }
-                    });
-                    
-                    // 5. Reset
+                    }
+                    this.seekAccumulator += delta;
+                    if (this.seekTimer) clearTimeout(this.seekTimer);
+                    this.seekTimer = setTimeout(() => this.executeSeek(), 300);
+                },
+
+                executeSeek() {
+                    for (const pid in this.masterBaseTimes) {
+                        try { playerRegistry[pid]?.seek(this.masterBaseTimes[pid] + this.seekAccumulator); } catch(e){}
+                    }
                     this.seekAccumulator = 0;
                     this.masterBaseTimes = {};
                 },
 
-                // === PER-STREAM CONTROLS (Using Snapshot Logic) ===
                 nudge(id, delta) {
                     const s = this.streams.find(st => st.id === id);
-                    if (!s) return;
-                    const p = window.playerRegistry[id];
-                    if (!p) return;
+                    const p = playerRegistry[id];
+                    if (!s || !p) return;
 
-                    // 1. Snapshot if starting new batch
-                    if (s.seekAccumulator === 0) {
-                        s.baseTime = p.getCurrentTime();
-                    }
+                    if (s.seekAccumulator === 0) s.baseTime = p.getCurrentTime();
+                    s.seekAccumulator = Math.round((s.seekAccumulator + delta) * 10) / 10;
 
-                    // 2. Add delta (Fix float precision issues)
-                    s.seekAccumulator = parseFloat((s.seekAccumulator + delta).toFixed(1));
-
-                    // 3. Debounce
                     if (this.streamTimers[id]) clearTimeout(this.streamTimers[id]);
                     this.streamTimers[id] = setTimeout(() => {
-                        // 4. Execute using Snapshot + Accumulator
-                        try {
-                            if (s.baseTime !== null) {
-                                p.seek(s.baseTime + s.seekAccumulator);
-                            }
-                        } catch(e) {}
-                        
-                        // 5. Reset
+                        try { if (s.baseTime !== null) p.seek(s.baseTime + s.seekAccumulator); } catch(e) {}
                         s.seekAccumulator = 0;
                         s.baseTime = null;
                         delete this.streamTimers[id];
-                    }, 400); 
+                    }, 400);
                 },
 
-                // === LAYOUT ===
                 _performLayout() {
-                    if (this.streams.length === 0) return;
-                    const grid = document.getElementById('vod-grid');
-                    if (!grid) return;
-                    const totalW = grid.clientWidth - 33; 
-                    const totalH = grid.clientHeight - 33;
+                    const count = this.streams.length;
+                    if (!count || !gridEl) return;
 
-                    if (this.focusedId && this.streams.length > 1) {
+                    const totalW = gridEl.clientWidth - 32;
+                    const totalH = gridEl.clientHeight - 32;
+                    const gap = 16;
+
+                    if (this.focusedId && count > 1) {
                         const others = this.streams.filter(s => s.id !== this.focusedId);
                         let mainW = Math.floor(totalW * 0.75);
-                        let sidebarW = totalW - mainW - 16; 
-                        if (sidebarW < 200) { sidebarW = 200; mainW = totalW - sidebarW - 16; }
-                        const focusS = this.streams.find(s => s.id === this.focusedId);
-                        focusS.style = `top:16px; left:16px; width:${mainW}px; height:${totalH}px; z-index:50; opacity:1; display:block;`;
-                        const count = others.length;
-                        const sideH = Math.floor((totalH - ((count - 1) * 16)) / count); 
+                        let sideW = totalW - mainW - gap;
+                        if (sideW < 200) { sideW = 200; mainW = totalW - sideW - gap; }
+
+                        const focus = this.streams.find(s => s.id === this.focusedId);
+                        focus.style = `transform:translate3d(${gap}px,${gap}px,0);width:${mainW}px;height:${totalH}px;z-index:50;opacity:1;`;
+
+                        const sideH = Math.floor((totalH - (others.length - 1) * gap) / others.length);
                         others.forEach((s, i) => {
-                            const top = 16 + (i * (sideH + 16));
-                            const left = 16 + mainW + 16;
-                            s.style = `top:${top}px; left:${left}px; width:${sidebarW}px; height:${sideH}px; opacity:1; display:block;`;
+                            s.style = `transform:translate3d(${gap + mainW + gap}px,${gap + i * (sideH + gap)}px,0);width:${sideW}px;height:${sideH}px;opacity:1;`;
                         });
                         return;
                     }
 
-                    if (this.focusedId && this.streams.length === 1) {
-                        const s = this.streams[0];
-                        s.style = `top:16px; left:16px; width:${totalW}px; height:${totalH}px; z-index:50; opacity:1; display:block;`;
+                    if (this.focusedId && count === 1) {
+                        this.streams[0].style = `transform:translate3d(${gap}px,${gap}px,0);width:${totalW}px;height:${totalH}px;z-index:50;opacity:1;`;
                         return;
                     }
 
-                    const count = this.streams.length;
                     const cols = Math.ceil(Math.sqrt(count));
                     const rows = Math.ceil(count / cols);
                     const w = Math.floor(totalW / cols);
                     const h = Math.floor(totalH / rows);
+                    const offsetX = Math.floor((totalW - w * cols) / 2) + gap;
+                    const offsetY = Math.floor((totalH - h * rows) / 2) + gap;
+
                     this.streams.forEach((s, i) => {
                         const r = Math.floor(i / cols);
                         const c = i % cols;
-                        const totalGridW = w * cols;
-                        const totalGridH = h * rows;
-                        const offsetX = Math.floor((totalW - totalGridW) / 2) + 16;
-                        const offsetY = Math.floor((totalH - totalGridH) / 2) + 16;
-                        s.style = `top:${offsetY + (r*h)}px; left:${offsetX + (c*w)}px; width:${w}px; height:${h}px; opacity:1; display:block;`;
+                        s.style = `transform:translate3d(${offsetX + c * w}px,${offsetY + r * h}px,0);width:${w}px;height:${h}px;opacity:1;`;
                     });
                 },
 
                 updateUrl() {
                     const ids = this.streams.filter(s => s.type !== 'local').map(s => s.vodId).join(',');
                     const url = new URL(window.location);
-                    if (ids) url.searchParams.set('v', ids); else url.searchParams.delete('v');
-                    window.history.replaceState({}, '', url);
+                    if (ids) url.searchParams.set('v', ids);
+                    else url.searchParams.delete('v');
+                    history.replaceState({}, '', url);
                 },
 
                 loadFromUrl() {
-                    const params = new URLSearchParams(window.location.search);
-                    const v = params.get('v');
-                    if (v) {
-                        const entries = v.split(',');
-                        let delay = 0;
-                        entries.forEach(entry => {
-                            if(!entry) return;
-                            const [id, startTimeStr] = entry.split(':');
-                            const startTime = startTimeStr ? parseInt(startTimeStr) : 0;
-                            if (!this.streams.some(s => s.vodId === id)) {
-                                let type = 'twitch';
-                                if (id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id)) type = 'youtube';
-                                setTimeout(() => this.createStream(id, type, '', startTime), delay);
-                                delay += 200;
-                            }
-                        });
+                    const v = new URLSearchParams(window.location.search).get('v');
+                    if (!v) return;
+                    const entries = v.split(',');
+                    let delay = 0;
+                    for (const entry of entries) {
+                        if (!entry) continue;
+                        const [id, time] = entry.split(':');
+                        if (this.streams.some(s => s.vodId === id)) continue;
+                        const type = (id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id)) ? 'youtube' : 'twitch';
+                        setTimeout(() => this.createStream(id, type, '', parseInt(time) || 0), delay);
+                        delay += 200;
                     }
                 }
-            }
+            };
         }
     </script>
 </body>
