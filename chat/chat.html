@@ -2,15 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Overlay v1.2</title>
     <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
     <link id="font-loader" rel="stylesheet" href="">
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --m-font: 'Segoe UI'; --u-font: 'Segoe UI';
+            --m-font: 'Inter', ui-sans-serif, system-ui, sans-serif; 
+            --u-font: 'Inter', ui-sans-serif, system-ui, sans-serif;
             --m-size: 18px; --u-size: 18px;
-            --m-color: #fff; --u-color: #a970ff;
-            --bg: rgba(0,0,0,0);
+            --m-color: #f4f4f5; --u-color: #f95a1f;
+            --bg: rgba(9,9,11,0);
             --stroke-w: 0px;
             --u-trans: none;
             --m-trans: none;
@@ -144,8 +148,8 @@
 
         const config = {
             channel: params.get('channel'),
-            mFont: params.get('mFont') || 'Segoe UI',
-            uFont: params.get('uFont') === 'same' ? (params.get('mFont') || 'Segoe UI') : (params.get('uFont') || 'Segoe UI'),
+            mFont: params.get('mFont') || 'Inter',
+            uFont: params.get('uFont') === 'same' ? (params.get('mFont') || 'Inter') : (params.get('uFont') || 'Inter'),
             mSize: params.get('mSize') || '18',
             uSize: params.get('uSize') === 'same' ? (params.get('mSize') || '18') : (params.get('uSize') || '18'),
             mColor: params.get('mColor') || 'fff',
@@ -191,7 +195,7 @@
         if(!config.channel) document.write("No Channel Configured");
 
         const fontsToLoad = new Set([config.mFont, config.uFont]);
-        const googleFonts = [...fontsToLoad].filter(f => f !== 'Custom' && f !== 'Segoe UI');
+        const googleFonts = [...fontsToLoad].filter(f => f !== 'Custom' && f !== 'Inter');
         if(googleFonts.length) {
             document.getElementById('font-loader').href = `https://fonts.googleapis.com/css2?family=${googleFonts.map(f=>f.replace(/ /g, '+')+':wght@400;700').join('&')}&display=swap`;
         }
