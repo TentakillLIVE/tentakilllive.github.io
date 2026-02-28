@@ -110,11 +110,30 @@
         .chat-active { z-index: 50; opacity: 1; visibility: visible; pointer-events: auto; }
         .chat-inactive { z-index: 0; opacity: 0; visibility: hidden; pointer-events: none; }
 
-        /* Stream Titles */
+        /* Version button new-version glow */
+        @keyframes version-glow {
+            0%, 100% { box-shadow: 0 0 0px 0px rgba(249, 90, 31, 0); border-color: rgba(249,90,31,0.3); }
+            50%       { box-shadow: 0 0 8px 2px rgba(249, 90, 31, 0.35); border-color: rgba(249,90,31,0.7); }
+        }
+        .version-btn-new {
+            animation: version-glow 2.5s ease-in-out infinite;
+            color: #f95a1f !important;
+        }
         .stream-title {
             font-family: 'Bungee', sans-serif;
             letter-spacing: 0.04em;
             line-height: 1;
+        }
+
+        /* Overlay title — outside stroke via paint-order: stroke fill.
+           This renders the stroke underneath the fill, so it only appears
+           outside the letterforms rather than eating into them. */
+        .stream-title-overlay {
+            paint-order: stroke fill;
+            -webkit-text-stroke: 5px rgba(0, 0, 0, 0.85);
+            text-shadow:
+                0 1px 4px rgba(0, 0, 0, 0.6),
+                0 0 12px rgba(0, 0, 0, 0.4);
         }
 
         /* Title Size Slider */
@@ -417,7 +436,8 @@
                             <h1 class="text-xl tracking-tighter uppercase" style="font-family: 'Bungee', sans-serif;"><span class="text-[#f95a1f]">Eight</span>Eyes</h1>
                             <span class="text-[10px] font-bold uppercase tracking-widest text-theme-muted">Multi</span>
                         </div>
-                        <button @click="showChangelog = true"
+                        <button @click="showChangelog = true; if (typeof APP_VERSION !== 'undefined') { localStorage.setItem('lastSeenVersion', APP_VERSION); versionIsNew = false; }"
+                                :class="versionIsNew ? 'version-btn-new' : ''"
                                 class="text-[10px] font-bold tracking-widest bg-theme-element border border-theme hover:border-[#f95a1f]/50 hover:text-[#f95a1f] text-theme-muted transition-all px-2 py-0.5 rounded-md"
                                 x-text="'v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?')"
                                 title="What's new"></button>
@@ -756,14 +776,13 @@
 
                             <!-- OVERLAY title: uses :style object so it never clobbers x-show's display:none -->
                             <div x-show="showTitles && titleMode === 'overlay'"
-                                 class="absolute left-0 right-0 z-20 px-3 py-1.5 text-center text-white truncate select-none pointer-events-none"
+                                 class="stream-title-overlay absolute left-0 right-0 z-20 px-3 pt-0.5 pb-1.5 text-center text-white truncate select-none pointer-events-none"
                                  :class="(titlePlacement === 'bottom' ||
                                           (titlePlacement === 'bottom-avoid' && stream._row < stream._totalRows - 1) ||
                                           (titlePlacement === 'top-avoid'    && stream._row === 0)
                                          ) ? 'bottom-0' : 'top-0'"
                                  :style="{
                                      fontSize: titleSize + 'px',
-                                     backgroundColor: 'rgba(0,0,0,0.55)',
                                      fontFamily: 'Bungee, sans-serif',
                                      letterSpacing: '0.03em'
                                  }">
@@ -854,7 +873,7 @@
                 headerVisible: true, 
                 draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
-                showHelp: false, showError: false, showSettings: false, showChangelog: false,
+                showHelp: false, showError: false, showSettings: false, showChangelog: false, versionIsNew: false,
                 chatOpen: false, activeChatStreamId: null,
                 chatEnabled: false,
                 showTitles: false,
@@ -876,6 +895,11 @@
                     this.animations    = localStorage.getItem('animations') !== 'false';
                     this.compact       = localStorage.getItem('compact') === 'true';
                     this.chatEnabled   = localStorage.getItem('chatEnabled') === 'true';
+
+                    // Version freshness — highlight button if user hasn't seen this version yet
+                    const currentVer  = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : null;
+                    const lastSeenVer = localStorage.getItem('lastSeenVersion');
+                    this.versionIsNew = currentVer !== null && currentVer !== lastSeenVer;
                     
                     this.loadFromUrl();
                     if (this.tabs.length === 0) this.addTab(false);
