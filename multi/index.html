@@ -10,6 +10,7 @@
     <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://embed.twitch.tv/embed/v1.js"></script>
+    <script src="version.js"></script>
     <style>
         [x-cloak] { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -182,7 +183,7 @@
       @keydown.window="handleHotkeys($event)"
       :class="['theme-' + theme, draggedId ? 'dragging-active' : '', isResizing ? 'is-resizing cursor-col-resize select-none' : '', animations ? '' : 'no-animations']">
 
-    <div x-show="showError" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div x-show="showError" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/75">
         <div class="bg-theme-card border border-theme p-6 rounded-2xl max-w-sm w-full shadow-2xl">
             <div class="flex items-center gap-3 text-[#f95a1f] mb-4">
                 <div class="icon-container w-6 h-6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
@@ -196,140 +197,208 @@
         </div>
     </div>
 
-    <div x-show="showHelp" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click.self="showHelp = false">
-        <div class="bg-theme-card border border-theme p-8 rounded-2xl max-w-lg w-full shadow-2xl">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-theme-main flex items-center gap-2">
-                    <span class="text-[#f95a1f]">Help & FAQ</span>
-                </h2>
-                <button @click="showHelp = false" class="text-theme-muted hover:text-theme-main"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    <div x-show="showHelp" x-cloak
+         class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/75"
+         @click.self="showHelp = false">
+        <div class="bg-theme-card border border-theme rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style="max-height:90vh;">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-theme flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[#f95a1f]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span class="font-bold text-theme-main text-sm tracking-wide">Help &amp; FAQ</span>
+                </div>
+                <button @click="showHelp = false" class="text-theme-muted hover:text-theme-main">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
 
-            <div class="space-y-6">
-                <div>
-                    <h3 class="text-blue-500 font-bold text-lg mb-2 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Customization Tips
-                    </h3>
-                    <ul class="text-theme-muted text-sm space-y-2 list-disc list-inside">
-                        <li><strong>Settings:</strong> Click the gear icon (⚙) in the toolbar to open the Settings panel. Adjust theme, stream title visibility, style, placement, and size from there.</li>
-                        <li><strong>Rename Tabs:</strong> Double-click any tab name to rename it (e.g., "FPS Games", "Music").</li>
-                        <li><strong>Rename Streams:</strong> Click the pencil icon (<svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>) on any stream chip to give it a custom label.</li>
-                        <li><strong>Hotkeys:</strong> <code class="bg-black/40 px-1 rounded">A</code>/<code class="bg-black/40 px-1 rounded">D</code> to switch tabs, <code class="bg-black/40 px-1 rounded">M</code> to mute all, <code class="bg-black/40 px-1 rounded">T</code> to toggle titles, <code class="bg-black/40 px-1 rounded">V</code> to toggle the top pane, <code class="bg-black/40 px-1 rounded">C</code> to toggle chat (when enabled), <code class="bg-black/40 px-1 rounded">1</code>–<code class="bg-black/40 px-1 rounded">9</code> to jump directly to a tab.</li>
-                    </ul>
-                </div>
-                <div class="w-full h-px bg-[var(--border-color)]"></div>
-                <div>
-                    <h3 class="text-[#9146FF] font-bold text-lg mb-2 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-                        Twitch Turbo &amp; Ads
-                    </h3>
-                    <p class="text-theme-muted text-sm leading-relaxed mb-3">
-                        Browsers block third-party cookies by default, so embedded Twitch players can't verify your Turbo subscription and serve ads anyway. We built a companion browser extension to fix this.
-                    </p>
+            <!-- Scrollable body -->
+            <div class="overflow-y-auto flex-1 no-scrollbar">
 
-                    <!-- Extension card -->
-                    <div class="bg-[#9146FF]/10 border border-[#9146FF]/30 rounded-lg p-3 mb-2">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-[#9146FF]/20 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-[#9146FF]" fill="currentColor" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="text-sm font-bold text-theme-main mb-0.5">EightEyes Turbo Helper</div>
-                                <p class="text-xs text-theme-muted leading-relaxed">Reads your Twitch auth token directly and injects it into embedded player requests — Twitch sees your Turbo subscription and skips ads entirely.</p>
-                            </div>
+                <!-- ── Section 1: Customization ── -->
+                <div class="px-5 py-4 border-b border-theme">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-3.5 h-3.5 text-[#f95a1f] shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M4.93 4.93a10 10 0 0 0 0 14.14M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-theme-main">Customization</h3>
+                    </div>
+                    <div class="space-y-2.5">
+                        <div class="flex gap-2.5">
+                            <div class="w-1 rounded-full bg-[#f95a1f] shrink-0 self-stretch opacity-60"></div>
+                            <p class="text-xs text-theme-muted leading-relaxed"><span class="font-bold text-theme-main">Settings</span> — Click the gear icon <span class="text-theme-main">⚙</span> in the toolbar to open the Settings panel. Adjust theme, stream title visibility, style, placement, and size.</p>
                         </div>
-                        <!-- Download buttons -->
-                        <div class="flex gap-2">
-                            <a href="eighteyes-turbo-helper-extension-chrome.zip" download
-                               class="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#1a73e8] hover:brightness-110 transition-all text-white text-xs font-bold px-3 py-2 rounded-lg">
-                                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" style="display:none"/><circle cx="12" cy="12" r="4" fill="white"/><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 14.2a7.2 7.2 0 0 1-6-3.22c.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08a7.2 7.2 0 0 1-6 3.22z" style="display:none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-4h2V8h-2v8z" style="display:none"/>
-                                <!-- Chrome icon -->
-                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2A10 10 0 1 0 22 12 10 10 0 0 0 12 2Zm0 18A8 8 0 1 1 20 12 8 8 0 0 1 12 20Z" opacity=".3"/><path d="M12 2v4a6 6 0 0 1 6 6h4A10 10 0 0 0 12 2Z" fill="#EA4335"/><path d="M12 2A10 10 0 0 0 2.05 13H6.1A6 6 0 0 1 12 8V2Z" fill="#4285F4"/><path d="M12 8a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4Z"/><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 .05 1h4.05A6 6 0 0 1 12 8V2Z" fill="#34A853"/><path d="M22 12a10 10 0 0 1-10 10 10 10 0 0 1-4.54-1.08l2-3.46A6 6 0 0 0 18 14h4a9.93 9.93 0 0 1 0-2Z" fill="#FBBC05"/></svg>
-                                </svg>
-                                Chromium
-                            </a>
-                            <a href="eighteyes-turbo-helper-extension-firefox.xpi" download
-                               class="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#e56200] hover:brightness-110 transition-all text-white text-xs font-bold px-3 py-2 rounded-lg">
-                                <!-- Firefox icon -->
-                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm4.93 6.22a8 8 0 0 1 1 3.56 6.26 6.26 0 0 0-1.54-1 5.24 5.24 0 0 0-2.52-.43 4.09 4.09 0 0 0-1.64.47 3.51 3.51 0 0 0-1.18 1 3.73 3.73 0 0 0-.62 1.52 4.36 4.36 0 0 0 .07 1.66 5.54 5.54 0 0 0 .6 1.56A4.83 4.83 0 0 0 12.17 17a3.93 3.93 0 0 0 1.44.53 5.69 5.69 0 0 0 1.54 0 6.36 6.36 0 0 0 1.49-.44 8 8 0 0 1-4.64 1.4 8 8 0 0 1-7.45-10.9 6.52 6.52 0 0 0 1.78 1.14 5 5 0 0 0 2 .47 4.13 4.13 0 0 0 1.7-.37A3.67 3.67 0 0 0 11.26 8a3.55 3.55 0 0 0 .55-1.51 4.5 4.5 0 0 0-.12-1.64A8 8 0 0 1 16.93 8.22Z"/></svg>
-                                Firefox-based
-                            </a>
+                        <div class="flex gap-2.5">
+                            <div class="w-1 rounded-full bg-[#f95a1f] shrink-0 self-stretch opacity-60"></div>
+                            <p class="text-xs text-theme-muted leading-relaxed"><span class="font-bold text-theme-main">Rename Tabs</span> — Double-click any tab name to rename it (e.g. "FPS Games", "Music").</p>
+                        </div>
+                        <div class="flex gap-2.5">
+                            <div class="w-1 rounded-full bg-[#f95a1f] shrink-0 self-stretch opacity-60"></div>
+                            <p class="text-xs text-theme-muted leading-relaxed"><span class="font-bold text-theme-main">Rename Streams</span> — Click the pencil icon on any stream chip to give it a custom label.</p>
+                        </div>
+                        <div class="flex gap-2.5">
+                            <div class="w-1 rounded-full bg-[#f95a1f] shrink-0 self-stretch opacity-60"></div>
+                            <div class="text-xs text-theme-muted leading-relaxed">
+                                <span class="font-bold text-theme-main">Hotkeys</span> —
+                                <span class="inline-flex flex-wrap gap-1 mt-1">
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">A</code><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">D</code> <span class="text-theme-muted">tabs</span></span>
+                                    <span class="text-theme-element">·</span>
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">M</code> <span>mute all</span></span>
+                                    <span class="text-theme-element">·</span>
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">T</code> <span>titles</span></span>
+                                    <span class="text-theme-element">·</span>
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">V</code> <span>header</span></span>
+                                    <span class="text-theme-element">·</span>
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">C</code> <span>chat</span></span>
+                                    <span class="text-theme-element">·</span>
+                                    <span class="inline-flex items-center gap-1"><code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">1</code>–<code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded text-theme-main font-mono text-[10px]">9</code> <span>jump to tab</span></span>
+                                </span>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Collapsible install instructions -->
-                    <div x-data="{ openTab: null }">
-                        <!-- Chrome accordion -->
-                        <div class="border border-theme rounded-lg mb-1.5 overflow-hidden">
+                <!-- ── Section 2: YouTube ── -->
+                <div class="px-5 py-4 border-b border-theme">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-3.5 h-3.5 text-[#FF0000] shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-theme-main">Adding YouTube Streams</h3>
+                    </div>
+                    <p class="text-xs text-theme-muted leading-relaxed mb-2">YouTube requires the <span class="font-bold text-theme-main">Video ID</span> from a live stream URL, not the channel URL.</p>
+                    <div class="bg-theme-element border border-theme rounded-lg px-3 py-2 font-mono text-xs text-theme-muted">
+                        youtube.com/watch?v=<span class="text-[#f95a1f] font-bold">dQw4w9WgXcQ</span>
+                    </div>
+                </div>
+
+                <!-- ── Section 3: Turbo Helper ── -->
+                <div class="px-5 py-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-3.5 h-3.5 text-[#9146FF] shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-theme-main">Twitch Turbo &amp; Ads</h3>
+                    </div>
+                    <p class="text-xs text-theme-muted leading-relaxed mb-4">Browsers block third-party cookies by default, so embedded Twitch players can't verify your Turbo subscription and serve ads anyway. The <span class="font-bold text-theme-main">EightEyes Turbo Helper</span> extension fixes this by injecting your auth token directly into embedded player requests.</p>
+
+                    <!-- Install buttons -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+
+                        <!-- Chrome -->
+                        <div class="flex flex-col gap-1.5">
+                            <a href="https://chromewebstore.google.com/detail/eighteyes-turbo-helper/nmjkoohpbifhebphkcmibfjkibmjdkog"
+                               target="_blank" rel="noopener noreferrer"
+                               class="flex items-center justify-center gap-2 bg-[#1a73e8] text-white text-xs font-bold px-3 py-2.5 rounded-xl border border-[#1a73e8] hover:brightness-110" style="transition:filter 0.15s;">
+                                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v4a6 6 0 0 1 6 6h4A10 10 0 0 0 12 2Z" fill="#EA4335"/><path d="M12 2A10 10 0 0 0 2.05 13H6.1A6 6 0 0 1 12 8V2Z" fill="#4285F4"/><path d="M12 8a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4Z"/><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 .05 1h4.05A6 6 0 0 1 12 8V2Z" fill="#34A853"/><path d="M22 12a10 10 0 0 1-10 10 10 10 0 0 1-4.54-1.08l2-3.46A6 6 0 0 0 18 14h4a9.93 9.93 0 0 1 0-2Z" fill="#FBBC05"/></svg>
+                                Chrome Web Store
+                            </a>
+                            <div class="flex items-center justify-center gap-1 text-[10px] text-theme-muted">
+                                <svg class="w-3 h-3 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                <span>Google Verified</span>
+                            </div>
+                        </div>
+
+                        <!-- Firefox -->
+                        <div class="flex flex-col gap-1.5">
+                            <a href="eighteyes-turbo-helper-extension-firefox.xpi" download
+                               class="flex items-center justify-center gap-2 bg-[#e56200] text-white text-xs font-bold px-3 py-2.5 rounded-xl border border-[#e56200] hover:brightness-110" style="transition:filter 0.15s;">
+                                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm4.93 6.22a8 8 0 0 1 1 3.56 6.26 6.26 0 0 0-1.54-1 5.24 5.24 0 0 0-2.52-.43 4.09 4.09 0 0 0-1.64.47 3.51 3.51 0 0 0-1.18 1 3.73 3.73 0 0 0-.62 1.52 4.36 4.36 0 0 0 .07 1.66 5.54 5.54 0 0 0 .6 1.56A4.83 4.83 0 0 0 12.17 17a3.93 3.93 0 0 0 1.44.53 5.69 5.69 0 0 0 1.54 0 6.36 6.36 0 0 0 1.49-.44 8 8 0 0 1-4.64 1.4 8 8 0 0 1-7.45-10.9 6.52 6.52 0 0 0 1.78 1.14 5 5 0 0 0 2 .47 4.13 4.13 0 0 0 1.7-.37A3.67 3.67 0 0 0 11.26 8a3.55 3.55 0 0 0 .55-1.51 4.5 4.5 0 0 0-.12-1.64A8 8 0 0 1 16.93 8.22Z"/></svg>
+                                Firefox Add-ons
+                            </a>
+                            <div class="flex items-center justify-center gap-1 text-[10px] text-theme-muted">
+                                <svg class="w-3 h-3 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                <span>Mozilla Verified</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Accordions -->
+                    <div x-data="{ openTab: null }" class="space-y-1.5 mb-4">
+
+                        <!-- Chrome install steps -->
+                        <div class="border border-theme rounded-xl overflow-hidden">
                             <button @click="openTab = openTab === 'chrome' ? null : 'chrome'"
-                                    class="w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold text-theme-main hover-bg-theme transition-colors">
+                                    class="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-theme-muted bg-theme-element"
+                                    style="transition:color 0.15s;">
                                 <span class="flex items-center gap-2">
-                                    <svg class="w-3.5 h-3.5 text-[#1a73e8]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v4a6 6 0 0 1 6 6h4A10 10 0 0 0 12 2Z" fill="#EA4335"/><path d="M12 2A10 10 0 0 0 2.05 13H6.1A6 6 0 0 1 12 8V2Z" fill="#4285F4"/><path d="M12 8a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4Z"/><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 .05 1h4.05A6 6 0 0 1 12 8V2Z" fill="#34A853"/><path d="M22 12a10 10 0 0 1-10 10 10 10 0 0 1-4.54-1.08l2-3.46A6 6 0 0 0 18 14h4a9.93 9.93 0 0 1 0-2Z" fill="#FBBC05"/></svg>
-                                    Chromium-based — Installation
+                                    <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v4a6 6 0 0 1 6 6h4A10 10 0 0 0 12 2Z" fill="#EA4335"/><path d="M12 2A10 10 0 0 0 2.05 13H6.1A6 6 0 0 1 12 8V2Z" fill="#4285F4"/><path d="M12 8a6 6 0 1 0 6 6 6 6 0 0 0-6-6Zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4Z"/><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 .05 1h4.05A6 6 0 0 1 12 8V2Z" fill="#34A853"/><path d="M22 12a10 10 0 0 1-10 10 10 10 0 0 1-4.54-1.08l2-3.46A6 6 0 0 0 18 14h4a9.93 9.93 0 0 1 0-2Z" fill="#FBBC05"/></svg>
+                                    Chromium — Installation
                                 </span>
-                                <svg class="w-3.5 h-3.5 text-theme-muted transition-transform duration-200" :class="openTab === 'chrome' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <svg class="w-3.5 h-3.5 shrink-0" :style="openTab === 'chrome' ? 'transform:rotate(180deg)' : ''" style="transition:transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
-                            <div x-show="openTab === 'chrome'" x-collapse class="border-t border-theme bg-black/20">
-                                <ol class="text-xs text-theme-muted space-y-2 p-3 list-decimal list-inside">
-                                    <li>Download the zip and extract it — you can review all source files before installing if you wish.</li>
-                                    <li>Open <code class="bg-black/40 px-1 rounded text-zinc-300">chrome://extensions</code> in your Chromium-based browser.</li>
-                                    <li>Enable <strong class="text-theme-main">Developer Mode</strong> using the toggle in the top-right corner.</li>
-                                    <li>Click <strong class="text-theme-main">Load unpacked</strong> and select the extracted extension folder.</li>
+                            <div x-show="openTab === 'chrome'" x-collapse class="border-t border-theme">
+                                <ol class="text-xs text-theme-muted space-y-2 p-3.5 list-decimal list-inside leading-relaxed">
+                                    <li>Visit the <a href="https://chromewebstore.google.com/detail/eighteyes-turbo-helper/nmjkoohpbifhebphkcmibfjkibmjdkog" target="_blank" rel="noopener noreferrer" class="text-[#1a73e8] underline underline-offset-2">Chrome Web Store listing</a> and click <strong class="text-theme-main">Add to Chrome</strong>.</li>
+                                    <li>Confirm the permissions prompt — the extension only requests access to Twitch.</li>
                                     <li>The EightEyes icon will appear in your toolbar. Open it and confirm the green active status.</li>
                                 </ol>
-                                <div class="mx-3 mb-3 bg-black/30 border border-theme rounded-lg px-3 py-2 text-xs text-theme-muted leading-relaxed">
-                                    <strong class="text-theme-main">Alternative Chromium browsers:</strong> If your browser supports CRX installation, you can simply drag and drop the <code class="bg-black/40 px-1 rounded text-zinc-300">.crx</code> file directly onto the Extensions page instead.
+                                <div class="mx-3.5 mb-3.5 bg-theme-element border border-theme rounded-lg px-3 py-2 text-xs text-theme-muted leading-relaxed">
+                                    <strong class="text-theme-main">Want to review the source?</strong> A <a href="eighteyes-turbo-helper-v2.zip" download class="text-[#1a73e8] underline underline-offset-2">full source zip</a> is available to inspect before or after installing.
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Firefox accordion -->
-                        <div class="border border-theme rounded-lg mb-2 overflow-hidden">
+                        <!-- Firefox install steps -->
+                        <div class="border border-theme rounded-xl overflow-hidden">
                             <button @click="openTab = openTab === 'firefox' ? null : 'firefox'"
-                                    class="w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold text-theme-main hover-bg-theme transition-colors">
+                                    class="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-theme-muted bg-theme-element"
+                                    style="transition:color 0.15s;">
                                 <span class="flex items-center gap-2">
-                                    <svg class="w-3.5 h-3.5 text-[#e56200]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm4.93 6.22a8 8 0 0 1 1 3.56 6.26 6.26 0 0 0-1.54-1 5.24 5.24 0 0 0-2.52-.43 4.09 4.09 0 0 0-1.64.47 3.51 3.51 0 0 0-1.18 1 3.73 3.73 0 0 0-.62 1.52 4.36 4.36 0 0 0 .07 1.66 5.54 5.54 0 0 0 .6 1.56A4.83 4.83 0 0 0 12.17 17a3.93 3.93 0 0 0 1.44.53 5.69 5.69 0 0 0 1.54 0 6.36 6.36 0 0 0 1.49-.44 8 8 0 0 1-4.64 1.4 8 8 0 0 1-7.45-10.9 6.52 6.52 0 0 0 1.78 1.14 5 5 0 0 0 2 .47 4.13 4.13 0 0 0 1.7-.37A3.67 3.67 0 0 0 11.26 8a3.55 3.55 0 0 0 .55-1.51 4.5 4.5 0 0 0-.12-1.64A8 8 0 0 1 16.93 8.22Z"/></svg>
-                                    Firefox-based — Installation
+                                    <svg class="w-3.5 h-3.5 text-[#e56200] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm4.93 6.22a8 8 0 0 1 1 3.56 6.26 6.26 0 0 0-1.54-1 5.24 5.24 0 0 0-2.52-.43 4.09 4.09 0 0 0-1.64.47 3.51 3.51 0 0 0-1.18 1 3.73 3.73 0 0 0-.62 1.52 4.36 4.36 0 0 0 .07 1.66 5.54 5.54 0 0 0 .6 1.56A4.83 4.83 0 0 0 12.17 17a3.93 3.93 0 0 0 1.44.53 5.69 5.69 0 0 0 1.54 0 6.36 6.36 0 0 0 1.49-.44 8 8 0 0 1-4.64 1.4 8 8 0 0 1-7.45-10.9 6.52 6.52 0 0 0 1.78 1.14 5 5 0 0 0 2 .47 4.13 4.13 0 0 0 1.7-.37A3.67 3.67 0 0 0 11.26 8a3.55 3.55 0 0 0 .55-1.51 4.5 4.5 0 0 0-.12-1.64A8 8 0 0 1 16.93 8.22Z"/></svg>
+                                    Firefox — Installation
                                 </span>
-                                <svg class="w-3.5 h-3.5 text-theme-muted transition-transform duration-200" :class="openTab === 'firefox' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                <svg class="w-3.5 h-3.5 shrink-0" :style="openTab === 'firefox' ? 'transform:rotate(180deg)' : ''" style="transition:transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
-                            <div x-show="openTab === 'firefox'" x-collapse class="border-t border-theme bg-black/20">
-                                <div class="p-3 space-y-2.5">
-                                    <ol class="text-xs text-theme-muted space-y-2 list-decimal list-inside">
-                                        <li>Download the <code class="bg-black/40 px-1 rounded text-zinc-300">.xpi</code> file.</li>
-                                        <li>Open the menu <strong class="text-theme-main">→ Add-ons and Themes → gear icon → Install Add-on From File…</strong></li>
-                                        <li>Select the <code class="bg-black/40 px-1 rounded text-zinc-300">.xpi</code> file you downloaded.</li>
-                                        <li>Confirm the installation prompt. The EightEyes icon will appear in your toolbar.</li>
-                                    </ol>
-                                    <div class="bg-black/30 border border-theme rounded-lg px-3 py-2 text-xs text-theme-muted leading-relaxed">
-                                        <strong class="text-theme-main">Want to review the source?</strong> A <a href="eighteyes-turbo-helper-extension-firefox.zip" download class="text-[#9146FF] hover:brightness-125 underline underline-offset-2">full source zip</a> is available to inspect before or after installation.
-                                    </div>
+                            <div x-show="openTab === 'firefox'" x-collapse class="border-t border-theme">
+                                <ol class="text-xs text-theme-muted space-y-2 p-3.5 list-decimal list-inside leading-relaxed">
+                                    <li>Download the <code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded font-mono text-[10px] text-theme-main">.xpi</code> file from the button above.</li>
+                                    <li>Open the menu <strong class="text-theme-main">→ Add-ons and Themes → gear icon → Install Add-on From File…</strong></li>
+                                    <li>Select the downloaded <code class="bg-theme-element border border-theme px-1.5 py-0.5 rounded font-mono text-[10px] text-theme-main">.xpi</code> file.</li>
+                                    <li>Confirm the installation prompt. The EightEyes icon will appear in your toolbar.</li>
+                                </ol>
+                                <div class="mx-3.5 mb-3.5 bg-theme-element border border-theme rounded-lg px-3 py-2 text-xs text-theme-muted leading-relaxed">
+                                    <strong class="text-theme-main">Want to review the source?</strong> A <a href="eighteyes-turbo-helper-firefox.zip" download class="text-[#9146FF] underline underline-offset-2">full source zip</a> is available to inspect before or after installation.
                                 </div>
                             </div>
                         </div>
+
                     </div>
 
-                    <div class="bg-green-950/30 border border-green-700/40 rounded-lg p-3 flex items-start gap-2.5">
-                        <svg class="w-4 h-4 text-green-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        <p class="text-xs text-green-300 leading-relaxed"><strong class="text-green-200">Your privacy is fully respected.</strong> The extension runs entirely on your computer — your auth token is read locally, never transmitted to any server, and only ever used to authenticate directly with Twitch's own servers.</p>
+                    <!-- Privacy note -->
+                    <div class="flex items-start gap-2.5 bg-theme-element border border-theme rounded-xl p-3">
+                        <svg class="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <p class="text-xs text-theme-muted leading-relaxed"><strong class="text-theme-main">Your privacy is fully respected.</strong> The extension runs entirely on your computer — your auth token is never transmitted to any server, and only ever used to authenticate directly with Twitch's own servers.</p>
                     </div>
                 </div>
-                <div class="w-full h-px bg-[var(--border-color)]"></div>
-                <div>
-                    <h3 class="text-[#FF0000] font-bold text-lg mb-2 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                        Adding YouTube Streams
-                    </h3>
-                    <p class="text-theme-muted text-sm">YouTube requires the <strong>Video ID</strong>, not the full channel URL.</p>
-                    <code class="block mt-2 bg-black/40 p-2 rounded text-xs text-zinc-300">youtube.com/watch?v=<span class="text-[#f95a1f]">dQw4w9WgXcQ</span></code>
-                </div>
+
             </div>
 
-            <button @click="showHelp = false" class="mt-8 w-full bg-theme-element hover-bg-theme py-3 rounded-lg font-bold transition-colors">Close</button>
-            <div class="mt-3 text-center">
-                <a href="privacy.html" target="_blank" class="text-xs text-theme-muted hover:text-[#f95a1f] transition-colors">Privacy Policy</a>
+            <!-- Footer -->
+            <div class="px-5 py-3 border-t border-theme flex items-center justify-between flex-shrink-0">
+                <a href="privacy.html" target="_blank" class="text-xs text-theme-muted hover:text-[#f95a1f]" style="transition:color 0.15s;">Privacy Policy</a>
+                <button @click="showHelp = false" class="bg-theme-element border border-theme hover:border-[#f95a1f]/50 hover:text-[#f95a1f] text-theme-muted text-xs font-bold px-4 py-1.5 rounded-lg" style="transition:color 0.15s, border-color 0.15s;">Close</button>
             </div>
+
+        </div>
+    </div>
+
+    <div x-show="showChangelog" x-cloak
+         class="fixed inset-0 z-[150] flex items-center justify-center p-2 bg-black/75"
+         @click.self="showChangelog = false">
+        <div class="bg-theme-card border border-theme rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col overflow-hidden"
+             style="max-height: 95vh; height: 95vh;">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-theme flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[#f95a1f]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span class="text-sm font-bold text-theme-main">What's New</span>
+                </div>
+                <button @click="showChangelog = false" class="text-theme-muted hover:text-theme-main transition-colors">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <!-- Iframe loads changelog-recent.html — last 3 entries + link to full page -->
+            <iframe src="changelog-recent.html"
+                    class="flex-1 w-full border-0"
+                    style="min-height: 0;"
+                    title="Recent changelog"></iframe>
         </div>
     </div>
 
@@ -348,6 +417,10 @@
                             <h1 class="text-xl tracking-tighter uppercase" style="font-family: 'Bungee', sans-serif;"><span class="text-[#f95a1f]">Eight</span>Eyes</h1>
                             <span class="text-[10px] font-bold uppercase tracking-widest text-theme-muted">Multi</span>
                         </div>
+                        <button @click="showChangelog = true"
+                                class="text-[10px] font-bold tracking-widest bg-theme-element border border-theme hover:border-[#f95a1f]/50 hover:text-[#f95a1f] text-theme-muted transition-all px-2 py-0.5 rounded-md"
+                                x-text="'v' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?')"
+                                title="What's new"></button>
                         
                         <div class="flex gap-1">
                             <button @click="toggleTheme()" class="text-theme-muted hover:text-theme-main transition-colors p-1" :title="'Theme: ' + theme">
@@ -781,7 +854,7 @@
                 headerVisible: true, 
                 draggedId: null, dragType: null, dragOffset: { x: 0, y: 0 },
                 isResizing: false, resizeStartX: 0, resizeStartWidth: 0,
-                showHelp: false, showError: false, showSettings: false,
+                showHelp: false, showError: false, showSettings: false, showChangelog: false,
                 chatOpen: false, activeChatStreamId: null,
                 chatEnabled: false,
                 showTitles: false,
