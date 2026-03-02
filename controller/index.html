@@ -190,6 +190,15 @@ header {
   margin-top: 8px;
   letter-spacing: 0.04em;
 }
+.compat-notice {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
 
 /* ── OBS Button ── */
 .btn-obs {
@@ -535,6 +544,7 @@ header {
   </div>
   <div class="center-panel">
     <div class="preview-wrap">
+      <p class="compat-notice">Note: 3rd party controller software (e.g. DS4Windows, reWASD) may interfere with this preview. Your OBS overlay will work fine regardless.</p>
       <div class="gamepad-status disconnected" id="gpStatus">&#9679; No Controller Detected</div>
       <div class="preview-bg">
         <div class="controller xbox" id="controller">
@@ -737,6 +747,25 @@ let baseMaskCanvas = null;
 let pressedBgs = {};
 let gpPressedState = {};
 
+// Throttled color updates - rAF ensures max ~60fps redraws
+let _colorUpdatePending = false;
+function scheduleColorUpdate() {
+  if (_colorUpdatePending) return;
+  _colorUpdatePending = true;
+  requestAnimationFrame(() => {
+    _colorUpdatePending = false;
+    applyAllColors();
+  });
+}
+
+// Cached toDataURL - since recolored canvases are immutable once created,
+// we memoize the expensive toDataURL() call on the canvas object itself
+function toURL(canvas) {
+  if (!canvas) return '';
+  if (!canvas._dataURL) canvas._dataURL = canvas.toDataURL();
+  return canvas._dataURL;
+}
+
 function P() { return PROFILES[activeType]; }
 function hexToRgb(h) { return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
 
@@ -869,7 +898,7 @@ function buildStackBg(stack, sprite, hex) {
   const rc = RC(sprite, hex); if (!rc) return null;
   // stack is top-to-bottom order; CSS background-image first = topmost
   return stack.map(lk => {
-    if (lk === sprite) return 'url('+rc.toDataURL()+')';
+    if (lk === sprite) return 'url('+toURL(rc)+')';
     return 'url('+(origImages[lk]?origImages[lk].src:'')+')';
   }).join(',');
 }
@@ -890,17 +919,17 @@ function applyDS4Face() {
     const baseRc = RC(faceBase, colors[b.base] || P().defaultColor);
     const labelRc = RC(faceLabels, colors[b.label] || P().defaultColor);
     if (baseRc && labelRc) {
-      el.style.backgroundImage = 'url('+labelRc.toDataURL()+'),url('+baseRc.toDataURL()+')';
+      el.style.backgroundImage = 'url('+toURL(labelRc)+'),url('+toURL(baseRc)+')';
     }
     // Build pressed state sprite (stored for JS-based swap)
     const basePrRc = RC(faceBase, colors[b.basePr] || colors[b.base] || P().defaultColor);
     const labelPrRc = RC(faceLabels, colors[b.labelPr] || colors[b.label] || P().defaultColor);
     if (basePrRc && labelPrRc) {
-      pressedBgs['face'+b.cls] = 'url('+labelPrRc.toDataURL()+'),url('+basePrRc.toDataURL()+')';
+      pressedBgs['face'+b.cls] = 'url('+toURL(labelPrRc)+'),url('+toURL(basePrRc)+')';
     }
     // Store normal bg too for restoring
     if (baseRc && labelRc) {
-      pressedBgs['face'+b.cls+':normal'] = 'url('+labelRc.toDataURL()+'),url('+baseRc.toDataURL()+')';
+      pressedBgs['face'+b.cls+':normal'] = 'url('+toURL(labelRc)+'),url('+toURL(baseRc)+')';
     }
   }
 }
@@ -946,7 +975,7 @@ function applyAllColors() {
   }
 }
 
-function refreshAll() { clearCache(); applyAllColors(); updateTransformBoxes(); }
+function refreshAll() { applyAllColors(); updateTransformBoxes(); }
 
 // ===========================================================================
 // COLOR UI
@@ -963,10 +992,10 @@ function buildColorUI() {
     group.innerHTML = html; container.appendChild(group);
   }
   container.querySelectorAll('input[type="color"][data-ckey]').forEach(inp => {
-    inp.addEventListener('input', e => { colors[e.target.dataset.ckey] = e.target.value; const row = e.target.closest('.color-row'); const h = row.querySelector('.hex-inp'); if(h) h.value = e.target.value.toUpperCase(); clearCache(); applyAllColors(); });
+    inp.addEventListener('input', e => { colors[e.target.dataset.ckey] = e.target.value; const row = e.target.closest('.color-row'); const h = row.querySelector('.hex-inp'); if(h) h.value = e.target.value.toUpperCase(); scheduleColorUpdate(); });
   });
   container.querySelectorAll('.hex-inp[data-ckey]').forEach(inp => {
-    inp.addEventListener('change', e => { let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)) { colors[e.target.dataset.ckey]=v; const row=e.target.closest('.color-row'); const cp=row.querySelector('input[type="color"]'); if(cp) cp.value=v; e.target.value=v.toUpperCase(); clearCache(); applyAllColors(); }});
+    inp.addEventListener('change', e => { let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)) { colors[e.target.dataset.ckey]=v; const row=e.target.closest('.color-row'); const cp=row.querySelector('input[type="color"]'); if(cp) cp.value=v; e.target.value=v.toUpperCase(); scheduleColorUpdate(); }});
   });
 }
 
