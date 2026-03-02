@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamepad Studio — Design &amp; Overlay Creator</title>
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=bungee:400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #09090b;
+  --surface:  #18181b;
+  --elevated: #27272a;
+  --border:   #3f3f46;
+  --text:     #f4f4f5;
+  --muted:    #a1a1aa;
+  --accent:   #f95a1f;
+  --preview-bg: #1e1e24;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+/* ── Noise grain overlay ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Accent glow blob ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: -20vh; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(249,90,31,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ── */
+header {
+  position: relative;
+  z-index: 10;
+  background: rgba(9,9,11,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.logo-dot {
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite;
+  align-self: center;
+  flex-shrink: 0;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.logo-wordmark {
+  font-family: 'Bungee', sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.logo-wordmark span { color: var(--text); }
+.logo-sub {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  margin-left: 4px;
+}
+.ctrl-switcher {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+.ctrl-switcher button {
+  font-family: 'Bungee', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-switcher button:hover { border-color: var(--accent); color: var(--text); }
+.ctrl-switcher button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── App layout ── */
+.app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  padding: 12px 16px;
+  gap: 16px;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+.left-panel {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.right-panel {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.right-panel::-webkit-scrollbar { width: 4px; }
+.right-panel::-webkit-scrollbar-track { background: transparent; }
+.right-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* ── Preview ── */
+.preview-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+.preview-bg {
+  background: var(--preview-bg);
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  display: inline-block;
+  overflow: hidden;
+}
+.gamepad-status {
+  font-family: 'Bungee', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.gamepad-status.connected { background: rgba(249,90,31,0.1); color: var(--accent); }
+.gamepad-status.disconnected { background: var(--surface); color: var(--muted); }
+.scale-label {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* ── OBS Button ── */
+.btn-obs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+  padding: 14px 32px;
+  margin-top: 12px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.15s;
+}
+.btn-obs:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(249,90,31,0.3); }
+.btn-obs:active { transform: translateY(0); }
+.btn-obs svg { width: 16px; height: 16px; }
+.obs-toast {
+  position: absolute;
+  bottom: -28px;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Bungee', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.import-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: 400px;
+}
+.import-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 6px 10px;
+  min-width: 0;
+}
+.import-input::placeholder { color: var(--muted); font-size: 10px; }
+.btn-import {
+  padding: 6px 12px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.btn-import:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Panels: ctrl-group cards ── */
+.ctrl-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.ctrl-group:hover { border-color: rgba(249,90,31,0.15); }
+.ctrl-group h3 {
+  font-family: 'Bungee', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+/* ── Color controls ── */
+.color-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.color-row label { font-size: 12px; color: var(--muted); flex: 1; }
+.color-wrap { width: 28px; height: 28px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+.color-wrap input[type="color"] { width: 40px; height: 40px; border: none; padding: 0; cursor: pointer; margin: -6px; }
+.hex-inp {
+  width: 76px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  padding: 5px 8px;
+  text-align: center;
+}
+.btn-apply-all {
+  width: 100%;
+  padding: 8px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(249,90,31,0.06);
+  border: 1px solid rgba(249,90,31,0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-apply-all:hover { background: rgba(249,90,31,0.12); }
+
+/* ── Settings controls ── */
+.setting-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; max-width: 100%; }
+.setting-row label:first-child { font-size: 11px; color: var(--muted); white-space: nowrap; width: 75px; flex-shrink: 0; }
+.setting-row input[type="range"] {
+  flex: 1 1 0; min-width: 0; width: 0; height: 4px;
+  accent-color: var(--accent);
+  -webkit-appearance: none; appearance: none;
+  background: var(--border); border-radius: 2px; outline: none;
+}
+.setting-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px;
+  background: var(--accent); border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--bg);
+}
+.setting-val { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); width: 36px; flex-shrink: 0; text-align: right; }
+
+.toggle { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
+.toggle input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.toggle-slider { position: absolute; top: 0; left: 0; width: 36px; height: 20px; background: var(--border); border-radius: 20px; transition: background 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+.btn-reset {
+  padding: 6px 14px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s;
+}
+.btn-reset:hover { border-color: var(--accent); color: var(--text); }
+
+/* ── Image overlays ── */
+.img-url-row { display: flex; gap: 6px; }
+.url-input {
+  flex: 1;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 8px 10px;
+}
+.url-input::placeholder { color: var(--muted); }
+.btn-sm {
+  padding: 8px 14px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-sm:hover { opacity: 0.85; }
+.overlay-hint { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+/* ── Image layer list ── */
+.img-layer-item{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:8px;transition:border-color 0.2s}
+.img-layer-item.selected{border-color:var(--accent)}
+.img-layer-header{display:flex;align-items:center;gap:8px;cursor:pointer}
+.img-layer-header img{width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--border);flex-shrink:0}
+.ilname{flex:1;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer-order-btns{display:flex;gap:2px}
+.img-layer-controls{margin-top:8px}
+.slider-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+.slider-row label{font-size:11px;color:var(--muted);width:55px;flex-shrink:0}
+.slider-row input[type="range"]{flex:1 1 0;min-width:0;width:0;height:4px;accent-color:var(--accent);-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none}
+.slider-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:pointer;border:2px solid var(--bg)}
+.slider-val{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);width:36px;flex-shrink:0;text-align:right}
+.btn-sm.danger{color:#f87171;border-color:rgba(248,113,113,0.3)}
+.btn-sm.danger:hover{background:rgba(248,113,113,0.1);border-color:#f87171}
+.img-btn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:all 0.15s;flex-shrink:0}
+.img-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Transform boxes ── */
+.transform-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+.transform-box { position: absolute; pointer-events: auto; }
+.transform-border { border: 1.5px dashed var(--accent); position: absolute; inset: 0; pointer-events: none; }
+.t-handle { position: absolute; width: 10px; height: 10px; background: #fff; border: 1.5px solid var(--accent); cursor: pointer; border-radius: 2px; }
+.t-corner-tl { top: -5px; left: -5px; cursor: nwse-resize; }
+.t-corner-tr { top: -5px; right: -5px; cursor: nesw-resize; }
+.t-corner-bl { bottom: -5px; left: -5px; cursor: nesw-resize; }
+.t-corner-br { bottom: -5px; right: -5px; cursor: nwse-resize; }
+.t-rotate { top: -28px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; cursor: grab; background: var(--accent); border-color: var(--accent); }
+.t-rot-line { position: absolute; top: -18px; left: 50%; width: 1px; height: 14px; background: var(--accent); pointer-events: none; }
+
+/* ── Controller ── */
+.controller.xbox { position: relative; width: 750px; height: 630px; transform: scale(var(--ctrl-scale,0.65)); transform-origin: top left; }
+.controller.ds4 { position: relative; width: 806px; height: 598px; transform: scale(var(--ctrl-scale,0.65)); transform-origin: top left; }
+
+/* ── Controller element positioning (from Gamepad Viewer) ── */
+.clear{clear:both;display:block}
+.xbox .triggers{width:446px;height:121px;position:absolute;left:152px;}
+.xbox .trigger{width:88px;height:121px;background:url(xbox-assets/trigger.svg);opacity:0;}
+.xbox .trigger.left{float:left;background-position:0 0;}
+.xbox .trigger.right{float:right;transform:rotateY(180deg);}
+.xbox .bumper{width:170px;height:61px;background:url(xbox-assets/bumper.svg);opacity:0;}
+.xbox .bumpers{position:absolute;width:536px;height:61px;left:107px;top:129px;}
+.xbox .bumper.pressed{opacity:1;}
+.xbox .bumper.left{float:left;}
+.xbox .bumper.right{float:right;-webkit-transform:rotateY(180deg);transform:rotateY(180deg);}
+.xbox .quadrant{position:absolute;background:url(xbox-assets/quadrant.svg);height:45px;width:45px;top:258px;left:354px;z-index:0;}
+.xbox .p0{-webkit-transform:rotate(0deg);transform:rotate(0deg);}
+.xbox .p1{-webkit-transform:rotate(90deg);transform:rotate(90deg);}
+.xbox .p2{-webkit-transform:rotate(270deg);transform:rotate(270deg);}
+.xbox .p3{-webkit-transform:rotate(180deg);transform:rotate(180deg);}
+.xbox .arrows{position:absolute;width:141px;height:33px;top:264px;left:306px;}
+.xbox .back,.xbox .start{background:url(xbox-assets/start-select.svg);width:33px;height:33px;opacity:0;}
+.xbox .back.pressed,.xbox .start.pressed{opacity:1;}
+.xbox .back{float:left;}
+.xbox .start{background-position:33px 0px;float:right;}
+.xbox .abxy{position:absolute;width:153px;height:156px;top:192px;left:488px;}
+.xbox .button{position:absolute;background:url(xbox-assets/abxy.svg);width:48px;height:48px;}
+.xbox .button.pressed{background-position-y:-48px;margin-top:5px;opacity:1;}
+.xbox .a{background-position:0 0;top:108px;left:55px;}
+.xbox .b{background-position:-49px 0;top:58px;right:0px;}
+.xbox .x{background-position:-98px 0;top:58px;left:4px;}
+.xbox .y{background-position:48px 0;left:55px;top:7px;}
+.xbox .sticks{position:absolute;width:371px;height:196px;top:239px;left:144px;}
+.xbox .stick{position:absolute;background:url(xbox-assets/stick.svg);background-position:-85px 0;height:83px;width:83px;}
+.xbox .stick.pressed{background-position:0 0;}
+.xbox .stick.left{top:0;left:0;}
+.xbox .stick.right{top:113px;left:288px;}
+.xbox .dpad{position:absolute;width:110px;height:111px;top:345px;left:223px;}
+.xbox .face{background:url(xbox-assets/dpad.svg);position:absolute;opacity:0;}
+.xbox .face.pressed{opacity:1;}
+.xbox .face.up{background-position:34px 0;left:38px;top:0px;width:34px;height:56px;}
+.xbox .face.down{left:38px;bottom:0;width:34px;height:56px;}
+.xbox .face.left{background-position:0 -93px;width:55px;height:35px;top:38px;left:0;}
+.xbox .face.right{background-position:0 -57px;width:55px;height:35px;top:38px;right:0;}
+.xbox.half{margin-top:-315px;}
+.xbox{background:no-repeat center;}
+.ds4 .triggers{width:588px;height:90px;position:absolute;left:109px;}
+.ds4 .trigger{width:99px;height:100%;background:url(ps4-assets/triggers.svg);opacity:0;}
+.ds4 .trigger.left{float:left;}
+.ds4 .trigger.right{float:right;background-position-x:99px;}
+.ds4 .bumper{width:99px;height:23px;background:url(ps4-assets/bumper.svg) no-repeat;opacity:0;}
+.ds4 .bumpers{position:absolute;width:588px;height:23px;left:109px;top:94px;}
+.ds4 .bumper.pressed{opacity:1;}
+.ds4 .bumper.left{float:left;}
+.ds4 .bumper.right{float:right;transform:rotateY(180deg);}
+.ds4 .touchpad{width:262px;height:151px;position:absolute;left:272px;top:122px;}
+.ds4 .touchpad.pressed{background:url(ps4-assets/touchpad.svg) no-repeat center;}
+.ds4 .meta{width:42px;height:42px;position:absolute;left:382px;bottom:216px;}
+.ds4 .meta.pressed{background:url(ps4-assets/meta.svg) no-repeat center;}
+.ds4 .arrows{position:absolute;width:352px;height:46px;top:142px;left:227px;}
+.ds4 .back,.ds4 .start{background:url(ps4-assets/start.svg);width:28px;height:46px;opacity:0;}
+.ds4 .back.pressed,.ds4 .start.pressed{opacity:1;}
+.ds4 .back{float:left;}
+.ds4 .start{float:right;background-position:28px 0;}
+.ds4 .abxy{position:absolute;width:170px;height:171px;top:159px;left:567px;}
+.ds4 .button{position:absolute;width:55px;height:55px;background:url(ps4-assets/face.svg);}
+.ds4 .button.pressed{background-position-y:55px;}
+.ds4 .a{background-position:0 0;bottom:0;left:58px;}
+.ds4 .b{background-position:-57px 0;top:58px;right:0px;}
+.ds4 .x{background-position:-113px 0;top:58px;}
+.ds4 .y{background-position:55px 0;left:58px;}
+.ds4 .sticks{position:absolute;width:361px;height:105px;top:308px;left:228px;}
+.ds4 .stick{position:absolute;background:url(ps4-assets/sticks.svg);height:94px;width:94px;}
+.ds4 .stick.pressed.left{background-position-x:-96px;}
+.ds4 .stick.pressed.right{background-position-x:-192px;}
+.ds4 .stick.left{top:0;left:0;}
+.ds4 .stick.right{top:calc(100% - 105px);left:calc(100% - 105px);}
+.ds4 .dpad{position:absolute;width:125px;height:126px;top:181px;left:92px;}
+.ds4 .face{background:url(ps4-assets/dpad.svg);position:absolute;}
+.ds4 .face.up,.ds4 .face.down{width:36px;height:52px;}
+.ds4 .face.left,.ds4 .face.right{width:52px;height:36px;}
+.ds4 .face.up{left:44px;top:0;background-position:-37px 0px;}
+.ds4 .face.down{left:44px;bottom:0;background-position:0px 0;}
+.ds4 .face.left{top:45px;left:0;background-position:104px 0;}
+.ds4 .face.right{top:45px;right:0px;background-position:52px 0;}
+.ds4 .face.pressed{background-position-y:52px;}
+.ds4.half{margin-top:-300px;}
+/* ── Responsive ── */
+@media (max-width: 1200px) { .left-panel { width: 240px; } }
+@media (max-width: 1100px) {
+  html, body { overflow: auto; }
+  .app { flex-wrap: wrap; height: auto; overflow: visible; }
+  .left-panel { width: 100%; order: 2; }
+  .center-panel { width: 100%; order: 1; }
+  .right-panel { width: 100%; order: 3; max-height: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-wordmark">Gamepad<span> Studio</span></div>
+  </div>
+  <div class="logo-sub">Design &amp; Overlay Creator</div>
+  <div class="ctrl-switcher">
+    <button class="active" data-type="xbox">Xbox</button>
+    <button data-type="ds4">PlayStation</button>
+  </div>
+</header>
+<div class="app">
+  <div class="left-panel" id="leftPanel">
+    <div class="ctrl-group"><h3>Controller Settings</h3>
+      <div class="setting-row"><label>Opacity</label><input type="range" id="ctrlOpacity" min="0" max="100" step="1" value="100"><span class="setting-val" id="ctrlOpacityVal">100%</span></div>
+      <div class="setting-row"><label>Deadzone</label><input type="range" id="stickDZ" min="0" max="100" step="1" value="15"><span class="setting-val" id="stickDZVal">15%</span></div>
+      <div class="setting-row"><label>Stick Offset</label><input type="range" id="stickSO" min="0" max="100" step="1" value="22"><span class="setting-val" id="stickSOVal">22px</span></div>
+      <div class="setting-row"><label>Stick Curving</label><label class="toggle"><input type="checkbox" id="stickCurve" checked><span class="toggle-slider"></span></label></div>
+      <button class="btn-reset" id="btnResetSettings">Reset to Defaults</button>
+    </div>
+  </div>
+  <div class="center-panel">
+    <div class="preview-wrap">
+      <div class="gamepad-status disconnected" id="gpStatus">&#9679; No Controller Detected</div>
+      <div class="preview-bg">
+        <div class="controller xbox" id="controller">
+          <div class="transform-layer" id="transformLayer"></div>
+          <div class="triggers"><span class="trigger left" data-name="button-left-shoulder-bottom"></span><span class="trigger right" data-name="button-right-shoulder-bottom"></span><span class="clear"></span></div>
+          <div class="bumpers"><span class="bumper left" data-name="button-left-shoulder-top"></span><span class="bumper right" data-name="button-right-shoulder-top"></span><span class="clear"></span></div>
+          <div class="touchpad" data-name="touch-pad"></div>
+          <div class="quadrant"></div>
+          <div class="meta" data-name="button-meta"></div>
+          <div class="arrows"><span class="back" data-name="button-select"></span><span class="start" data-name="button-start"></span><span class="clear"></span></div>
+          <div class="abxy"><span class="button a" data-name="button-1"></span><span class="button b" data-name="button-2"></span><span class="button x" data-name="button-3"></span><span class="button y" data-name="button-4"></span></div>
+          <div class="sticks"><span class="stick left" data-name="stick-1"></span><span class="stick right" data-name="stick-2"></span></div>
+          <div class="dpad"><span class="face up" data-name="button-dpad-top"></span><span class="face down" data-name="button-dpad-bottom"></span><span class="face left" data-name="button-dpad-left"></span><span class="face right" data-name="button-dpad-right"></span></div>
+        </div>
+      </div>
+      <p class="scale-label">WASD=stick &bull; Arrows=D-pad &bull; 1234=ABXY &bull; QE=bumpers &bull; RF=triggers</p>
+      <button class="btn-obs" id="btnOBSLink"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy OBS Link</button>
+      <div id="obsToast" class="obs-toast">Copied to clipboard!</div>
+      <div class="import-row">
+        <input type="text" id="obsImportInput" class="import-input" placeholder="Paste existing OBS link to import...">
+        <button class="btn-import" id="btnImportOBS">Import</button>
+      </div>
+    </div>
+  </div>
+  <div class="right-panel" id="controlsPanel">
+    <div class="ctrl-group"><h3>Image Overlays</h3>
+      <div class="img-url-row"><input type="text" id="imgURLInput" class="url-input" placeholder="Paste image URL..."><button class="btn-sm" id="btnAddImgURL">Add</button></div>
+      <div id="imgLayerList"></div>
+      <p class="overlay-hint">Drag to move &bull; Corners to resize &bull; Top handle to rotate</p>
+    </div>
+    <div class="ctrl-group"><h3>Quick Color</h3>
+      <div class="color-row"><label>Apply to All</label><div class="color-wrap"><input type="color" id="color-all" value="#FA6B25"></div><input type="text" class="hex-inp" id="hex-all" value="#FA6B25"></div>
+      <button class="btn-apply-all" id="btnApplyAll" style="margin-top:10px">Apply Color to All</button>
+    </div>
+    <div id="colorGroups"></div>
+  </div>
+</div>
+
+<script>
+// ===========================================================================
+// CONTROLLER PROFILES
+// ===========================================================================
+const PROFILES = {
+  xbox: {
+    name: 'Xbox', width: 750, height: 630, defaultColor: '#080808',
+    defaultColors: {
+      'base':'#080808',
+      'btn-a':'#00FF11','btn-b':'#FF0000','btn-x':'#0008FF','btn-y':'#FFE600',
+      'dpad-up':'#999999','dpad-down':'#999999','dpad-left':'#999999','dpad-right':'#999999',
+      'bumper-l':'#999999','bumper-r':'#999999','trigger-l':'#999999','trigger-r':'#999999',
+      'stick-l':'#DEDEDE','stick-r':'#DEDEDE','guide':'#FBFD5D','select':'#999999','start':'#999999'
+    },
+    layers: {'base-1':'base-1.png','base-2':'base-2.png','base-3':'base-3.png','abxy-1':'abxy-1.png','abxy-2':'abxy-2.png','abxy-3':'abxy-3.png','bumper':'bumper.png','dpad':'dpad.png','quadrant-1':'quadrant-1.png','quadrant-2':'quadrant-2.png','start-select-1':'start-select-1.png','start-select-2':'start-select-2.png','sticks-1':'sticks-1.png','sticks-2':'sticks-2.png','trigger':'trigger.png'},
+    baseLayers: ['base-3','base-2','base-1'],
+    maskLayer: 'base-2',
+    baseColorLayers: {'base':'base-2'},
+    colorGroups: [
+      {title:'Body', items:[{label:'Base',key:'base'}]},
+      {title:'Face Buttons', items:[
+        {label:'A',key:'btn-a'},{label:'B',key:'btn-b'},{label:'X',key:'btn-x'},{label:'Y',key:'btn-y'}
+      ]},
+      {title:'D-Pad', items:[{label:'Up',key:'dpad-up'},{label:'Down',key:'dpad-down'},{label:'Left',key:'dpad-left'},{label:'Right',key:'dpad-right'}]},
+      {title:'Shoulders', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'},{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
+      {title:'Sticks & Center', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'},{label:'Guide',key:'guide'},{label:'Select',key:'select'},{label:'Start',key:'start'}]}
+    ],
+    // elemRules: how each color key applies to DOM elements
+    // type: 'elem' = set background on selector, 'base' = in base composite, 'pressed-only' = only when .pressed
+    elemRules: [
+      {key:'btn-a',sel:'.a',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
+      {key:'btn-b',sel:'.b',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
+      {key:'btn-x',sel:'.x',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
+      {key:'btn-y',sel:'.y',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
+      {key:'dpad-up',sel:'.face.up',sprite:'dpad',stack:['dpad']},
+      {key:'dpad-down',sel:'.face.down',sprite:'dpad',stack:['dpad']},
+      {key:'dpad-left',sel:'.face.left',sprite:'dpad',stack:['dpad']},
+      {key:'dpad-right',sel:'.face.right',sprite:'dpad',stack:['dpad']},
+      {key:'bumper-l',sel:'.bumper.left',sprite:'bumper',stack:['bumper']},
+      {key:'bumper-r',sel:'.bumper.right',sprite:'bumper',stack:['bumper']},
+      {key:'trigger-l',sel:'.trigger.left',sprite:'trigger',stack:['trigger']},
+      {key:'trigger-r',sel:'.trigger.right',sprite:'trigger',stack:['trigger']},
+      {key:'stick-l',sel:'.stick.left',sprite:'sticks-2',stack:['sticks-1','sticks-2']},
+      {key:'stick-r',sel:'.stick.right',sprite:'sticks-2',stack:['sticks-1','sticks-2']},
+      {key:'guide',sel:'.quadrant',sprite:'quadrant-1',stack:['quadrant-1','quadrant-2']},
+      {key:'select',sel:'.back',sprite:'start-select-2',stack:['start-select-1','start-select-2']},
+      {key:'start',sel:'.arrows .start',sprite:'start-select-2',stack:['start-select-1','start-select-2']},
+    ],
+    exportFiles: [
+      {name:'base.png',type:'base'},
+      {name:'abxy.png',layers:['abxy-3','abxy-2','abxy-1'],colorLayer:'abxy-2',regions:{0:'btn-a',49:'btn-b',98:'btn-x',147:'btn-y'}},
+      {name:'sticks.png',layers:['sticks-2','sticks-1'],colorLayer:'sticks-2',regions:{0:'stick-l',84:'stick-r'}},
+      {name:'quadrant.png',layers:['quadrant-2','quadrant-1'],colorLayer:'quadrant-1',regions:{0:'guide'}},
+      {name:'start-select.png',layers:['start-select-2','start-select-1'],colorLayer:'start-select-2',regions:{0:'select',33:'start'}},
+      {name:'bumper.png',layers:['bumper'],colorLayer:'bumper',regions:{0:'bumper-l'}},
+      {name:'trigger.png',layers:['trigger'],colorLayer:'trigger',regions:{0:'trigger-l'}},
+      {name:'dpad.png',layers:['dpad'],colorLayer:'dpad',regions:{0:'dpad-down'}},
+    ],
+    exportCss: `.xbox.white {\n    background: url(base.png);\n}\n.xbox.disconnected {\n    background: url();\n}\n.xbox .trigger { width: 88px; height: 121px; background: url(trigger.png); opacity: 0; }\n.xbox .bumper { width: 170px; height: 61px; background: url(bumper.png); opacity: 0; }\n.xbox .quadrant { position: absolute; background: url(quadrant.png); height: 45px; width: 45px; top: 258px; left: 354px; z-index: 0; }\n.xbox .back, .xbox .start { background: url(start-select.png); width: 33px !important; height: 33px !important; opacity: 0; }\n.xbox .stick { position: absolute; background: url(sticks.png); background-position: -85px 0; height: 83px; width: 83px; }\n.xbox .button { position: absolute; background: url(abxy.png); width: 48px; height: 48px; }\n.xbox .button.pressed { background-position-y: -48px; margin-top: 0px !important; opacity: 1; }\n.xbox .a { background-position: 0 0; top: 114px; left: 55px; }\n.xbox .b { background-position: -49px 0; top: 63px; right: 0px; }\n.xbox .x { background-position: -98px 0; top: 63px; left: 4px; }\n.xbox .y { background-position: 48px 0; left: 55px; top: 13px; }\n.xbox .face { background: url(dpad.png); position: absolute; opacity: 0; }`
+  },
+  ds4: {
+    name: 'PlayStation', width: 806, height: 598, defaultColor: '#DEDEDE',
+    defaultColors: {
+      'body':'#DEDEDE','handles':'#9E9E9E','topbuttons':'#969696','touchpad-bg':'#545454','select-bg':'#3D3D3D','start-bg':'#3D3D3D',
+      'btn-a':'#262626','btn-b':'#262626','btn-x':'#262626','btn-y':'#262626',
+      'label-a':'#0084FF','label-b':'#FF000D','label-x':'#FF00EA','label-y':'#2BFF00',
+      'btn-a-pressed':'#878787','btn-b-pressed':'#878787','btn-x-pressed':'#878787','btn-y-pressed':'#878787',
+      'label-a-pressed':'#49A6FD','label-b-pressed':'#FF575F','label-x-pressed':'#FF5CF1','label-y-pressed':'#81FD68',
+      'dpad-normal':'#7D7D7D','dpad-pressed':'#FAFAFA',
+      'bumper-l':'#FAFAFA','bumper-r':'#FAFAFA','trigger-l':'#FE6C6C','trigger-r':'#9BFD77',
+      'stick-l':'#7D7D7D','stick-r':'#7D7D7D','stick-l-pressed':'#FAFAFA','stick-r-pressed':'#FAFAFA',
+      'select-pressed':'#FAFAFA','start-pressed':'#FAFAFA','touchpad-pressed':'#ABABAB'
+    },
+    layers: {'ds4:base-1':'ds4/base-1.png','ds4:base-controller':'ds4/base-controller.png','ds4:base-handle':'ds4/base-handle.png','ds4:base-select':'ds4/base-select.png','ds4:base-start':'ds4/base-start.png','ds4:base-topbuttons':'ds4/base-topbuttons.png','ds4:base-touchpad':'ds4/base-touchpad.png','ds4:bumper-1':'ds4/bumper-1.png','ds4:bumper-base':'ds4/bumper-base.png','ds4:dpad-1':'ds4/dpad-1.png','ds4:dpad-base-normal':'ds4/dpad-base-normal.png','ds4:dpad-based-pressed':'ds4/dpad-based-pressed.png','ds4:face-base':'ds4/face-base.png','ds4:face-labels':'ds4/face-labels.png','ds4:start-btn':'ds4/start.png','ds4:sticks-1':'ds4/sticks-1.png','ds4:sticks-base':'ds4/sticks-base.png','ds4:touchpad-1':'ds4/touchpad-1.png','ds4:touchpad-base':'ds4/touchpad-base.png','ds4:triggers-1':'ds4/triggers-1.png','ds4:triggers-base':'ds4/triggers-base.png'},
+    baseLayers: ['ds4:base-topbuttons','ds4:base-controller','ds4:base-handle','ds4:base-touchpad','ds4:base-select','ds4:base-start','ds4:base-1'],
+    compositeOverlays: {
+      bumpersAfter: 'ds4:base-topbuttons',
+      bumpers: [
+        {key:'bumper-l',sprite:'ds4:bumper-base',top:'ds4:bumper-1',x:109,y:94},
+        {key:'bumper-r',sprite:'ds4:bumper-base',top:'ds4:bumper-1',x:598,y:94,flipX:true}
+      ],
+      dpadNormal: {key:'dpad-normal',sprite:'ds4:dpad-base-normal',top:'ds4:dpad-1',
+        pieces:[
+          {name:'up',sx:37,sy:0,sw:36,sh:52,dx:136,dy:181},
+          {name:'down',sx:0,sy:0,sw:36,sh:52,dx:136,dy:255},
+          {name:'left',sx:74,sy:0,sw:52,sh:36,dx:92,dy:226},
+          {name:'right',sx:126,sy:0,sw:52,sh:36,dx:165,dy:226}
+        ]},
+      dpadPressed: {key:'dpad-pressed',sprite:'ds4:dpad-based-pressed',top:'ds4:dpad-1',
+        pieces:[
+          {name:'up',sx:37,sy:52,sw:36,sh:52,dx:136,dy:181},
+          {name:'down',sx:0,sy:52,sw:36,sh:52,dx:136,dy:255},
+          {name:'left',sx:74,sy:52,sw:52,sh:36,dx:92,dy:226},
+          {name:'right',sx:126,sy:52,sw:52,sh:36,dx:165,dy:226}
+        ]}
+    },
+    maskLayer: 'ds4:base-controller',
+    baseColorLayers: {'body':'ds4:base-controller','handles':'ds4:base-handle','topbuttons':'ds4:base-topbuttons','touchpad-bg':'ds4:base-touchpad','select-bg':'ds4:base-select','start-bg':'ds4:base-start'},
+    colorGroups: [
+      {title:'Body', items:[{label:'Controller',key:'body'},{label:'Handles',key:'handles'},{label:'Top Buttons',key:'topbuttons'},{label:'Touchpad',key:'touchpad-bg'},{label:'Select Base',key:'select-bg'},{label:'Start Base',key:'start-bg'}]},
+      {title:'Face Buttons (Normal)', items:[
+        {label:'Cross Base',key:'btn-a'},{label:'Circle Base',key:'btn-b'},{label:'Square Base',key:'btn-x'},{label:'Triangle Base',key:'btn-y'},
+        {label:'Cross Label',key:'label-a'},{label:'Circle Label',key:'label-b'},{label:'Square Label',key:'label-x'},{label:'Triangle Label',key:'label-y'}
+      ]},
+      {title:'Face Buttons (Pressed)', items:[
+        {label:'Cross Base',key:'btn-a-pressed'},{label:'Circle Base',key:'btn-b-pressed'},{label:'Square Base',key:'btn-x-pressed'},{label:'Triangle Base',key:'btn-y-pressed'},
+        {label:'Cross Label',key:'label-a-pressed'},{label:'Circle Label',key:'label-b-pressed'},{label:'Square Label',key:'label-x-pressed'},{label:'Triangle Label',key:'label-y-pressed'}
+      ]},
+      {title:'D-Pad', items:[{label:'Normal',key:'dpad-normal'},{label:'Pressed',key:'dpad-pressed'}]},
+      {title:'Shoulders', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'},{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
+      {title:'Sticks', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'},{label:'L Stick Pressed',key:'stick-l-pressed'},{label:'R Stick Pressed',key:'stick-r-pressed'}]},
+      {title:'Other', items:[{label:'Select Pressed',key:'select-pressed'},{label:'Start Pressed',key:'start-pressed'},{label:'Touchpad Pressed',key:'touchpad-pressed'}]}
+    ],
+    elemRules: [
+      // Face buttons: build composite with per-button base + per-button label colors
+      // type:'ds4-face' is a special handler
+      {key:'_ds4_face',type:'ds4-face'},
+
+      // Bumpers
+
+      // Triggers
+      {key:'trigger-l',sel:'.trigger.left',sprite:'ds4:triggers-base',stack:['ds4:triggers-1','ds4:triggers-base']},
+      {key:'trigger-r',sel:'.trigger.right',sprite:'ds4:triggers-base',stack:['ds4:triggers-1','ds4:triggers-base']},
+      // Sticks
+      {key:'stick-l',sel:'.stick.left',sprite:'ds4:sticks-base',stack:['ds4:sticks-1','ds4:sticks-base'],pressedKey:'stick-l-pressed'},
+      {key:'stick-r',sel:'.stick.right',sprite:'ds4:sticks-base',stack:['ds4:sticks-1','ds4:sticks-base'],pressedKey:'stick-r-pressed'},
+      // Select/Start pressed
+      {key:'select-pressed',sel:'.back',sprite:'ds4:start-btn',stack:['ds4:start-btn']},
+      {key:'start-pressed',sel:'.arrows .start',sprite:'ds4:start-btn',stack:['ds4:start-btn']},
+      // Touchpad pressed: type:'pressed-only' = only apply bg when element has .pressed class
+      {key:'touchpad-pressed',sel:'.touchpad',sprite:'ds4:touchpad-base',stack:['ds4:touchpad-1','ds4:touchpad-base'],type:'pressed-only'},
+      // DPad normal: also pressed-only=false, but we need to put it in base composite
+      // Actually dpad-normal is baked into base via a special baseOverlay
+    ],
+    // Static overlays drawn on top of base composite at fixed positions
+    // These are sprite-sized images positioned within the controller canvas
+
+    exportFiles: [
+      {name:'base.png',type:'base'},
+      {name:'face.png',layers:['ds4:face-base','ds4:face-labels'],colorLayer:'ds4:face-base',regions:{0:'btn-a',56:'btn-b',112:'btn-x',168:'btn-y'}},
+      {name:'sticks.png',layers:['ds4:sticks-base','ds4:sticks-1'],colorLayer:'ds4:sticks-base',regions:{0:'stick-l',95:'stick-r'}},
+      {name:'bumper.png',layers:['ds4:bumper-base','ds4:bumper-1'],colorLayer:'ds4:bumper-base',regions:{0:'bumper-l'}},
+      {name:'triggers.png',layers:['ds4:triggers-base','ds4:triggers-1'],colorLayer:'ds4:triggers-base',regions:{0:'trigger-l',100:'trigger-r'}},
+      {name:'start.png',layers:['ds4:start-btn'],colorLayer:'ds4:start-btn',regions:{0:'select-pressed',14:'start-pressed'}},
+      {name:'dpad.png',layers:['ds4:dpad-based-pressed','ds4:dpad-1'],colorLayer:'ds4:dpad-based-pressed',regions:{0:'dpad-pressed'}},
+      {name:'touchpad.png',layers:['ds4:touchpad-base','ds4:touchpad-1'],colorLayer:'ds4:touchpad-base',regions:{0:'touchpad-pressed'}},
+    ],
+    exportCss: `.ds4.white {\n    background: url(base.png);\n}\n.ds4.disconnected {\n    background: url(ps4-assets/disconnected.svgz);\n}\n.ds4 .trigger { width: 99px; height: 100%; background: url(triggers.png); opacity: 0; }\n.ds4 .trigger.right { background-position-x: 99px; }\n.ds4 .bumper { width: 99px; height: 23px; background: url(bumper.png) no-repeat; opacity: 0; }\n.ds4 .bumper.right { transform: rotateY(180deg); }\n.ds4 .touchpad.pressed { background: url(touchpad.png) no-repeat center; }\n.ds4 .back, .ds4 .start { background: url(start.png); width: 28px; height: 46px; opacity: 0; }\n.ds4 .start { background-position: 28px 0; }\n.ds4 .button { position: absolute; background: url(face.png); width: 55px; height: 55px; }\n.ds4 .button.pressed { background-position-y: 55px; }\n.ds4 .a { background-position: 0 0; bottom: 0; left: 58px; }\n.ds4 .b { background-position: -57px 0; top: 58px; right: 0px; }\n.ds4 .x { background-position: -113px 0; top: 58px; }\n.ds4 .y { background-position: 55px 0; left: 58px; }\n.ds4 .stick { position: absolute; background: url(sticks.png); height: 94px; width: 94px; }\n.ds4 .stick.pressed.left { background-position-x: -96px; }\n.ds4 .stick.pressed.right { background-position-x: -192px; }\n.ds4 .face { background: url(dpad.png); position: absolute; opacity: 0; }\n.ds4 .face.pressed { background-position-y: 52px; opacity: 1; }`
+  }
+};
+
+// ===========================================================================
+// STATE
+// ===========================================================================
+let activeType = 'xbox';
+let origImages = {};
+let recolorCache = {};
+let colors = {};
+let imgLayers = [], selectedLayerId = null, nextImgId = 1, dragState = null;
+let baseMaskCanvas = null;
+// Stores data URLs for pressed-only elements (touchpad, ds4 face buttons)
+let pressedBgs = {};
+let gpPressedState = {};
+
+function P() { return PROFILES[activeType]; }
+function hexToRgb(h) { return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+
+// ===========================================================================
+// IMAGE LOADING & RECOLORING
+// ===========================================================================
+function loadImage(key, src) {
+  return new Promise(r => {
+    if (origImages[key]) { r(); return; }
+    const img = new Image(); img.onload = () => { origImages[key] = img; r(); }; img.onerror = () => r(); img.src = src;
+  });
+}
+
+// Recolor: replace color of all non-transparent, non-black pixels.
+// The target color is applied at full intensity, scaled only by the pixel's
+// brightness relative to the MAXIMUM brightness in the image. This ensures
+// the brightest pixels match the selected color exactly.
+function recolorImage(img, hex) {
+  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0,0,c.width,c.height), d = id.data;
+  const [tr,tg,tb] = hexToRgb(hex);
+  // Flat color replacement: every visible non-black pixel gets the exact target color.
+  // Alpha is preserved so anti-aliased edges blend correctly.
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i+3] < 10) continue;
+    const lum = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    if (lum < 5) continue;
+    d[i] = tr; d[i+1] = tg; d[i+2] = tb;
+  }
+  ctx.putImageData(id, 0, 0); return c;
+}
+
+function RC(layer, hex) {
+  const k = layer+':'+hex; if (!recolorCache[k]) { const img = origImages[layer]; if (!img) return null; recolorCache[k] = recolorImage(img, hex); } return recolorCache[k];
+}
+
+// Composite multiple sprite layers into a single canvas. colorLayer gets recolored, others drawn as-is.
+function compositeSprite(stack, colorLayer, hex) {
+  const k = 'comp:'+stack.join('+')+':'+colorLayer+':'+hex;
+  if (recolorCache[k]) return recolorCache[k];
+  const ref = origImages[stack[0]]; if (!ref) return null;
+  const c = document.createElement('canvas'); c.width = ref.naturalWidth; c.height = ref.naturalHeight;
+  const ctx = c.getContext('2d');
+  for (const lk of stack) {
+    if (lk === colorLayer) { const rc = RC(lk, hex); if (rc) ctx.drawImage(rc, 0, 0); }
+    else if (origImages[lk]) ctx.drawImage(origImages[lk], 0, 0);
+  }
+  recolorCache[k] = c;
+  return c;
+}
+function clearCache() { for (const k in recolorCache) delete recolorCache[k]; }
+
+// ===========================================================================
+// BASE COMPOSITE
+// ===========================================================================
+function buildBaseMask() {
+  const p = P(), img = origImages[p.maskLayer]; if (!img) return;
+  baseMaskCanvas = document.createElement('canvas'); baseMaskCanvas.width = p.width; baseMaskCanvas.height = p.height;
+  const ctx = baseMaskCanvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0,0,p.width,p.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i+3], lum = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    d[i]=255; d[i+1]=255; d[i+2]=255; d[i+3] = (a<10||lum<15)?0:255;
+  }
+  ctx.putImageData(id, 0, 0);
+}
+
+function renderMaskedOverlays() {
+  const p = P(), c = document.createElement('canvas'); c.width = p.width; c.height = p.height;
+  if (!imgLayers.length || !baseMaskCanvas) return c;
+  const ctx = c.getContext('2d');
+  for (const L of imgLayers) { ctx.save(); ctx.globalAlpha = L.opacity/100; ctx.translate(L.x,L.y); ctx.rotate(L.rot*Math.PI/180); ctx.drawImage(L.img,-L.w/2,-L.h/2,L.w,L.h); ctx.restore(); }
+  ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(baseMaskCanvas, 0, 0);
+  return c;
+}
+
+function drawSpriteAt(ctx, sprite, topKey, x, y, flipX) {
+  const rc = typeof sprite === 'string' ? RC(sprite, colors[sprite.split(':')[0]] || P().defaultColor) : sprite;
+  if (!rc) return;
+  ctx.save();
+  if (flipX) { ctx.translate(x + rc.width, y); ctx.scale(-1, 1); ctx.drawImage(rc, 0, 0); }
+  else ctx.drawImage(rc, x, y);
+  ctx.restore();
+  const t = topKey ? origImages[topKey] : null;
+  if (t) { ctx.save(); if (flipX) { ctx.translate(x + t.naturalWidth, y); ctx.scale(-1, 1); ctx.drawImage(t, 0, 0); } else ctx.drawImage(t, x, y); ctx.restore(); }
+}
+
+function compositeBase(ps) {
+  ps = ps || {};
+  const p = P(), c = document.createElement('canvas'); c.width = p.width; c.height = p.height; const ctx = c.getContext('2d');
+  const bcl = p.baseColorLayers, mi = p.baseLayers.indexOf(p.maskLayer);
+  const co = p.compositeOverlays;
+  for (let i = 0; i < p.baseLayers.length; i++) {
+    const lk = p.baseLayers[i];
+    let ck = null; for (const [k,v] of Object.entries(bcl)) { if (v === lk) { ck = k; break; } }
+    if (ck) { const rc = RC(lk, colors[ck] || p.defaultColor); if (rc) ctx.drawImage(rc, 0, 0); }
+    else if (origImages[lk]) ctx.drawImage(origImages[lk], 0, 0);
+    if (i === mi && imgLayers.length) ctx.drawImage(renderMaskedOverlays(), 0, 0);
+    // Bumpers: after base-topbuttons, before base-controller
+    if (co && co.bumpersAfter === lk) {
+      for (const bm of co.bumpers) {
+        if (!ps[bm.key]) continue;
+        const rc = RC(bm.sprite, colors[bm.key] || p.defaultColor);
+        drawSpriteAt(ctx, rc, bm.top, bm.x, bm.y, bm.flipX);
+      }
+    }
+  }
+  // Dpad normal: always on top of base-1
+  if (co && co.dpadNormal) {
+    const dn = co.dpadNormal;
+    const rc = RC(dn.sprite, colors[dn.key] || p.defaultColor);
+    const t = dn.top ? origImages[dn.top] : null;
+    if (rc) for (const pc of dn.pieces) { if (ps[pc.name]) continue; ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+  }
+  // Dpad pressed: on top of dpad normal, per-direction
+  if (co && co.dpadPressed) {
+    const dp = co.dpadPressed;
+    const rc = RC(dp.sprite, colors[dp.key] || p.defaultColor);
+    const t = dp.top ? origImages[dp.top] : null;
+    if (rc) for (const pc of dp.pieces) { if (!ps[pc.name]) continue; ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+  }
+  return c;
+}
+
+// ===========================================================================
+// APPLY TO DOM
+// ===========================================================================
+function buildStackBg(stack, sprite, hex) {
+  const rc = RC(sprite, hex); if (!rc) return null;
+  // stack is top-to-bottom order; CSS background-image first = topmost
+  return stack.map(lk => {
+    if (lk === sprite) return 'url('+rc.toDataURL()+')';
+    return 'url('+(origImages[lk]?origImages[lk].src:'')+')';
+  }).join(',');
+}
+
+// DS4 face buttons: build per-button sprites with separate base/label colors + pressed variants
+function applyDS4Face() {
+  const ctrl = document.getElementById('controller');
+  const btns = [
+    {cls:'.a',base:'btn-a',label:'label-a',basePr:'btn-a-pressed',labelPr:'label-a-pressed'},
+    {cls:'.b',base:'btn-b',label:'label-b',basePr:'btn-b-pressed',labelPr:'label-b-pressed'},
+    {cls:'.x',base:'btn-x',label:'label-x',basePr:'btn-x-pressed',labelPr:'label-x-pressed'},
+    {cls:'.y',base:'btn-y',label:'label-y',basePr:'btn-y-pressed',labelPr:'label-y-pressed'},
+  ];
+  const faceBase = 'ds4:face-base', faceLabels = 'ds4:face-labels';
+  for (const b of btns) {
+    const el = ctrl.querySelector(b.cls); if (!el) continue;
+    // Build normal state sprite: face-labels(colored) on top of face-base(colored)
+    const baseRc = RC(faceBase, colors[b.base] || P().defaultColor);
+    const labelRc = RC(faceLabels, colors[b.label] || P().defaultColor);
+    if (baseRc && labelRc) {
+      el.style.backgroundImage = 'url('+labelRc.toDataURL()+'),url('+baseRc.toDataURL()+')';
+    }
+    // Build pressed state sprite (stored for JS-based swap)
+    const basePrRc = RC(faceBase, colors[b.basePr] || colors[b.base] || P().defaultColor);
+    const labelPrRc = RC(faceLabels, colors[b.labelPr] || colors[b.label] || P().defaultColor);
+    if (basePrRc && labelPrRc) {
+      pressedBgs['face'+b.cls] = 'url('+labelPrRc.toDataURL()+'),url('+basePrRc.toDataURL()+')';
+    }
+    // Store normal bg too for restoring
+    if (baseRc && labelRc) {
+      pressedBgs['face'+b.cls+':normal'] = 'url('+labelRc.toDataURL()+'),url('+baseRc.toDataURL()+')';
+    }
+  }
+}
+
+function applyAllColors() {
+  const p = P(), ctrl = document.getElementById('controller');
+  pressedBgs = {};
+  // Base composite
+  ctrl.style.backgroundImage = 'url(' + compositeBase(gpPressedState).toDataURL() + ')';
+
+  for (const rule of p.elemRules) {
+    // DS4 face buttons: special handler
+    if (rule.type === 'ds4-face') { applyDS4Face(); continue; }
+    if (!rule.sel) continue;
+    const hex = colors[rule.key] || p.defaultColor;
+    const bg = buildStackBg(rule.stack, rule.sprite, hex);
+    if (!bg) continue;
+
+    // Store pressed-state bg for elements with pressedKey
+    if (rule.pressedKey) {
+      const prHex = colors[rule.pressedKey] || hex;
+      const prSprite = rule.pressedSprite || rule.sprite;
+      const prStack = rule.pressedSprite ? rule.stack.map(s => s === rule.sprite ? prSprite : s) : rule.stack;
+      const prBg = buildStackBg(prStack, prSprite, prHex);
+      if (prBg) {
+        pressedBgs[rule.key] = prBg;
+        pressedBgs[rule.key+':normal'] = bg;
+      }
+    }
+
+    if (rule.type === 'pressed-only') {
+      // Don't set bg now; store for JS-based swap when .pressed is toggled
+      pressedBgs[rule.key] = bg;
+      // Clear any existing bg on the element
+      const el = ctrl.querySelector(rule.sel);
+      if (el && !el.classList.contains('pressed')) el.style.backgroundImage = '';
+      continue;
+    }
+
+    // Apply to all matching elements
+    const els = ctrl.querySelectorAll(rule.sel);
+    els.forEach(el => { el.style.backgroundImage = bg; });
+  }
+}
+
+function refreshAll() { clearCache(); applyAllColors(); updateTransformBoxes(); }
+
+// ===========================================================================
+// COLOR UI
+// ===========================================================================
+function buildColorUI() {
+  const p = P(), container = document.getElementById('colorGroups'); container.innerHTML = '';
+  for (const cg of p.colorGroups) {
+    const group = document.createElement('div'); group.className = 'ctrl-group';
+    let html = '<h3>'+cg.title+'</h3>';
+    for (const item of cg.items) {
+      const hex = (colors[item.key]||p.defaultColor).toUpperCase();
+      html += '<div class="color-row"><label>'+item.label+'</label><div class="color-wrap"><input type="color" value="'+hex+'" data-ckey="'+item.key+'"></div><input type="text" class="hex-inp" value="'+hex+'" data-ckey="'+item.key+'"></div>';
+    }
+    group.innerHTML = html; container.appendChild(group);
+  }
+  container.querySelectorAll('input[type="color"][data-ckey]').forEach(inp => {
+    inp.addEventListener('input', e => { colors[e.target.dataset.ckey] = e.target.value; const row = e.target.closest('.color-row'); const h = row.querySelector('.hex-inp'); if(h) h.value = e.target.value.toUpperCase(); clearCache(); applyAllColors(); });
+  });
+  container.querySelectorAll('.hex-inp[data-ckey]').forEach(inp => {
+    inp.addEventListener('change', e => { let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)) { colors[e.target.dataset.ckey]=v; const row=e.target.closest('.color-row'); const cp=row.querySelector('input[type="color"]'); if(cp) cp.value=v; e.target.value=v.toUpperCase(); clearCache(); applyAllColors(); }});
+  });
+}
+
+// ===========================================================================
+// CONTROLLER SWITCHING
+// ===========================================================================
+async function switchController(type) {
+  activeType = type;
+  const p = P();
+  document.querySelectorAll('.ctrl-switcher button').forEach(b => b.classList.toggle('active', b.dataset.type===type));
+  const ctrl = document.getElementById('controller'); ctrl.className = 'controller '+type; ctrl.style.backgroundImage = '';
+  // Clear element inline styles from previous controller
+  ctrl.querySelectorAll('[style]').forEach(el => { if (!el.classList.contains('controller') && !el.id) el.style.cssText = ''; });
+  updatePreviewScale();
+  await Promise.all(Object.entries(p.layers).map(([k,src]) => loadImage(k,src)));
+  colors = {};
+  const dc = p.defaultColors || {};
+  for (const cg of p.colorGroups) for (const item of cg.items) colors[item.key] = dc[item.key] || p.defaultColor;
+  buildBaseMask(); buildColorUI(); clearCache(); applyAllColors(); updateTransformBoxes();
+}
+
+function updatePreviewScale() {
+  const p = P();
+  const center = document.querySelector('.center-panel');
+  if (!center) return;
+  const avail = center.clientHeight - 140;
+  const availW = center.clientWidth - 40;
+  const scaleH = Math.min(1, avail / p.height);
+  const scaleW = Math.min(1, availW / p.width);
+  const scale = Math.min(scaleH, scaleW, 0.85);
+  document.documentElement.style.setProperty('--ctrl-scale', scale.toFixed(3));
+  // Collapse layout box to visual size (transform doesn't affect layout)
+  const ctrl = document.getElementById('controller');
+  if (ctrl) {
+    ctrl.style.marginRight = -Math.round(p.width * (1 - scale)) + 'px';
+    ctrl.style.marginBottom = -Math.round(p.height * (1 - scale)) + 'px';
+  }
+}
+
+// ===========================================================================
+// TRANSFORM BOXES
+// ===========================================================================
+function getCS() { return document.getElementById('controller').getBoundingClientRect().width / P().width; }
+function getCR() { return document.getElementById('controller').getBoundingClientRect(); }
+
+function updateTransformBoxes() {
+  const layer = document.getElementById('transformLayer'); layer.innerHTML = '';
+  for (const L of imgLayers) {
+    const box = document.createElement('div'); box.className = 'transform-box'+(L.id===selectedLayerId?'':' inactive'); box.dataset.lid = L.id;
+    box.innerHTML = '<div class="rot-line"></div><div class="handle handle-tl" data-corner="tl"></div><div class="handle handle-tr" data-corner="tr"></div><div class="handle handle-bl" data-corner="bl"></div><div class="handle handle-br" data-corner="br"></div><div class="handle handle-rot" data-corner="rot"></div>';
+    box.style.cssText = 'left:'+(L.x-L.w/2)+'px;top:'+(L.y-L.h/2)+'px;width:'+L.w+'px;height:'+L.h+'px;transform:rotate('+L.rot+'deg);transform-origin:center';
+    box.addEventListener('mousedown', e => { if(e.target.classList.contains('handle')) return; e.preventDefault(); selectLayer(L.id); startDrag('move',e.clientX,e.clientY,L.id); });
+    box.querySelectorAll('.handle').forEach(h => { h.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); selectLayer(L.id); startDrag(h.dataset.corner==='rot'?'rotate':'resize',e.clientX,e.clientY,L.id,h.dataset.corner); }); });
+    layer.appendChild(box);
+  }
+}
+
+function startDrag(type,cx,cy,lid,corner) { const L = imgLayers.find(l=>l.id===lid); if(!L) return; dragState = {type,startX:cx,startY:cy,start:{...L},lid,corner,cr:getCR(),sc:getCS()}; document.addEventListener('mousemove',onDrag); document.addEventListener('mouseup',endDrag); }
+
+function onDrag(e) {
+  if(!dragState) return; const{type,startX,startY,start,lid,corner,cr,sc}=dragState;
+  const L = imgLayers.find(l=>l.id===lid); if(!L) return;
+  const dx=(e.clientX-startX)/sc, dy=(e.clientY-startY)/sc;
+  if(type==='move') { L.x=start.x+dx; L.y=start.y+dy; }
+  else if(type==='rotate') { const mx=(e.clientX-cr.left)/sc,my=(e.clientY-cr.top)/sc,smx=(startX-cr.left)/sc,smy=(startY-cr.top)/sc; const a1=Math.atan2(smy-start.y,smx-start.x),a2=Math.atan2(my-start.y,mx-start.x); L.rot=start.rot+(a2-a1)*180/Math.PI; [0,90,-90,180,-180,45,-45].forEach(s=>{if(Math.abs(L.rot-s)<3) L.rot=s;}); syncRotSlider(L); }
+  else if(type==='resize') { const cosR=Math.cos(start.rot*Math.PI/180),sinR=Math.sin(start.rot*Math.PI/180); const ldx=dx*cosR+dy*sinR; const sign=(corner==='tl'||corner==='bl')?-1:1; L.w=Math.max(20,start.w+ldx*sign); L.h=L.w*(start.h/start.w); syncScaleSlider(L); }
+  updateTransformBoxes(); clearTimeout(window._bt); window._bt=setTimeout(()=>applyAllColors(),30);
+}
+function endDrag() { dragState=null; document.removeEventListener('mousemove',onDrag); document.removeEventListener('mouseup',endDrag); applyAllColors(); }
+
+// ===========================================================================
+// IMAGE LAYER UI
+// ===========================================================================
+function selectLayer(id) { selectedLayerId=id; document.querySelectorAll('.img-layer-item').forEach(el=>el.classList.toggle('selected',parseInt(el.dataset.lid)===id)); updateTransformBoxes(); }
+function syncScaleSlider(L) { const item=document.querySelector('.img-layer-item[data-lid="'+L.id+'"]'); if(!item) return; const p=Math.round(L.w/L.img.naturalWidth*100); const sl=item.querySelector('.sl-scale'); if(sl) sl.value=p; const sv=item.querySelector('.sv-scale'); if(sv) sv.textContent=p+'%'; }
+function syncRotSlider(L) { const item=document.querySelector('.img-layer-item[data-lid="'+L.id+'"]'); if(!item) return; const sl=item.querySelector('.sl-rot'); if(sl) sl.value=Math.round(L.rot); const sv=item.querySelector('.sv-rot'); if(sv) sv.textContent=Math.round(L.rot)+'°'; }
+
+function buildLayerListUI() {
+  const list = document.getElementById('imgLayerList'); list.innerHTML = '';
+  imgLayers.forEach((L,idx) => {
+    const item = document.createElement('div'); item.className='img-layer-item'+(L.id===selectedLayerId?' selected':''); item.dataset.lid=L.id;
+    const pct=Math.round(L.w/L.img.naturalWidth*100);
+    item.innerHTML='<div class="img-layer-header"><img src="'+L.img.src+'" alt=""><span class="ilname">'+L.name+'</span><div class="layer-order-btns"><button class="btn-sm btn-up">&#9650;</button><button class="btn-sm btn-down">&#9660;</button></div><button class="btn-sm danger btn-del">&#10005;</button></div><div class="img-layer-controls"><div class="slider-row"><label>Opacity</label><input type="range" class="sl-opacity" min="0" max="100" value="'+L.opacity+'" step="1"><span class="slider-val sv-opacity">'+L.opacity+'%</span></div></div>';
+    item.querySelector('.img-layer-header').addEventListener('click',()=>selectLayer(L.id));
+    item.querySelector('.btn-del').addEventListener('click',e=>{e.stopPropagation();imgLayers=imgLayers.filter(l=>l.id!==L.id);if(selectedLayerId===L.id)selectedLayerId=imgLayers.length?imgLayers[0].id:null;buildLayerListUI();refreshAll();});
+    item.querySelector('.btn-up').addEventListener('click',e=>{e.stopPropagation();if(idx>0){[imgLayers[idx-1],imgLayers[idx]]=[imgLayers[idx],imgLayers[idx-1]];buildLayerListUI();refreshAll();}});
+    item.querySelector('.btn-down').addEventListener('click',e=>{e.stopPropagation();if(idx<imgLayers.length-1){[imgLayers[idx],imgLayers[idx+1]]=[imgLayers[idx+1],imgLayers[idx]];buildLayerListUI();refreshAll();}});
+    item.querySelector('.sl-opacity').addEventListener('input',function(){L.opacity=parseFloat(this.value);item.querySelector('.sv-opacity').textContent=this.value+'%';refreshAll();});
+    list.appendChild(item);
+  });
+}
+
+document.addEventListener('mousedown', e => { if(!e.target.closest('.transform-box')&&!e.target.closest('.img-layer-item')) { if(selectedLayerId!==null){selectedLayerId=null;document.querySelectorAll('.img-layer-item').forEach(el=>el.classList.remove('selected'));updateTransformBoxes();}}});
+
+// ===========================================================================
+// GAMEPAD API — with pressed-only bg swapping
+// ===========================================================================
+let stickOffset=22, stickDeadzone=0.15, stickCurving=true, controllerOpacity=100;
+const BT=0.25;let gpConn=false;
+function gpStatus(c){const e=document.getElementById('gpStatus');if(e){e.className='gamepad-status '+(c?'connected':'disconnected');e.innerHTML=c?'&#9679; Controller Connected':'&#9679; No Controller Detected';}gpConn=c;}
+
+function updatePressedBgs() {
+  const ctrl = document.getElementById('controller');
+  if (activeType !== 'ds4') return;
+  // Touchpad pressed-only
+  if (pressedBgs['touchpad-pressed']) {
+    const tp = ctrl.querySelector('.touchpad');
+    if (tp) tp.style.backgroundImage = tp.classList.contains('pressed') ? pressedBgs['touchpad-pressed'] : '';
+  }
+
+
+  // Face button pressed state swap
+  ['.a','.b','.x','.y'].forEach(cls => {
+    const el = ctrl.querySelector(cls);
+    if (!el) return;
+    const prBg = pressedBgs['face'+cls];
+    const noBg = pressedBgs['face'+cls+':normal'];
+    if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
+    else if (noBg) el.style.backgroundImage = noBg;
+  });
+  // Stick pressed state swap
+  ['stick-l','stick-r'].forEach(key => {
+    const sel = key === 'stick-l' ? '.stick.left' : '.stick.right';
+    const el = ctrl.querySelector(sel);
+    if (!el) return;
+    const prBg = pressedBgs[key];
+    const noBg = pressedBgs[key+':normal'];
+    if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
+    else if (noBg) el.style.backgroundImage = noBg;
+  });
+
+}
+
+function pollGP(){
+  const gps=navigator.getGamepads?navigator.getGamepads():[];let gp=null;for(let i=0;i<gps.length;i++)if(gps[i]){gp=gps[i];break;}
+  if(!gp){if(gpConn)gpStatus(false);requestAnimationFrame(pollGP);return;}
+  if(!gpConn)gpStatus(true);const ctrl=document.getElementById('controller');
+  [[0,'button-1'],[1,'button-2'],[2,'button-3'],[3,'button-4'],[4,'button-left-shoulder-top'],[5,'button-right-shoulder-top'],[8,'button-select'],[9,'button-start'],[10,'stick-1'],[11,'stick-2'],[12,'button-dpad-top'],[13,'button-dpad-bottom'],[14,'button-dpad-left'],[15,'button-dpad-right']].forEach(([i,n])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');if(!el||!gp.buttons[i])return;el.classList.toggle('pressed',(typeof gp.buttons[i]==='object'?gp.buttons[i].value:gp.buttons[i])>BT);});
+  if(gp.buttons[17]){const el=ctrl.querySelector('[data-name="touch-pad"]');if(el)el.classList.toggle('pressed',gp.buttons[17].value>BT);}
+  if(gp.buttons[16]){const el=ctrl.querySelector('[data-name="button-meta"]');if(el)el.classList.toggle('pressed',gp.buttons[16].value>BT);}
+  [[6,'button-left-shoulder-bottom'],[7,'button-right-shoulder-bottom']].forEach(([i,n])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');const b=gp.buttons[i];if(!el||!b)return;const v=typeof b==='object'?b.value:b;el.style.opacity=1;el.style.clipPath='inset('+((-1+v)*-1*100-0.00001)+'% 0px 0px 0px)';});
+  [[0,1,'stick-1'],[2,3,'stick-2']].forEach(([ah,av,n])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');if(!el)return;const h=gp.axes[ah]||0,v=gp.axes[av]||0;if(Math.sqrt(h*h+v*v)>=stickDeadzone){el.style.marginLeft=(h*stickOffset)+'px';el.style.marginTop=(v*stickOffset)+'px';el.style.transform=stickCurving?'rotateX('+(v*-stickOffset)+'deg) rotateY('+(h*stickOffset)+'deg)':'';}else{el.style.marginLeft=el.style.marginTop='0px';el.style.transform='';}});
+  // Track composite overlay state (bumpers, dpad) for DS4
+  if (activeType === 'ds4') {
+    const newPS = {};
+    if (gp.buttons[4] && gp.buttons[4].value > BT) newPS['bumper-l'] = true;
+    if (gp.buttons[5] && gp.buttons[5].value > BT) newPS['bumper-r'] = true;
+    if (gp.buttons[12] && gp.buttons[12].value > BT) newPS['up'] = true;
+    if (gp.buttons[13] && gp.buttons[13].value > BT) newPS['down'] = true;
+    if (gp.buttons[14] && gp.buttons[14].value > BT) newPS['left'] = true;
+    if (gp.buttons[15] && gp.buttons[15].value > BT) newPS['right'] = true;
+    const k = JSON.stringify(newPS);
+    if (k !== JSON.stringify(gpPressedState)) {
+      gpPressedState = newPS;
+      ctrl.style.backgroundImage = 'url(' + compositeBase(gpPressedState).toDataURL() + ')';
+    }
+  }
+  updatePressedBgs();
+  requestAnimationFrame(pollGP);
+}
+
+// Keyboard
+const kbState={},KB_MAP={'1':'button-1','2':'button-2','3':'button-3','4':'button-4','q':'button-left-shoulder-top','e':'button-right-shoulder-top','Tab':'button-select','Enter':'button-start','ArrowUp':'button-dpad-top','ArrowDown':'button-dpad-bottom','ArrowLeft':'button-dpad-left','ArrowRight':'button-dpad-right'},KB_TRIGGERS={'r':'button-left-shoulder-bottom','f':'button-right-shoulder-bottom'},KB_STICKS={w:1,s:1,a:1,d:1};
+function kbUpdate(){
+  const ctrl=document.getElementById('controller');
+  for(const[k,n]of Object.entries(KB_MAP)){const el=ctrl.querySelector('[data-name="'+n+'"]');if(el)el.classList.toggle('pressed',!!kbState[k]);}
+  for(const[k,n]of Object.entries(KB_TRIGGERS)){const el=ctrl.querySelector('[data-name="'+n+'"]');if(!el)continue;const v=kbState[k]?1:0;el.style.opacity=1;el.style.clipPath='inset('+((-1+v)*-1*100-0.00001)+'% 0px 0px 0px)';}
+  let sh=0,sv=0;if(kbState.a)sh=-1;if(kbState.d)sh=1;if(kbState.w)sv=-1;if(kbState.s)sv=1;
+  const st=ctrl.querySelector('[data-name="stick-1"]');
+  if(st){if(sh||sv){st.style.marginLeft=(sh*stickOffset)+'px';st.style.marginTop=(sv*stickOffset)+'px';st.style.transform=stickCurving?'rotateX('+(sv*-stickOffset)+'deg) rotateY('+(sh*stickOffset)+'deg)':'';}else{st.style.marginLeft=st.style.marginTop='0px';st.style.transform='';}}
+  if (activeType === 'ds4') {
+    const newPS = {};
+    if (kbState['q']) newPS['bumper-l'] = true;
+    if (kbState['e']) newPS['bumper-r'] = true;
+    if (kbState['ArrowUp']) newPS['up'] = true;
+    if (kbState['ArrowDown']) newPS['down'] = true;
+    if (kbState['ArrowLeft']) newPS['left'] = true;
+    if (kbState['ArrowRight']) newPS['right'] = true;
+    const k = JSON.stringify(newPS);
+    if (k !== JSON.stringify(gpPressedState)) {
+      gpPressedState = newPS;
+      document.getElementById('controller').style.backgroundImage = 'url(' + compositeBase(gpPressedState).toDataURL() + ')';
+    }
+  }
+  updatePressedBgs();
+}
+window.addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(k in KB_MAP||k in KB_STICKS||k in KB_TRIGGERS){e.preventDefault();kbState[k]=true;kbUpdate();}});
+window.addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(k in KB_MAP||k in KB_STICKS||k in KB_TRIGGERS){e.preventDefault();kbState[k]=false;kbUpdate();}});
+
+// ===========================================================================
+// ===========================================================================
+// INIT
+// ===========================================================================
+async function init() {
+  // Check for OBS overlay mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const obsParam = urlParams.get('obs');
+  if (obsParam) {
+    await enterOverlayMode(obsParam);
+    return;
+  }
+
+  document.querySelectorAll('.ctrl-switcher button').forEach(btn => { btn.addEventListener('click', () => switchController(btn.dataset.type)); });
+  document.getElementById('btnApplyAll').addEventListener('click', () => {
+    const c = document.getElementById('color-all').value;
+    for (const k in colors) colors[k] = c;
+    buildColorUI(); clearCache(); applyAllColors();
+  });
+  const ap = document.getElementById('color-all');
+  ap.addEventListener('input', () => { document.getElementById('hex-all').value = ap.value.toUpperCase(); });
+  document.getElementById('hex-all').addEventListener('change', e => { let v=e.target.value.trim(); if(!v.startsWith('#'))v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)){ap.value=v;e.target.value=v.toUpperCase();} });
+  document.getElementById('btnOBSLink').addEventListener('click', copyOBSLink);
+  document.getElementById('btnImportOBS').addEventListener('click', importOBSLink);
+  document.getElementById('obsImportInput').addEventListener('keydown', e => { if (e.key === 'Enter') importOBSLink(); });
+  document.getElementById('btnAddImgURL').addEventListener('click', () => {
+    const input = document.getElementById('imgURLInput');
+    addImageFromURL(input.value.trim());
+    input.value = '';
+  });
+  // Controller settings
+  document.getElementById('ctrlOpacity').addEventListener('input', e => {
+    controllerOpacity = parseInt(e.target.value);
+    document.getElementById('ctrlOpacityVal').textContent = controllerOpacity + '%';
+    document.getElementById('controller').style.opacity = controllerOpacity / 100;
+  });
+  document.getElementById('stickDZ').addEventListener('input', e => {
+    stickDeadzone = parseInt(e.target.value) / 100;
+    document.getElementById('stickDZVal').textContent = parseInt(e.target.value) + '%';
+  });
+  document.getElementById('stickSO').addEventListener('input', e => {
+    stickOffset = parseInt(e.target.value);
+    document.getElementById('stickSOVal').textContent = stickOffset + 'px';
+  });
+  document.getElementById('stickCurve').addEventListener('change', e => {
+    stickCurving = e.target.checked;
+  });
+  document.getElementById('btnResetSettings').addEventListener('click', () => {
+    stickDeadzone = 0.15; stickOffset = 22; stickCurving = true; controllerOpacity = 100;
+    document.getElementById('stickDZ').value = 15;
+    document.getElementById('stickDZVal').textContent = '15%';
+    document.getElementById('stickSO').value = 22;
+    document.getElementById('stickSOVal').textContent = '22px';
+    document.getElementById('stickCurve').checked = true;
+    document.getElementById('ctrlOpacity').value = 100;
+    document.getElementById('ctrlOpacityVal').textContent = '100%';
+    document.getElementById('controller').style.opacity = 1;
+  });
+  window.addEventListener('gamepadconnected', () => gpStatus(true));
+  window.addEventListener('gamepaddisconnected', () => { const g=navigator.getGamepads();let a=false;for(let i=0;i<g.length;i++)if(g[i])a=true;if(!a)gpStatus(false); });
+  await switchController('xbox');
+  window.addEventListener('resize', () => updatePreviewScale());
+  pollGP();
+}
+init();
+// ===========================================================================
+// OBS OVERLAY MODE
+// ===========================================================================
+
+// Serialize current state to compact JSON
+function serializeState() {
+  const p = P();
+  const dc = p.defaultColors || {};
+  const state = { t: activeType, c: {} };
+  // Only store non-default colors
+  for (const k in colors) {
+    const def = dc[k] || p.defaultColor;
+    if (colors[k].toUpperCase() !== def.toUpperCase()) {
+      state.c[k] = colors[k].replace('#','');
+    }
+  }
+  // Store image overlay URLs (not file uploads)
+  if (imgLayers.length) {
+    state.img = imgLayers.filter(L => L.url).map(L => ({
+      u: L.url,
+      x: Math.round(L.x),
+      y: Math.round(L.y),
+      w: Math.round(L.w),
+      h: Math.round(L.h),
+      r: Math.round(L.rot),
+      o: L.opacity
+    }));
+    if (!state.img.length) delete state.img;
+  }
+  // Store settings (only non-default)
+  if (stickDeadzone !== 0.15) state.dz = Math.round(stickDeadzone * 100);
+  if (stickOffset !== 22) state.so = stickOffset;
+  if (!stickCurving) state.nc = 1;
+  if (controllerOpacity !== 100) state.op = controllerOpacity;
+  return state;
+}
+
+// Deserialize state from URL params
+function deserializeState(state) {
+  return {
+    type: state.t || 'xbox',
+    colors: Object.fromEntries(Object.entries(state.c || {}).map(([k,v]) => [k, '#' + v])),
+    images: (state.img || []).map(i => ({
+      url: i.u, x: i.x, y: i.y, w: i.w, h: i.h, rot: i.r || 0, opacity: i.o || 100
+    })),
+    deadzone: state.dz !== undefined ? state.dz / 100 : 0.15,
+    stickOffset: state.so !== undefined ? state.so : 22,
+    noCurve: !!state.nc,
+    opacity: state.op !== undefined ? state.op : 100
+  };
+}
+
+// Generate OBS browser source link
+function generateOBSLink() {
+  const state = serializeState();
+  const json = JSON.stringify(state);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  // Build URL using current page location (without hash)
+  const base = window.location.href.split('#')[0].split('?')[0];
+  return base + '?obs=' + encoded;
+}
+
+// Copy OBS link to clipboard with toast feedback
+function copyOBSLink() {
+  const link = generateOBSLink();
+  navigator.clipboard.writeText(link).then(() => {
+    const toast = document.getElementById('obsToast');
+    toast.style.opacity = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+  }).catch(() => {
+    // Fallback: prompt with the link
+    prompt('Copy this OBS Browser Source URL:', link);
+  });
+}
+
+async function importOBSLink() {
+  const input = document.getElementById('obsImportInput');
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  // Extract the obs= parameter from the URL
+  let encoded;
+  try {
+    const url = new URL(raw);
+    encoded = url.searchParams.get('obs');
+  } catch {
+    // Maybe they pasted just the base64 portion
+    if (raw.includes('obs=')) {
+      encoded = raw.split('obs=')[1].split('&')[0];
+    } else {
+      encoded = raw;
+    }
+  }
+
+  if (!encoded) {
+    showImportToast('No OBS data found in link', true);
+    return;
+  }
+
+  try {
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const state = deserializeState(JSON.parse(json));
+
+    // 1. Switch controller type
+    await switchController(state.type);
+
+    // 2. Apply colors
+    const p = P();
+    const dc = p.defaultColors || {};
+    for (const cg of p.colorGroups) for (const item of cg.items) colors[item.key] = state.colors[item.key] || dc[item.key] || p.defaultColor;
+    buildColorUI(); clearCache(); applyAllColors();
+
+    // 3. Apply settings
+    stickDeadzone = state.deadzone;
+    stickOffset = state.stickOffset;
+    stickCurving = !state.noCurve;
+    controllerOpacity = state.opacity;
+
+    // Update UI controls
+    document.getElementById('ctrlOpacity').value = controllerOpacity;
+    document.getElementById('ctrlOpacityVal').textContent = controllerOpacity + '%';
+    document.getElementById('stickDZ').value = Math.round(stickDeadzone * 100);
+    document.getElementById('stickDZVal').textContent = Math.round(stickDeadzone * 100) + '%';
+    document.getElementById('stickSO').value = stickOffset;
+    document.getElementById('stickSOVal').textContent = stickOffset + 'px';
+    document.getElementById('stickCurve').checked = stickCurving;
+
+    // Apply opacity
+    const ctrl = document.getElementById('controller');
+    ctrl.style.opacity = controllerOpacity < 100 ? controllerOpacity / 100 : '';
+
+    // 4. Load image overlays
+    if (state.images && state.images.length) {
+      for (const imgData of state.images) {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = imgData.url; });
+          const L = { id: nextImgId++, name: imgData.url.split('/').pop().substring(0, 20), img, url: imgData.url,
+            x: imgData.x, y: imgData.y, w: imgData.w, h: imgData.h, rot: imgData.rot, opacity: imgData.opacity };
+          imgLayers.push(L);
+        } catch { /* skip failed images */ }
+      }
+      if (imgLayers.length) { selectedLayerId = imgLayers[0].id; }
+      buildLayerListUI();
+      refreshAll();
+    }
+
+    input.value = '';
+    showImportToast('Configuration imported!', false);
+  } catch (e) {
+    showImportToast('Invalid OBS link', true);
+    console.error('Import error:', e);
+  }
+}
+
+function showImportToast(msg, isError) {
+  const toast = document.getElementById('obsToast');
+  toast.textContent = msg;
+  toast.style.background = isError ? '#ef4444' : 'var(--accent)';
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; toast.textContent = 'Copied to clipboard!'; toast.style.background = 'var(--accent)'; }, 2500);
+}
+
+// Add image from URL (for overlay-compatible images)
+function addImageFromURL(url) {
+  if (!url) return;
+  const p = P();
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const fitW = Math.min(img.naturalWidth, p.width * 0.66);
+    const fitH = fitW * (img.naturalHeight / img.naturalWidth);
+    const id = nextImgId++;
+    imgLayers.push({
+      id, img, url, name: url.split('/').pop().split('?')[0] || 'image',
+      x: p.width / 2, y: p.height / 2, w: fitW, h: fitH, rot: 0, opacity: 100
+    });
+    selectedLayerId = id;
+    buildLayerListUI();
+    refreshAll();
+  };
+  img.onerror = () => alert('Could not load image. Make sure the URL is accessible and allows cross-origin loading (CORS).');
+  img.src = url;
+}
+
+// Enter OBS overlay mode - strips all UI, shows only controller
+async function enterOverlayMode(encoded) {
+  try {
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const state = deserializeState(JSON.parse(json));
+
+    // Hide everything except the controller
+    document.body.innerHTML = '';
+    document.body.style.cssText = 'margin:0;padding:0;overflow:hidden;background:transparent!important';
+    document.documentElement.style.background = 'transparent';
+
+    // Create minimal container
+    const wrap = document.createElement('div');
+    wrap.id = 'obs-wrap';
+    wrap.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:transparent';
+    document.body.appendChild(wrap);
+
+    // Re-inject controller CSS (the <style> tags are already in <head> from build)
+    // Create the controller container matching the editor's structure
+    const p = PROFILES[state.type];
+
+    // Build controller DOM (same structure as the editor's)
+    document.documentElement.style.setProperty('--ctrl-scale', '1');
+    const ctrl = document.createElement('div');
+    ctrl.id = 'controller';
+    ctrl.className = 'controller ' + state.type;
+    ctrl.style.cssText = 'width:' + p.width + 'px;height:' + p.height + 'px;position:relative;background-size:contain';
+
+    // Inject inner HTML template from the stored CSS/HTML structure
+    ctrl.innerHTML = buildControllerInnerHTML();
+    wrap.appendChild(ctrl);
+
+    // Load layers and initialize
+    activeType = state.type;
+    origImages = {};
+    recolorCache = {};
+    await Promise.all(Object.entries(p.layers).map(([k,src]) => loadImage(k,src)));
+
+    // Apply colors
+    const dc = p.defaultColors || {};
+    colors = {};
+    for (const cg of p.colorGroups) for (const item of cg.items) colors[item.key] = dc[item.key] || p.defaultColor;
+    for (const [k,v] of Object.entries(state.colors)) colors[k] = v;
+
+    // Apply stick settings
+    stickDeadzone = state.deadzone;
+    stickOffset = state.stickOffset;
+    stickCurving = !state.noCurve;
+    controllerOpacity = state.opacity;
+    if (controllerOpacity < 100) ctrl.style.opacity = controllerOpacity / 100;
+
+    // Load overlay images from URLs
+    if (state.images && state.images.length) {
+      for (const im of state.images) {
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            imgLayers.push({
+              id: nextImgId++, img, url: im.url, name: 'overlay',
+              x: im.x, y: im.y, w: im.w, h: im.h, rot: im.rot, opacity: im.opacity
+            });
+            resolve();
+          };
+          img.onerror = resolve;
+          img.src = im.url;
+        });
+      }
+    }
+
+    buildBaseMask();
+    applyAllColors();
+    gpPressedState = {};
+    pollGP();
+  } catch (e) {
+    document.body.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif">Error loading overlay: ' + e.message + '</div>';
+  }
+}
+
+// Build the inner HTML for the controller div (same DOM as editor uses)
+function buildControllerInnerHTML() {
+  // Matches the editor's controller div contents exactly
+  return `
+    <div class="triggers"><span class="trigger left" data-name="button-left-shoulder-bottom"></span><span class="trigger right" data-name="button-right-shoulder-bottom"></span><span class="clear"></span></div>
+    <div class="bumpers"><span class="bumper left" data-name="button-left-shoulder-top"></span><span class="bumper right" data-name="button-right-shoulder-top"></span><span class="clear"></span></div>
+    <div class="touchpad" data-name="touch-pad"></div>
+    <div class="quadrant"></div>
+    <div class="meta" data-name="button-meta"></div>
+    <div class="arrows"><span class="back" data-name="button-select"></span><span class="start" data-name="button-start"></span><span class="clear"></span></div>
+    <div class="abxy"><span class="button a" data-name="button-1"></span><span class="button b" data-name="button-2"></span><span class="button x" data-name="button-3"></span><span class="button y" data-name="button-4"></span></div>
+    <div class="sticks"><span class="stick left" data-name="stick-1"></span><span class="stick right" data-name="stick-2"></span></div>
+    <div class="dpad"><span class="face up" data-name="button-dpad-top"></span><span class="face down" data-name="button-dpad-bottom"></span><span class="face left" data-name="button-dpad-left"></span><span class="face right" data-name="button-dpad-right"></span></div>`;
+}
+
+</script>
+</body>
+</html>
