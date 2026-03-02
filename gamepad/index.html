@@ -421,7 +421,9 @@ header {
 
 /* ── Transform boxes ── */
 .transform-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
-.transform-box { position: absolute; pointer-events: auto; }
+.transform-box { position: absolute; pointer-events: auto; border: 1.5px solid var(--accent); cursor: move; }
+.transform-box.inactive { border-color: rgba(249,90,31,0.3); cursor: pointer; }
+.transform-box.inactive .t-handle, .transform-box.inactive .t-rot-line { display: none; }
 .transform-border { border: 1.5px dashed var(--accent); position: absolute; inset: 0; pointer-events: none; }
 .t-handle { position: absolute; width: 10px; height: 10px; background: #fff; border: 1.5px solid var(--accent); cursor: pointer; border-radius: 2px; }
 .t-corner-tl { top: -5px; left: -5px; cursor: nwse-resize; }
@@ -1215,10 +1217,10 @@ function updateTransformBoxes() {
   const layer = document.getElementById('transformLayer'); layer.innerHTML = '';
   for (const L of imgLayers) {
     const box = document.createElement('div'); box.className = 'transform-box'+(L.id===selectedLayerId?'':' inactive'); box.dataset.lid = L.id;
-    box.innerHTML = '<div class="rot-line"></div><div class="handle handle-tl" data-corner="tl"></div><div class="handle handle-tr" data-corner="tr"></div><div class="handle handle-bl" data-corner="bl"></div><div class="handle handle-br" data-corner="br"></div><div class="handle handle-rot" data-corner="rot"></div>';
+    box.innerHTML = '<div class="t-rot-line"></div><div class="t-handle t-corner-tl" data-corner="tl"></div><div class="t-handle t-corner-tr" data-corner="tr"></div><div class="t-handle t-corner-bl" data-corner="bl"></div><div class="t-handle t-corner-br" data-corner="br"></div><div class="t-handle t-rotate" data-corner="rot"></div>';
     box.style.cssText = 'left:'+(L.x-L.w/2)+'px;top:'+(L.y-L.h/2)+'px;width:'+L.w+'px;height:'+L.h+'px;transform:rotate('+L.rot+'deg);transform-origin:center';
-    box.addEventListener('mousedown', e => { if(e.target.classList.contains('handle')) return; e.preventDefault(); selectLayer(L.id); startDrag('move',e.clientX,e.clientY,L.id); });
-    box.querySelectorAll('.handle').forEach(h => { h.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); selectLayer(L.id); startDrag(h.dataset.corner==='rot'?'rotate':'resize',e.clientX,e.clientY,L.id,h.dataset.corner); }); });
+    box.addEventListener('mousedown', e => { if(e.target.classList.contains('t-handle')) return; e.preventDefault(); selectLayer(L.id); startDrag('move',e.clientX,e.clientY,L.id); });
+    box.querySelectorAll('.t-handle').forEach(h => { h.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); selectLayer(L.id); startDrag(h.dataset.corner==='rot'?'rotate':'resize',e.clientX,e.clientY,L.id,h.dataset.corner); }); });
     layer.appendChild(box);
   }
 }
