@@ -290,6 +290,16 @@ header {
   color: var(--accent);
   margin-bottom: 10px;
 }
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.group-header h3 { margin-bottom: 0; }
+.toggle-sm { width: 30px; height: 16px; }
+.toggle-sm .toggle-slider { width: 30px; height: 16px; }
+.toggle-sm .toggle-slider::before { width: 12px; height: 12px; }
+.toggle-sm input:checked + .toggle-slider::before { transform: translateX(14px); }
 
 /* ── Color controls ── */
 .color-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
@@ -591,32 +601,46 @@ const PROFILES = {
   xbox: {
     name: 'Xbox', width: 750, height: 630, defaultColor: '#080808',
     defaultColors: {
-      'base':'#080808',
-      'btn-a':'#00FF11','btn-b':'#FF0000','btn-x':'#0008FF','btn-y':'#FFE600',
+      'base':'#080808','guide':'#FBFD5D',
+      'trigger-l':'#999999','trigger-r':'#999999',
+      'bumper-l':'#999999','bumper-r':'#999999',
+      'face-label-a':'#00FF11','face-label-b':'#FF0000','face-label-x':'#0008FF','face-label-y':'#FFE600',
+      'face-base-a':'#0D0D0D','face-base-b':'#0D0D0D','face-base-x':'#0D0D0D','face-base-y':'#0D0D0D',
+      'face-label-a-pr':'#0D0D0D','face-label-b-pr':'#0D0D0D','face-label-x-pr':'#0D0D0D','face-label-y-pr':'#0D0D0D',
+      'face-base-a-pr':'#00FF11','face-base-b-pr':'#FF0000','face-base-x-pr':'#0008FF','face-base-y-pr':'#FFE600',
+      'stick-l':'#2E2D2D','stick-r':'#2E2D2D','stick-l-pressed':'#858585','stick-r-pressed':'#858585',
       'dpad-up':'#999999','dpad-down':'#999999','dpad-left':'#999999','dpad-right':'#999999',
-      'bumper-l':'#999999','bumper-r':'#999999','trigger-l':'#999999','trigger-r':'#999999',
-      'stick-l':'#DEDEDE','stick-r':'#DEDEDE','guide':'#FBFD5D','select':'#999999','start':'#999999'
+      'select':'#999999','start':'#999999'
     },
-    layers: {'base-1':'base-1.png','base-2':'base-2.png','base-3':'base-3.png','abxy-1':'abxy-1.png','abxy-2':'abxy-2.png','abxy-3':'abxy-3.png','bumper':'bumper.png','dpad':'dpad.png','quadrant-1':'quadrant-1.png','quadrant-2':'quadrant-2.png','start-select-1':'start-select-1.png','start-select-2':'start-select-2.png','sticks-1':'sticks-1.png','sticks-2':'sticks-2.png','trigger':'trigger.png'},
+    layers: {'base-1':'xbox/base-1.png','base-2':'xbox/base-2.png','base-3':'xbox/base-3.png','abxy-1':'xbox/abxy-1.png','abxy-2':'xbox/abxy-2.png','abxy-3':'xbox/abxy-3.png','bumper':'xbox/bumper.png','dpad':'xbox/dpad.png','quadrant-1':'xbox/quadrant-1.png','quadrant-2':'xbox/quadrant-2.png','start-select-1':'xbox/start-select-1.png','start-select-2':'xbox/start-select-2.png','sticks-1':'xbox/sticks-1.png','sticks-2':'xbox/sticks-2.png','trigger':'xbox/trigger.png'},
     baseLayers: ['base-3','base-2','base-1'],
     maskLayer: 'base-2',
     baseColorLayers: {'base':'base-2'},
     colorGroups: [
-      {title:'Body', items:[{label:'Base',key:'base'}]},
-      {title:'Face Buttons', items:[
-        {label:'A',key:'btn-a'},{label:'B',key:'btn-b'},{label:'X',key:'btn-x'},{label:'Y',key:'btn-y'}
+      {title:'Body', items:[{label:'Base',key:'base'},{label:'Guide',key:'guide'}]},
+      {title:'Triggers', unified:'trigger-all', items:[{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
+      {title:'Bumpers', unified:'bumper-all', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'}]},
+      {title:'Face Labels (Normal)', unified:'face-label-normal', items:[
+        {label:'A',key:'face-label-a'},{label:'B',key:'face-label-b'},{label:'X',key:'face-label-x'},{label:'Y',key:'face-label-y'}
       ]},
-      {title:'D-Pad', items:[{label:'Up',key:'dpad-up'},{label:'Down',key:'dpad-down'},{label:'Left',key:'dpad-left'},{label:'Right',key:'dpad-right'}]},
-      {title:'Shoulders', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'},{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
-      {title:'Sticks & Center', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'},{label:'Guide',key:'guide'},{label:'Select',key:'select'},{label:'Start',key:'start'}]}
+      {title:'Face Base (Normal)', unified:'face-base-normal', items:[
+        {label:'A',key:'face-base-a'},{label:'B',key:'face-base-b'},{label:'X',key:'face-base-x'},{label:'Y',key:'face-base-y'}
+      ]},
+      {title:'Face Labels (Pressed)', unified:'face-label-pressed', items:[
+        {label:'A',key:'face-label-a-pr'},{label:'B',key:'face-label-b-pr'},{label:'X',key:'face-label-x-pr'},{label:'Y',key:'face-label-y-pr'}
+      ]},
+      {title:'Face Base (Pressed)', unified:'face-base-pressed', items:[
+        {label:'A',key:'face-base-a-pr'},{label:'B',key:'face-base-b-pr'},{label:'X',key:'face-base-x-pr'},{label:'Y',key:'face-base-y-pr'}
+      ]},
+      {title:'Sticks (Normal)', unified:'stick-all', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'}]},
+      {title:'Sticks (Pressed)', unified:'stick-pressed-all', items:[{label:'L Stick',key:'stick-l-pressed'},{label:'R Stick',key:'stick-r-pressed'}]},
+      {title:'D-Pad', unified:'dpad-all', items:[{label:'Up',key:'dpad-up'},{label:'Down',key:'dpad-down'},{label:'Left',key:'dpad-left'},{label:'Right',key:'dpad-right'}]},
+      {title:'Start / Select', unified:'startselect-all', items:[{label:'Select',key:'select'},{label:'Start',key:'start'}]}
     ],
     // elemRules: how each color key applies to DOM elements
     // type: 'elem' = set background on selector, 'base' = in base composite, 'pressed-only' = only when .pressed
     elemRules: [
-      {key:'btn-a',sel:'.a',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
-      {key:'btn-b',sel:'.b',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
-      {key:'btn-x',sel:'.x',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
-      {key:'btn-y',sel:'.y',sprite:'abxy-2',stack:['abxy-1','abxy-2','abxy-3']},
+      {key:'_xbox_face',type:'xbox-face'},
       {key:'dpad-up',sel:'.face.up',sprite:'dpad',stack:['dpad']},
       {key:'dpad-down',sel:'.face.down',sprite:'dpad',stack:['dpad']},
       {key:'dpad-left',sel:'.face.left',sprite:'dpad',stack:['dpad']},
@@ -625,8 +649,8 @@ const PROFILES = {
       {key:'bumper-r',sel:'.bumper.right',sprite:'bumper',stack:['bumper']},
       {key:'trigger-l',sel:'.trigger.left',sprite:'trigger',stack:['trigger']},
       {key:'trigger-r',sel:'.trigger.right',sprite:'trigger',stack:['trigger']},
-      {key:'stick-l',sel:'.stick.left',sprite:'sticks-2',stack:['sticks-1','sticks-2']},
-      {key:'stick-r',sel:'.stick.right',sprite:'sticks-2',stack:['sticks-1','sticks-2']},
+      {key:'stick-l',sel:'.stick.left',sprite:'sticks-2',stack:['sticks-1','sticks-2'],pressedKey:'stick-l-pressed'},
+      {key:'stick-r',sel:'.stick.right',sprite:'sticks-2',stack:['sticks-1','sticks-2'],pressedKey:'stick-r-pressed'},
       {key:'guide',sel:'.quadrant',sprite:'quadrant-1',stack:['quadrant-1','quadrant-2']},
       {key:'select',sel:'.back',sprite:'start-select-2',stack:['start-select-1','start-select-2']},
       {key:'start',sel:'.arrows .start',sprite:'start-select-2',stack:['start-select-1','start-select-2']},
@@ -641,7 +665,7 @@ const PROFILES = {
       {name:'trigger.png',layers:['trigger'],colorLayer:'trigger',regions:{0:'trigger-l'}},
       {name:'dpad.png',layers:['dpad'],colorLayer:'dpad',regions:{0:'dpad-down'}},
     ],
-    exportCss: `.xbox.white {\n    background: url(base.png);\n}\n.xbox.disconnected {\n    background: url();\n}\n.xbox .trigger { width: 88px; height: 121px; background: url(trigger.png); opacity: 0; }\n.xbox .bumper { width: 170px; height: 61px; background: url(bumper.png); opacity: 0; }\n.xbox .quadrant { position: absolute; background: url(quadrant.png); height: 45px; width: 45px; top: 258px; left: 354px; z-index: 0; }\n.xbox .back, .xbox .start { background: url(start-select.png); width: 33px !important; height: 33px !important; opacity: 0; }\n.xbox .stick { position: absolute; background: url(sticks.png); background-position: -85px 0; height: 83px; width: 83px; }\n.xbox .button { position: absolute; background: url(abxy.png); width: 48px; height: 48px; }\n.xbox .button.pressed { background-position-y: -48px; margin-top: 0px !important; opacity: 1; }\n.xbox .a { background-position: 0 0; top: 114px; left: 55px; }\n.xbox .b { background-position: -49px 0; top: 63px; right: 0px; }\n.xbox .x { background-position: -98px 0; top: 63px; left: 4px; }\n.xbox .y { background-position: 48px 0; left: 55px; top: 13px; }\n.xbox .face { background: url(dpad.png); position: absolute; opacity: 0; }`
+    exportCss: `.xbox.white {\n    background: url(base.png);\n}\n.xbox.disconnected {\n    background: url(http://gamepadviewer.com/xbox-assets/disconnected.svgz);\n}\n.xbox .trigger { width: 88px; height: 121px; background: url(trigger.png); opacity: 0; }\n.xbox .bumper { width: 170px; height: 61px; background: url(bumper.png); opacity: 0; }\n.xbox .quadrant { position: absolute; background: url(quadrant.png); height: 45px; width: 45px; top: 258px; left: 354px; z-index: 0; }\n.xbox .back, .xbox .start { background: url(start-select.png); width: 33px !important; height: 33px !important; opacity: 0; }\n.xbox .stick { position: absolute; background: url(sticks.png); background-position: -85px 0; height: 83px; width: 83px; }\n.xbox .button { position: absolute; background: url(abxy.png); width: 48px; height: 48px; }\n.xbox .button.pressed { background-position-y: -48px; margin-top: 0px !important; opacity: 1; }\n.xbox .a { background-position: 0 0; top: 114px; left: 55px; }\n.xbox .b { background-position: -49px 0; top: 63px; right: 0px; }\n.xbox .x { background-position: -98px 0; top: 63px; left: 4px; }\n.xbox .y { background-position: 48px 0; left: 55px; top: 13px; }\n.xbox .face { background: url(dpad.png); position: absolute; opacity: 0; }`
   },
   ds4: {
     name: 'PlayStation', width: 806, height: 598, defaultColor: '#DEDEDE',
@@ -651,7 +675,8 @@ const PROFILES = {
       'label-a':'#0084FF','label-b':'#FF000D','label-x':'#FF00EA','label-y':'#2BFF00',
       'btn-a-pressed':'#878787','btn-b-pressed':'#878787','btn-x-pressed':'#878787','btn-y-pressed':'#878787',
       'label-a-pressed':'#49A6FD','label-b-pressed':'#FF575F','label-x-pressed':'#FF5CF1','label-y-pressed':'#81FD68',
-      'dpad-normal':'#7D7D7D','dpad-pressed':'#FAFAFA',
+      'dpad-up-normal':'#7D7D7D','dpad-down-normal':'#7D7D7D','dpad-left-normal':'#7D7D7D','dpad-right-normal':'#7D7D7D',
+      'dpad-up-pressed':'#FAFAFA','dpad-down-pressed':'#FAFAFA','dpad-left-pressed':'#FAFAFA','dpad-right-pressed':'#FAFAFA',
       'bumper-l':'#FAFAFA','bumper-r':'#FAFAFA','trigger-l':'#FE6C6C','trigger-r':'#9BFD77',
       'stick-l':'#7D7D7D','stick-r':'#7D7D7D','stick-l-pressed':'#FAFAFA','stick-r-pressed':'#FAFAFA',
       'select-pressed':'#FAFAFA','start-pressed':'#FAFAFA','touchpad-pressed':'#ABABAB'
@@ -664,37 +689,50 @@ const PROFILES = {
         {key:'bumper-l',sprite:'ds4:bumper-base',top:'ds4:bumper-1',x:109,y:94},
         {key:'bumper-r',sprite:'ds4:bumper-base',top:'ds4:bumper-1',x:598,y:94,flipX:true}
       ],
-      dpadNormal: {key:'dpad-normal',sprite:'ds4:dpad-base-normal',top:'ds4:dpad-1',
+      dpadNormal: {sprite:'ds4:dpad-base-normal',top:'ds4:dpad-1',
         pieces:[
-          {name:'up',sx:37,sy:0,sw:36,sh:52,dx:136,dy:181},
-          {name:'down',sx:0,sy:0,sw:36,sh:52,dx:136,dy:255},
-          {name:'left',sx:74,sy:0,sw:52,sh:36,dx:92,dy:226},
-          {name:'right',sx:126,sy:0,sw:52,sh:36,dx:165,dy:226}
+          {name:'up',key:'dpad-up-normal',sx:37,sy:0,sw:36,sh:52,dx:136,dy:181},
+          {name:'down',key:'dpad-down-normal',sx:0,sy:0,sw:36,sh:52,dx:136,dy:255},
+          {name:'left',key:'dpad-left-normal',sx:74,sy:0,sw:52,sh:36,dx:92,dy:226},
+          {name:'right',key:'dpad-right-normal',sx:126,sy:0,sw:52,sh:36,dx:165,dy:226}
         ]},
-      dpadPressed: {key:'dpad-pressed',sprite:'ds4:dpad-based-pressed',top:'ds4:dpad-1',
+      dpadPressed: {sprite:'ds4:dpad-based-pressed',top:'ds4:dpad-1',
         pieces:[
-          {name:'up',sx:37,sy:52,sw:36,sh:52,dx:136,dy:181},
-          {name:'down',sx:0,sy:52,sw:36,sh:52,dx:136,dy:255},
-          {name:'left',sx:74,sy:52,sw:52,sh:36,dx:92,dy:226},
-          {name:'right',sx:126,sy:52,sw:52,sh:36,dx:165,dy:226}
+          {name:'up',key:'dpad-up-pressed',sx:37,sy:52,sw:36,sh:52,dx:136,dy:181},
+          {name:'down',key:'dpad-down-pressed',sx:0,sy:52,sw:36,sh:52,dx:136,dy:255},
+          {name:'left',key:'dpad-left-pressed',sx:74,sy:52,sw:52,sh:36,dx:92,dy:226},
+          {name:'right',key:'dpad-right-pressed',sx:126,sy:52,sw:52,sh:36,dx:165,dy:226}
         ]}
     },
     maskLayer: 'ds4:base-controller',
     baseColorLayers: {'body':'ds4:base-controller','handles':'ds4:base-handle','topbuttons':'ds4:base-topbuttons','touchpad-bg':'ds4:base-touchpad','select-bg':'ds4:base-select','start-bg':'ds4:base-start'},
     colorGroups: [
-      {title:'Body', items:[{label:'Controller',key:'body'},{label:'Handles',key:'handles'},{label:'Top Buttons',key:'topbuttons'},{label:'Touchpad',key:'touchpad-bg'},{label:'Select Base',key:'select-bg'},{label:'Start Base',key:'start-bg'}]},
-      {title:'Face Buttons (Normal)', items:[
-        {label:'Cross Base',key:'btn-a'},{label:'Circle Base',key:'btn-b'},{label:'Square Base',key:'btn-x'},{label:'Triangle Base',key:'btn-y'},
-        {label:'Cross Label',key:'label-a'},{label:'Circle Label',key:'label-b'},{label:'Square Label',key:'label-x'},{label:'Triangle Label',key:'label-y'}
+      {title:'Body', items:[{label:'Controller',key:'body'},{label:'Handles',key:'handles'},{label:'Top Buttons',key:'topbuttons'}]},
+      {title:'Touchpad', items:[{label:'Touchpad (Normal)',key:'touchpad-bg'},{label:'Touchpad (Pressed)',key:'touchpad-pressed'}]},
+      {title:'Triggers', unified:'trigger-all', items:[{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
+      {title:'Bumpers', unified:'bumper-all', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'}]},
+      {title:'Face Labels (Normal)', unified:'face-label-normal', items:[
+        {label:'Cross',key:'label-a'},{label:'Circle',key:'label-b'},{label:'Square',key:'label-x'},{label:'Triangle',key:'label-y'}
       ]},
-      {title:'Face Buttons (Pressed)', items:[
-        {label:'Cross Base',key:'btn-a-pressed'},{label:'Circle Base',key:'btn-b-pressed'},{label:'Square Base',key:'btn-x-pressed'},{label:'Triangle Base',key:'btn-y-pressed'},
-        {label:'Cross Label',key:'label-a-pressed'},{label:'Circle Label',key:'label-b-pressed'},{label:'Square Label',key:'label-x-pressed'},{label:'Triangle Label',key:'label-y-pressed'}
+      {title:'Face Base (Normal)', unified:'face-base-normal', items:[
+        {label:'Cross',key:'btn-a'},{label:'Circle',key:'btn-b'},{label:'Square',key:'btn-x'},{label:'Triangle',key:'btn-y'}
       ]},
-      {title:'D-Pad', items:[{label:'Normal',key:'dpad-normal'},{label:'Pressed',key:'dpad-pressed'}]},
-      {title:'Shoulders', items:[{label:'L Bumper',key:'bumper-l'},{label:'R Bumper',key:'bumper-r'},{label:'L Trigger',key:'trigger-l'},{label:'R Trigger',key:'trigger-r'}]},
-      {title:'Sticks', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'},{label:'L Stick Pressed',key:'stick-l-pressed'},{label:'R Stick Pressed',key:'stick-r-pressed'}]},
-      {title:'Other', items:[{label:'Select Pressed',key:'select-pressed'},{label:'Start Pressed',key:'start-pressed'},{label:'Touchpad Pressed',key:'touchpad-pressed'}]}
+      {title:'Face Labels (Pressed)', unified:'face-label-pressed', items:[
+        {label:'Cross',key:'label-a-pressed'},{label:'Circle',key:'label-b-pressed'},{label:'Square',key:'label-x-pressed'},{label:'Triangle',key:'label-y-pressed'}
+      ]},
+      {title:'Face Base (Pressed)', unified:'face-base-pressed', items:[
+        {label:'Cross',key:'btn-a-pressed'},{label:'Circle',key:'btn-b-pressed'},{label:'Square',key:'btn-x-pressed'},{label:'Triangle',key:'btn-y-pressed'}
+      ]},
+      {title:'Sticks (Normal)', unified:'stick-all', items:[{label:'L Stick',key:'stick-l'},{label:'R Stick',key:'stick-r'}]},
+      {title:'Sticks (Pressed)', unified:'stick-pressed-all', items:[{label:'L Stick',key:'stick-l-pressed'},{label:'R Stick',key:'stick-r-pressed'}]},
+      {title:'D-Pad (Normal)', unified:'dpad-normal-all', items:[
+        {label:'Up',key:'dpad-up-normal'},{label:'Down',key:'dpad-down-normal'},{label:'Left',key:'dpad-left-normal'},{label:'Right',key:'dpad-right-normal'}
+      ]},
+      {title:'D-Pad (Pressed)', unified:'dpad-pressed-all', items:[
+        {label:'Up',key:'dpad-up-pressed'},{label:'Down',key:'dpad-down-pressed'},{label:'Left',key:'dpad-left-pressed'},{label:'Right',key:'dpad-right-pressed'}
+      ]},
+      {title:'Select / Start (Base)', unified:'ds4-startselect-base', items:[{label:'Select Base',key:'select-bg'},{label:'Start Base',key:'start-bg'}]},
+      {title:'Select / Start (Pressed)', unified:'ds4-startselect-pressed', items:[{label:'Select Pressed',key:'select-pressed'},{label:'Start Pressed',key:'start-pressed'}]}
     ],
     elemRules: [
       // Face buttons: build composite with per-button base + per-button label colors
@@ -799,8 +837,26 @@ function recolorImage(img, hex) {
   ctx.putImageData(id, 0, 0); return c;
 }
 
+// Recolor ALL visible pixels regardless of luminance (for sprites that use black as fill)
+function recolorImageAlpha(img, hex) {
+  const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const id = ctx.getImageData(0,0,c.width,c.height), d = id.data;
+  const [tr,tg,tb] = hexToRgb(hex);
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i+3] < 10) continue;
+    d[i] = tr; d[i+1] = tg; d[i+2] = tb;
+  }
+  ctx.putImageData(id, 0, 0); return c;
+}
+
 function RC(layer, hex) {
   const k = layer+':'+hex; if (!recolorCache[k]) { const img = origImages[layer]; if (!img) return null; recolorCache[k] = recolorImage(img, hex); } return recolorCache[k];
+}
+
+// RC variant that recolors all visible pixels (alpha-only check)
+function RCA(layer, hex) {
+  const k = 'a:'+layer+':'+hex; if (!recolorCache[k]) { const img = origImages[layer]; if (!img) return null; recolorCache[k] = recolorImageAlpha(img, hex); } return recolorCache[k];
 }
 
 // Composite multiple sprite layers into a single canvas. colorLayer gets recolored, others drawn as-is.
@@ -877,16 +933,22 @@ function compositeBase(ps) {
   // Dpad normal: always on top of base-1
   if (co && co.dpadNormal) {
     const dn = co.dpadNormal;
-    const rc = RC(dn.sprite, colors[dn.key] || p.defaultColor);
     const t = dn.top ? origImages[dn.top] : null;
-    if (rc) for (const pc of dn.pieces) { if (ps[pc.name]) continue; ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+    for (const pc of dn.pieces) {
+      if (ps[pc.name]) continue;
+      const rc = RC(dn.sprite, colors[pc.key] || p.defaultColor);
+      if (rc) { ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+    }
   }
   // Dpad pressed: on top of dpad normal, per-direction
   if (co && co.dpadPressed) {
     const dp = co.dpadPressed;
-    const rc = RC(dp.sprite, colors[dp.key] || p.defaultColor);
     const t = dp.top ? origImages[dp.top] : null;
-    if (rc) for (const pc of dp.pieces) { if (!ps[pc.name]) continue; ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+    for (const pc of dp.pieces) {
+      if (!ps[pc.name]) continue;
+      const rc = RC(dp.sprite, colors[pc.key] || p.defaultColor);
+      if (rc) { ctx.drawImage(rc, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); if (t) ctx.drawImage(t, pc.sx, pc.sy, pc.sw, pc.sh, pc.dx, pc.dy, pc.sw, pc.sh); }
+    }
   }
   return c;
 }
@@ -901,6 +963,51 @@ function buildStackBg(stack, sprite, hex) {
     if (lk === sprite) return 'url('+toURL(rc)+')';
     return 'url('+(origImages[lk]?origImages[lk].src:'')+')';
   }).join(',');
+}
+
+// Xbox face buttons: 3-layer composite per button
+// Normal (top half): abxy-3 = base color, abxy-2 = label color, abxy-1 = overlay
+// Pressed (bottom half): abxy-2 = base color, abxy-1 = label color, abxy-3 = overlay
+function applyXboxFace() {
+  const ctrl = document.getElementById('controller');
+  const btns = [
+    {cls:'.a', labelN:'face-label-a', baseN:'face-base-a', labelP:'face-label-a-pr', baseP:'face-base-a-pr'},
+    {cls:'.b', labelN:'face-label-b', baseN:'face-base-b', labelP:'face-label-b-pr', baseP:'face-base-b-pr'},
+    {cls:'.x', labelN:'face-label-x', baseN:'face-base-x', labelP:'face-label-x-pr', baseP:'face-base-x-pr'},
+    {cls:'.y', labelN:'face-label-y', baseN:'face-base-y', labelP:'face-label-y-pr', baseP:'face-base-y-pr'},
+  ];
+  const p = P();
+  // Sprite layout (each has top=normal, bottom=pressed, CSS crops via bg-position):
+  // abxy-3: base shape (normal top half), detail overlay (pressed bottom half)
+  // abxy-2: label shape (normal top half), base shape (pressed bottom half)
+  // abxy-1: detail overlay (normal top half), label shape (pressed bottom half)
+  //
+  // Normal state (top half): stack bottom-to-top = abxy-3(base color) → abxy-2(label color) → abxy-1(detail)
+  // Pressed state (bottom half): stack bottom-to-top = abxy-2(base color) → abxy-1(label color) → abxy-3(detail)
+  //
+  // For normal: abxy-1 top half is non-colorizable detail (keep original)
+  // For pressed: abxy-3 bottom half is non-colorizable detail (keep original)
+  // Color ALL layers that have colorizable content; the non-colorizable detail layers
+  // have very dark/black pixels (lum < 5) which RC() skips, so recoloring them is safe.
+  for (const b of btns) {
+    const el = ctrl.querySelector(b.cls); if (!el) continue;
+    // Normal: abxy-1(label-pressed color acts as detail) on top, abxy-2(label color), abxy-3(base color)
+    // Since abxy-1 top half is detail/outline, we color it with labelP color but only bottom half shows in pressed
+    // For normal display, abxy-1 top half needs to stay as-is (detail overlay)
+    const baseNRc = RCA('abxy-3', colors[b.baseN] || p.defaultColor);
+    const labelNRc = RC('abxy-2', colors[b.labelN] || p.defaultColor);
+    if (baseNRc && labelNRc) {
+      el.style.backgroundImage = 'url('+toURL(labelNRc)+'),url('+toURL(baseNRc)+')';
+    }
+    // Pressed: abxy-1(label color), abxy-2(base color)
+    const basePRc = RC('abxy-2', colors[b.baseP] || p.defaultColor);
+    const labelPRc = RCA('abxy-1', colors[b.labelP] || p.defaultColor);
+    if (basePRc && labelPRc) {
+      pressedBgs['xface'+b.cls] = 'url('+toURL(labelPRc)+'),url('+toURL(basePRc)+')';
+    }
+    // Store normal bg for restoring
+    pressedBgs['xface'+b.cls+':normal'] = el.style.backgroundImage;
+  }
 }
 
 // DS4 face buttons: build per-button sprites with separate base/label colors + pressed variants
@@ -942,6 +1049,7 @@ function applyAllColors() {
 
   for (const rule of p.elemRules) {
     // DS4 face buttons: special handler
+    if (rule.type === 'xbox-face') { applyXboxFace(); continue; }
     if (rule.type === 'ds4-face') { applyDS4Face(); continue; }
     if (!rule.sel) continue;
     const hex = colors[rule.key] || p.defaultColor;
@@ -980,22 +1088,84 @@ function refreshAll() { applyAllColors(); updateTransformBoxes(); }
 // ===========================================================================
 // COLOR UI
 // ===========================================================================
+// Track which groups are in unified mode
+let unifiedState = {};
+
 function buildColorUI() {
   const p = P(), container = document.getElementById('colorGroups'); container.innerHTML = '';
   for (const cg of p.colorGroups) {
     const group = document.createElement('div'); group.className = 'ctrl-group';
-    let html = '<h3>'+cg.title+'</h3>';
-    for (const item of cg.items) {
-      const hex = (colors[item.key]||p.defaultColor).toUpperCase();
-      html += '<div class="color-row"><label>'+item.label+'</label><div class="color-wrap"><input type="color" value="'+hex+'" data-ckey="'+item.key+'"></div><input type="text" class="hex-inp" value="'+hex+'" data-ckey="'+item.key+'"></div>';
+    const uid = cg.unified || null;
+    const isUnified = uid ? (unifiedState[uid] === true) : false; // default unified OFF
+    let html = '<div class="group-header"><h3>'+cg.title+'</h3>';
+    if (uid) {
+      html += '<label class="toggle toggle-sm" title="Toggle unified color"><input type="checkbox" class="unified-toggle" data-uid="'+uid+'"'+(isUnified?' checked':'')+'><span class="toggle-slider"></span></label>';
+    }
+    html += '</div>';
+
+    if (uid && isUnified) {
+      // Unified mode: single color control that applies to all items
+      const hex = (colors[cg.items[0].key]||p.defaultColor).toUpperCase();
+      html += '<div class="color-row"><label>All</label><div class="color-wrap"><input type="color" value="'+hex+'" data-unified="'+uid+'"></div><input type="text" class="hex-inp" value="'+hex+'" data-unified="'+uid+'"></div>';
+    } else {
+      // Per-item mode
+      for (const item of cg.items) {
+        const hex = (colors[item.key]||p.defaultColor).toUpperCase();
+        html += '<div class="color-row"><label>'+item.label+'</label><div class="color-wrap"><input type="color" value="'+hex+'" data-ckey="'+item.key+'"></div><input type="text" class="hex-inp" value="'+hex+'" data-ckey="'+item.key+'"></div>';
+      }
     }
     group.innerHTML = html; container.appendChild(group);
+
+    // Store items ref for unified handler
+    if (uid) group.dataset.unifiedItems = JSON.stringify(cg.items.map(i => i.key));
   }
+
+  // Per-item color picker handlers
   container.querySelectorAll('input[type="color"][data-ckey]').forEach(inp => {
     inp.addEventListener('input', e => { colors[e.target.dataset.ckey] = e.target.value; const row = e.target.closest('.color-row'); const h = row.querySelector('.hex-inp'); if(h) h.value = e.target.value.toUpperCase(); scheduleColorUpdate(); });
   });
   container.querySelectorAll('.hex-inp[data-ckey]').forEach(inp => {
     inp.addEventListener('change', e => { let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)) { colors[e.target.dataset.ckey]=v; const row=e.target.closest('.color-row'); const cp=row.querySelector('input[type="color"]'); if(cp) cp.value=v; e.target.value=v.toUpperCase(); scheduleColorUpdate(); }});
+  });
+
+  // Unified color picker handlers
+  container.querySelectorAll('input[type="color"][data-unified]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const uid = e.target.dataset.unified;
+      const grp = e.target.closest('.ctrl-group');
+      const keys = JSON.parse(grp.dataset.unifiedItems || '[]');
+      keys.forEach(k => colors[k] = e.target.value);
+      const row = e.target.closest('.color-row'); const h = row.querySelector('.hex-inp'); if(h) h.value = e.target.value.toUpperCase();
+      scheduleColorUpdate();
+    });
+  });
+  container.querySelectorAll('.hex-inp[data-unified]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v;
+      if(/^#[0-9a-fA-F]{6}$/.test(v)) {
+        const grp = e.target.closest('.ctrl-group');
+        const keys = JSON.parse(grp.dataset.unifiedItems || '[]');
+        keys.forEach(k => colors[k] = v);
+        const row=e.target.closest('.color-row'); const cp=row.querySelector('input[type="color"]'); if(cp) cp.value=v; e.target.value=v.toUpperCase();
+        scheduleColorUpdate();
+      }
+    });
+  });
+
+  // Unified toggle handlers
+  container.querySelectorAll('.unified-toggle').forEach(tog => {
+    tog.addEventListener('change', e => {
+      const uid = e.target.dataset.uid;
+      unifiedState[uid] = e.target.checked;
+      // When switching to unified, sync all items to first item's color
+      if (e.target.checked) {
+        const grp = e.target.closest('.ctrl-group');
+        const keys = JSON.parse(grp.dataset.unifiedItems || '[]');
+        if (keys.length) { const c = colors[keys[0]]; keys.forEach(k => colors[k] = c); }
+      }
+      buildColorUI();
+      scheduleColorUpdate();
+    });
   });
 }
 
@@ -1099,6 +1269,30 @@ function gpStatus(c){const e=document.getElementById('gpStatus');if(e){e.classNa
 
 function updatePressedBgs() {
   const ctrl = document.getElementById('controller');
+
+  // Xbox face button pressed state swap
+  if (activeType === 'xbox') {
+    ['.a','.b','.x','.y'].forEach(cls => {
+      const el = ctrl.querySelector(cls);
+      if (!el) return;
+      const prBg = pressedBgs['xface'+cls];
+      const noBg = pressedBgs['xface'+cls+':normal'];
+      if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
+      else if (noBg) el.style.backgroundImage = noBg;
+    });
+  }
+
+  // Stick pressed state swap (both Xbox and DS4)
+  ['stick-l','stick-r'].forEach(key => {
+    const sel = key === 'stick-l' ? '.stick.left' : '.stick.right';
+    const el = ctrl.querySelector(sel);
+    if (!el) return;
+    const prBg = pressedBgs[key];
+    const noBg = pressedBgs[key+':normal'];
+    if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
+    else if (noBg) el.style.backgroundImage = noBg;
+  });
+
   if (activeType !== 'ds4') return;
   // Touchpad pressed-only
   if (pressedBgs['touchpad-pressed']) {
@@ -1106,23 +1300,12 @@ function updatePressedBgs() {
     if (tp) tp.style.backgroundImage = tp.classList.contains('pressed') ? pressedBgs['touchpad-pressed'] : '';
   }
 
-
-  // Face button pressed state swap
+  // DS4 Face button pressed state swap
   ['.a','.b','.x','.y'].forEach(cls => {
     const el = ctrl.querySelector(cls);
     if (!el) return;
     const prBg = pressedBgs['face'+cls];
     const noBg = pressedBgs['face'+cls+':normal'];
-    if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
-    else if (noBg) el.style.backgroundImage = noBg;
-  });
-  // Stick pressed state swap
-  ['stick-l','stick-r'].forEach(key => {
-    const sel = key === 'stick-l' ? '.stick.left' : '.stick.right';
-    const el = ctrl.querySelector(sel);
-    if (!el) return;
-    const prBg = pressedBgs[key];
-    const noBg = pressedBgs[key+':normal'];
     if (el.classList.contains('pressed') && prBg) el.style.backgroundImage = prBg;
     else if (noBg) el.style.backgroundImage = noBg;
   });
