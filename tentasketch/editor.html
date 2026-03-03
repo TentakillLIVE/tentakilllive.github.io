@@ -3,29 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StreamCanvas — Collaborative Overlay Editor</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>TentaSketch — Collaborative Overlay Editor</title>
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link href="https://fonts.bunny.net/css?family=bungee:400|fira-code:400|dm-sans:400,500,600,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #12121a;
-      --bg-tertiary: #1a1a26;
-      --bg-elevated: #22222f;
-      --border: #2a2a3a;
-      --border-hover: #3a3a50;
-      --text-primary: #e8e8f0;
-      --text-secondary: #8888a0;
-      --text-muted: #555568;
-      --accent: #6c5ce7;
-      --accent-hover: #7c6cf7;
-      --accent-glow: rgba(108, 92, 231, 0.3);
-      --red: #ff6b6b;
-      --green: #51cf66;
-      --yellow: #fcc419;
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --bg-tertiary: #27272a;
+      --bg-elevated: #3f3f46;
+      --border: #3f3f46;
+      --border-hover: #52525b;
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #f95a1f;
+      --accent-hover: #fb7a4a;
+      --accent-glow: rgba(249, 90, 31, 0.3);
+      --red: #ef4444;
+      --green: #22c55e;
+      --yellow: #eab308;
       --cyan: #22d3ee;
-      --font-mono: 'JetBrains Mono', monospace;
-      --font-sans: 'DM Sans', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+      --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+      --font-brand: 'Bungee', sans-serif;
       --radius: 8px;
       --radius-lg: 12px;
     }
@@ -45,7 +46,7 @@
     .app {
       display: grid;
       grid-template-rows: 52px 1fr 44px;
-      grid-template-columns: 56px 1fr 260px;
+      grid-template-columns: 56px 1fr 280px;
       height: 100vh;
       gap: 0;
     }
@@ -53,7 +54,9 @@
     /* ─── TOP BAR ─── */
     .topbar {
       grid-column: 1 / -1;
-      background: var(--bg-secondary);
+      background: rgba(9,9,11,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -62,14 +65,34 @@
       z-index: 100;
     }
     .topbar .logo {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--accent);
-      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       white-space: nowrap;
     }
-    .topbar .logo span { color: var(--text-muted); font-weight: 400; }
+    .topbar .logo-dot {
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: logoPulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite;
+      flex-shrink: 0;
+    }
+    @keyframes logoPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .topbar .logo-wordmark {
+      font-family: var(--font-brand);
+      font-size: 16px;
+      letter-spacing: -0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .topbar .logo-wordmark span { color: var(--text-primary); }
+    .topbar .logo-sub {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
     .topbar .divider {
       width: 1px;
       height: 24px;
@@ -87,9 +110,10 @@
       width: 8px; height: 8px;
       border-radius: 50%;
       background: var(--green);
-      box-shadow: 0 0 6px rgba(81, 207, 102, 0.5);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+      animation: logoPulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite;
     }
-    .topbar .room-info .dot.disconnected { background: var(--red); box-shadow: 0 0 6px rgba(255,107,107,0.5); }
+    .topbar .room-info .dot.disconnected { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
     .topbar .spacer { flex: 1; }
     .topbar-actions {
       display: flex;
@@ -116,6 +140,7 @@
       background: var(--accent);
       border-color: var(--accent);
       color: #fff;
+      font-weight: 700;
     }
     .btn.primary:hover { background: var(--accent-hover); }
     .btn.danger { border-color: #4a2020; color: var(--red); }
@@ -149,7 +174,7 @@
     .tool-btn.active {
       background: var(--accent);
       color: #fff;
-      box-shadow: 0 0 12px var(--accent-glow);
+      box-shadow: 0 0 14px var(--accent-glow);
     }
     .tool-btn svg { width: 20px; height: 20px; }
     .tool-sep {
@@ -179,8 +204,11 @@
     /* ─── CANVAS AREA ─── */
     .canvas-area {
       position: relative;
-      background: #111118;
+      background: #09090b;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
     }
     #stream-embed {
       position: absolute;
@@ -211,7 +239,7 @@
     }
     #stream-interact-bar.hidden { display: none; }
     #stream-interact-bar .hint-pill {
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 5px 14px;
@@ -221,23 +249,24 @@
       backdrop-filter: blur(4px);
     }
     .canvas-wrapper {
-      position: absolute;
+      position: relative;
       z-index: 10;
+      flex-shrink: 0;
     }
     .canvas-wrapper canvas {
       display: block;
     }
     /* Checkerboard for transparency indication */
-    .canvas-area::before {
+    .canvas-wrapper::before {
       content: '';
       position: absolute;
       inset: 0;
       z-index: 0;
       background-image:
-        linear-gradient(45deg, #15151f 25%, transparent 25%),
-        linear-gradient(-45deg, #15151f 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #15151f 75%),
-        linear-gradient(-45deg, transparent 75%, #15151f 75%);
+        linear-gradient(45deg, #18181b 25%, transparent 25%),
+        linear-gradient(-45deg, #18181b 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #18181b 75%),
+        linear-gradient(-45deg, transparent 75%, #18181b 75%);
       background-size: 20px 20px;
       background-position: 0 0, 0 10px, 10px -10px, -10px 0;
       opacity: 0.3;
@@ -257,10 +286,10 @@
       border-bottom: 1px solid var(--border);
     }
     .panel-section h3 {
+      font-family: var(--font-brand);
       font-size: 10px;
-      font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
       color: var(--text-muted);
       margin-bottom: 10px;
     }
@@ -280,7 +309,7 @@
       transition: all 0.15s;
     }
     .color-swatch:hover { transform: scale(1.15); }
-    .color-swatch.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+    .color-swatch.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
     .custom-color-row {
       display: flex;
       gap: 6px;
@@ -340,8 +369,8 @@
     /* Text input */
     .text-input {
       width: 100%;
-      padding: 8px 10px;
-      border-radius: var(--radius);
+      padding: 8px 12px;
+      border-radius: 10px;
       border: 1px solid var(--border);
       background: var(--bg-tertiary);
       color: var(--text-primary);
@@ -360,14 +389,15 @@
       margin-bottom: 8px;
     }
     .layers-toolbar button {
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 700;
       padding: 3px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       border: 1px solid var(--border);
       background: var(--bg-tertiary);
       color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.1s;
+      transition: all 0.15s;
     }
     .layers-toolbar button:hover { background: var(--bg-elevated); color: var(--text-primary); }
 
@@ -452,7 +482,7 @@
       border: 1px solid transparent;
     }
     .layer-folder-header:hover { background: var(--bg-tertiary); }
-    .layer-folder-header.selected { background: var(--bg-elevated); border-color: var(--border); }
+    .layer-folder-header.selected { background: var(--bg-elevated); border-color: var(--accent); border-color: rgba(249,90,31,0.3); }
     .layer-folder-header .folder-arrow {
       font-size: 10px;
       width: 14px;
@@ -489,7 +519,7 @@
       position: relative;
     }
     .layer-item:hover { background: var(--bg-tertiary); }
-    .layer-item.selected { background: var(--bg-elevated); color: var(--text-primary); }
+    .layer-item.selected { background: var(--bg-elevated); color: var(--text-primary); outline: 1px solid rgba(249,90,31,0.25); outline-offset: -1px; }
     .layer-item.editor-only { opacity: 0.6; }
     .layer-item.hidden-all { opacity: 0.3; }
     .layer-item .layer-icon { font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
@@ -498,6 +528,19 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: default;
+    }
+    .layer-rename-input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--accent);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      outline: none;
+      min-width: 0;
     }
     /* Visibility button */
     .layer-vis-btn {
@@ -535,7 +578,7 @@
       background: var(--accent);
       cursor: pointer;
     }
-    .layer-delete-btn {
+    .layer-rename-btn, .layer-delete-btn {
       width: 18px; height: 18px;
       display: flex;
       align-items: center;
@@ -544,15 +587,18 @@
       background: none;
       cursor: pointer;
       font-size: 10px;
-      color: var(--red);
       border-radius: 3px;
       flex-shrink: 0;
       opacity: 0;
       transition: opacity 0.1s;
       padding: 0;
     }
+    .layer-rename-btn { color: var(--text-secondary); }
+    .layer-delete-btn { color: var(--red); }
+    .layer-item:hover .layer-rename-btn,
     .layer-item:hover .layer-delete-btn,
     .layer-folder-header:hover .layer-delete-btn { opacity: 0.7; }
+    .layer-rename-btn:hover { opacity: 1 !important; background: rgba(249,90,31,0.1); }
     .layer-delete-btn:hover { opacity: 1 !important; background: rgba(255,107,107,0.1); }
 
     /* ─── BOTTOM BAR ─── */
@@ -567,6 +613,7 @@
       font-size: 11px;
       color: var(--text-muted);
       font-family: var(--font-mono);
+      letter-spacing: 0.02em;
     }
     .bottombar .spacer { flex: 1; }
 
@@ -577,7 +624,7 @@
       right: 0;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 12px;
       padding: 8px 0;
       min-width: 160px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.4);
@@ -630,7 +677,7 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.75);
       backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
@@ -641,14 +688,17 @@
     .modal {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      border-radius: 16px;
       padding: 28px;
       max-width: 440px;
       width: 90%;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
     }
     .modal h2 {
-      font-size: 18px;
-      font-weight: 700;
+      font-family: var(--font-brand);
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
       margin-bottom: 6px;
     }
     .modal p {
@@ -662,10 +712,10 @@
     }
     .modal label {
       display: block;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.1em;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
@@ -705,11 +755,16 @@
       padding: 40px;
     }
     .setup-card .logo-big {
-      font-family: var(--font-mono);
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--accent);
+      font-family: var(--font-brand);
+      font-size: 32px;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: var(--text-primary);
       margin-bottom: 8px;
+    }
+    .setup-card .logo-big em {
+      color: var(--accent);
+      font-style: normal;
     }
     .setup-card .tagline {
       font-size: 14px;
@@ -722,19 +777,19 @@
     }
     .setup-card label {
       display: block;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.1em;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
-    .setup-card .hint {
+    .hint {
       font-size: 11px;
       color: var(--text-muted);
       margin-top: 4px;
     }
-    .setup-card .btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 8px; }
+    .setup-card .btn { width: 100%; padding: 10px; font-size: 14px; font-weight: 700; margin-top: 8px; border-radius: 12px; }
 
     /* Stream toggle */
     .stream-toggle {
@@ -774,25 +829,6 @@
     }
 
     /* Image upload drop zone */
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .drop-zone:hover {
-      border-color: var(--accent);
-      color: var(--text-secondary);
-    }
-    .drop-zone.dragging {
-      border-color: var(--accent);
-      background: rgba(108, 92, 231, 0.1);
-    }
-
     select.text-input {
       cursor: pointer;
     }
@@ -803,8 +839,8 @@
 <!-- ═══════════════ SETUP SCREEN ═══════════════ -->
 <div id="setup-screen">
   <div class="setup-card">
-    <div class="logo-big">StreamCanvas</div>
-    <div class="tagline">Collaborative stream overlay editor</div>
+    <div class="logo-big"><em>Tenta</em>Sketch</div>
+    <div class="tagline">Collaborative stream overlay editor.</div>
 
     <div class="form-group">
       <label>Room Name</label>
@@ -853,7 +889,7 @@
 
   <!-- TOP BAR -->
   <div class="topbar">
-    <div class="logo">StreamCanvas <span>v1.0</span></div>
+    <div class="logo"><div class="logo-dot"></div><div class="logo-wordmark">Tenta<span>Sketch</span></div><div class="logo-sub">Editor</div></div>
     <div class="divider"></div>
     <div class="room-info">
       <div class="dot" id="conn-dot"></div>
@@ -865,6 +901,7 @@
         <input type="checkbox" id="toggle-stream" checked>
         Stream Preview
       </label>
+      <button class="btn" id="btn-edit-stream" title="Change stream URL">✏️ Edit Stream</button>
       <button class="btn" id="btn-stream-interact" title="Unlock stream to click play" style="display:none;">▶️ Unlock Stream</button>
       <button class="btn" id="btn-obs-url" title="Get OBS Browser Source URL">📋 OBS URL</button>
       <button class="btn danger" id="btn-clear-all">🗑 Clear All</button>
@@ -899,7 +936,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4z"/><path d="M6 11l8 8"/></svg>
     </button>
     <div class="tool-sep"></div>
-    <button class="tool-btn" id="btn-undo" title="Undo (Ctrl+Z)">
+    <button class="tool-btn" id="btn-history" title="History (H)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
     </button>
   </div>
@@ -917,16 +954,16 @@
 
   <!-- RIGHT PANEL -->
   <div class="panel">
-    <div class="panel-section">
+    <div class="panel-section" id="color-section">
       <h3>Color</h3>
       <div class="color-grid" id="color-grid"></div>
       <div class="custom-color-row">
-        <input type="color" id="custom-color" value="#6c5ce7">
-        <span id="color-hex">#6c5ce7</span>
+        <input type="color" id="custom-color" value="#f95a1f">
+        <span id="color-hex">#f95a1f</span>
       </div>
     </div>
 
-    <div class="panel-section">
+    <div class="panel-section" id="brush-section">
       <h3>Brush / Stroke</h3>
       <div class="slider-row">
         <label>Size</label>
@@ -938,7 +975,7 @@
         <input type="range" id="brush-opacity" min="0.1" max="1" step="0.05" value="1">
         <span class="val" id="brush-opacity-val">100%</span>
       </div>
-      <div class="slider-row" style="margin-top:4px;">
+      <div class="slider-row" id="fill-option-row" style="margin-top:4px;">
         <label>Fill</label>
         <label class="stream-toggle" style="flex:1;">
           <input type="checkbox" id="toggle-fill">
@@ -946,7 +983,7 @@
         </label>
       </div>
       <div id="fill-color-row" class="custom-color-row" style="display:none; margin-top:4px;">
-        <input type="color" id="fill-color" value="#6c5ce7">
+        <input type="color" id="fill-color" value="#f95a1f">
         <span style="font-size:11px;">Fill color</span>
         <label class="stream-toggle" style="margin-left:auto;">
           <input type="checkbox" id="fill-same-color" checked>
@@ -984,15 +1021,24 @@
 
     <div class="panel-section" id="image-options" style="display:none;">
       <h3>Add Image</h3>
-      <div class="drop-zone" id="image-drop-zone">
-        📁 Click or drop an image<br>
-        <span style="font-size:10px; color:var(--text-muted);">(paste URL or upload file)</span>
-      </div>
-      <div class="form-group" style="margin-top:10px;">
+      <div class="form-group">
         <input type="text" class="text-input" id="image-url" placeholder="Paste image URL...">
       </div>
-      <button class="btn primary" id="add-image-btn" style="width:100%; margin-top:6px;">Add Image</button>
+      <button class="btn primary" id="add-image-btn" style="width:100%; margin-top:6px;">Add from URL</button>
+      <div style="display:flex; align-items:center; gap:8px; margin:10px 0 6px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span style="font-size:10px; color:var(--text-muted);">OR</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+      <button class="btn" id="upload-image-btn" style="width:100%;">📁 Upload Image</button>
       <input type="file" id="image-file" accept="image/*" style="display:none;">
+      <div class="hint" style="margin-top:4px;">Images hosted via Litterbox (72h) — for permanent links, use <a href="https://catbox.moe" target="_blank" style="color:var(--accent)">catbox.moe</a> and paste the URL above</div>
+      <div id="upload-status" style="display:none; font-size:10px; color:var(--yellow); margin-top:4px;"></div>
+    </div>
+
+    <div class="panel-section" id="history-panel" style="display:none; max-height:200px; overflow-y:auto;">
+      <h3 style="display:flex; justify-content:space-between; align-items:center;">History <button class="btn" id="btn-undo-action" style="font-size:10px; padding:2px 8px;">Undo</button></h3>
+      <div id="history-list" style="font-size:11px; color:var(--text-secondary);"></div>
     </div>
 
     <div class="panel-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
@@ -1063,7 +1109,7 @@
   if (!hasConfig) {
     document.getElementById('setup-screen').innerHTML = `
       <div class="setup-card">
-        <div class="logo-big">StreamCanvas</div>
+        <div class="logo-big"><em>Tenta</em>Sketch</div>
         <div class="tagline" style="color:var(--red);">Firebase not configured</div>
         <p style="color:var(--text-secondary); font-size:13px; line-height:1.6; margin-top:16px;">
           Open <code style="color:var(--cyan); background:var(--bg-tertiary); padding:2px 6px; border-radius:3px;">firebase-config.js</code> and add your Firebase project credentials.<br><br>
@@ -1109,7 +1155,7 @@
   let roomId = 'default';
   let userName = 'Anonymous';
   let currentTool = 'select';
-  let currentColor = '#6c5ce7';
+  let currentColor = '#f95a1f';
   let brushSize = 4;
   let brushOpacity = 1;
   let fontSize = 32;
@@ -1117,7 +1163,7 @@
   let textBold = false;
   let textItalic = false;
   let fillEnabled = false;
-  let fillColor = '#6c5ce7';
+  let fillColor = '#f95a1f';
   let fillSameAsStroke = true;
   let streamInteractive = false;
   let targetWidth = 1920;
@@ -1125,13 +1171,13 @@
   let isDrawingShape = false;
   let shapeOrigin = null;
   let activeShape = null;
-  let isSyncing = false;
+  let isSyncing = 0; // Counter: >0 means syncing in progress
   let zIndexCounter = 0;
 
   // ─── Color palette ───
   const colors = [
     '#ffffff', '#cccccc', '#888888', '#444444', '#222222', '#000000',
-    '#ff6b6b', '#ff8787', '#f06595', '#cc5de8', '#845ef7', '#6c5ce7',
+    '#ef4444', '#f97316', '#f59e0b', '#f95a1f', '#fb923c', '#fbbf24',
     '#5c7cfa', '#339af0', '#22b8cf', '#22d3ee', '#20c997', '#51cf66',
     '#94d82d', '#fcc419', '#ff922b', '#fd7e14', '#f76707', '#e8590c',
   ];
@@ -1356,6 +1402,7 @@
     if (streamUrl) {
       setupStreamEmbed(streamUrl);
     } else {
+      currentStreamUrl = '';
       streamEmbed.classList.add('hidden');
       document.getElementById('toggle-stream').checked = false;
     }
@@ -1430,6 +1477,8 @@
   });
 
   // ─── Stream embed ───
+  let currentStreamUrl = '';
+
   function setupStreamEmbed(url) {
     let embedHtml = '';
     if (url.includes('twitch.tv')) {
@@ -1445,14 +1494,14 @@
       }
     }
     if (embedHtml) {
+      currentStreamUrl = url;
       streamEmbed.innerHTML = embedHtml;
       streamEmbed.classList.remove('hidden');
       streamInteractBtn.style.display = '';
-      // Auto-unlock so user can click play on the embed
+      document.getElementById('toggle-stream').checked = true;
       setStreamInteractive(true);
-    } else {
-      streamEmbed.classList.add('hidden');
-      streamInteractBtn.style.display = 'none';
+    } else if (url) {
+      alert('Unsupported stream URL. Use a Twitch or YouTube link.');
     }
   }
 
@@ -1464,6 +1513,28 @@
     } else {
       streamInteractBtn.style.display = '';
     }
+  });
+
+  function clearStreamEmbed() {
+    currentStreamUrl = '';
+    streamEmbed.innerHTML = '';
+    streamEmbed.classList.add('hidden');
+    streamInteractBtn.style.display = 'none';
+    document.getElementById('toggle-stream').checked = false;
+    setStreamInteractive(false);
+    writeSettingsToUrl({
+      room: roomId,
+      name: userName,
+      stream: '',
+      w: String(targetWidth),
+      h: String(targetHeight),
+    });
+  }
+
+  document.getElementById('btn-edit-stream').addEventListener('click', () => {
+    const sm = document.getElementById('stream-modal');
+    document.getElementById('stream-modal-url').value = currentStreamUrl;
+    sm.style.display = 'flex';
   });
 
   // ─── Canvas setup ───
@@ -1518,6 +1589,8 @@
     });
     canvas.on('object:added', (e) => {
       if (!isSyncing && e.target && e.target._fromRemote !== true) {
+        // Skip paths — they are handled by path:created to avoid double sync
+        if (e.target.type === 'path') return;
         if (!e.target._firebaseId) {
           e.target._firebaseId = generateId();
         }
@@ -1532,12 +1605,23 @@
         if (e.target._userOpacity === undefined) {
           e.target._userOpacity = e.target.opacity || 1;
         }
+        if (!e.target._layerName) {
+          e.target._layerName = generateLayerName(e.target.type);
+        }
         applyVisualOpacity(e.target);
         syncObject(e.target);
+        pushUndo({ type: 'add', fbId: e.target._firebaseId, name: getLayerName(e.target) });
       }
     });
     canvas.on('object:removed', (e) => {
       if (!isSyncing && e.target && e.target._firebaseId) {
+        const robj = e.target;
+        const rdata = robj.toObject(['_firebaseId', '_layerName']);
+        delete rdata._firebaseId;
+        pushUndo({ type: 'remove', fbId: robj._firebaseId, fabricData: rdata,
+          zIndex: robj._zIndex || 0, visibility: robj._visibility || VIS_EDITOR,
+          userOpacity: robj._userOpacity !== undefined ? robj._userOpacity : 1,
+          createdBy: robj._createdBy || '', name: getLayerName(robj) });
         removeObjectFromFirebase(e.target._firebaseId);
       }
     });
@@ -1551,7 +1635,9 @@
         e.path._visibility = VIS_EDITOR;
         e.path._userOpacity = e.path.opacity || 1;
         applyVisualOpacity(e.path);
+        e.path._layerName = generateLayerName('path');
         syncObject(e.path);
+        pushUndo({ type: 'add', fbId: e.path._firebaseId, name: e.path._layerName });
         updateObjectList();
       }
     });
@@ -1561,49 +1647,93 @@
     canvas.on('selection:updated', onCanvasSelectionChange);
     canvas.on('selection:cleared', onCanvasSelectionChange);
 
+    // Double-click to edit IText — editable is false by default so drag works
+    canvas.on('mouse:dblclick', (opt) => {
+      const target = canvas.getActiveObject();
+      if (target && target.type === 'i-text' && currentTool === 'select') {
+        target.set('editable', true);
+        target.enterEditing();
+        target.selectAll();
+        canvas.renderAll();
+      }
+    });
+
+    // When text editing ends, lock it back so dragging works again
+    canvas.on('text:editing:exited', (opt) => {
+      const target = opt.target;
+      if (target) {
+        target.set('editable', false);
+        canvas.renderAll();
+        syncObject(target);
+        updateObjectList();
+      }
+    });
+
     // Shape drawing handlers
     canvas.on('mouse:down', onMouseDown);
     canvas.on('mouse:move', onMouseMoveShape);
     canvas.on('mouse:up', onMouseUp);
+
+    // --- Undo: track move/scale/rotate/text changes ---
+    let _preModify = null;
+    function capturePreModify(e) {
+      if (_preModify || !e.target || !e.target._firebaseId) return;
+      if (e.target.type === 'activeSelection') return;
+      _preModify = { fbId: e.target._firebaseId, left: e.target.left, top: e.target.top, scaleX: e.target.scaleX, scaleY: e.target.scaleY, angle: e.target.angle };
+    }
+    canvas.on('object:moving', capturePreModify);
+    canvas.on('object:scaling', capturePreModify);
+    canvas.on('object:rotating', capturePreModify);
+    canvas.on('object:modified', function undoModCapture(e) {
+      if (isSyncing || !e.target) return;
+      if (e.target.type === 'activeSelection') { _preModify = null; return; }
+      if (_preModify && _preModify.fbId === e.target._firebaseId) {
+        const _modObj = canvas.getObjects().find(o => o._firebaseId === _preModify.fbId);
+        pushUndo({ type: 'modify', fbId: _preModify.fbId, before: { left: _preModify.left, top: _preModify.top, scaleX: _preModify.scaleX, scaleY: _preModify.scaleY, angle: _preModify.angle }, name: _modObj ? getLayerName(_modObj) : '?' });
+      }
+      _preModify = null;
+    });
+    canvas.on('text:editing:entered', function(e) {
+      if (e.target) e.target._preEditText = e.target.text;
+    });
+    canvas.on('text:editing:exited', function undoTextCapture(e) {
+      if (!e.target || !e.target._firebaseId) return;
+      if (e.target._preEditText !== undefined && e.target._preEditText !== e.target.text) {
+        pushUndo({ type: 'textEdit', fbId: e.target._firebaseId, oldText: e.target._preEditText, name: getLayerName(e.target) });
+      }
+      delete e.target._preEditText;
+    });
 
     setTool('select');
   }
 
   function fitCanvasToContainer() {
     if (!canvas) return;
-    const containerRect = canvasArea.getBoundingClientRect();
-    const containerW = containerRect.width;
-    const containerH = containerRect.height;
+    const appEl = document.querySelector('.app');
+    const availH = window.innerHeight - 52 - 44;
+    const availW = window.innerWidth - 56;
+    const minPanelW = 260;
+    const maxCanvasW = availW - minPanelW;
 
-    // Calculate scale to fit target resolution inside the container with correct aspect ratio
-    const scale = Math.min(containerW / targetWidth, containerH / targetHeight);
-    const displayW = targetWidth * scale;
-    const displayH = targetHeight * scale;
+    const scale = Math.min(maxCanvasW / targetWidth, availH / targetHeight);
+    const displayW = Math.floor(targetWidth * scale);
+    const displayH = Math.floor(targetHeight * scale);
 
-    // Fabric canvas stays at the logical resolution
-    canvas.setWidth(targetWidth);
-    canvas.setHeight(targetHeight);
+    appEl.style.gridTemplateColumns = '56px ' + displayW + 'px 1fr';
 
-    // Use CSS to scale the canvas element to fit the container
     const wrapper = document.getElementById('canvas-wrapper');
     wrapper.style.width = displayW + 'px';
     wrapper.style.height = displayH + 'px';
-    wrapper.style.position = 'absolute';
-    wrapper.style.left = ((containerW - displayW) / 2) + 'px';
-    wrapper.style.top = ((containerH - displayH) / 2) + 'px';
 
-    // Scale the underlying canvas elements via CSS
-    const canvasEls = wrapper.querySelectorAll('canvas');
-    canvasEls.forEach(el => {
-      el.style.width = displayW + 'px';
-      el.style.height = displayH + 'px';
+    canvas.setZoom(scale);
+    canvas.setDimensions({ width: displayW, height: displayH });
+
+    requestAnimationFrame(() => {
+      streamEmbed.style.width = displayW + 'px';
+      streamEmbed.style.height = displayH + 'px';
+      streamEmbed.style.left = wrapper.offsetLeft + 'px';
+      streamEmbed.style.top = wrapper.offsetTop + 'px';
     });
-
-    // Also scale the stream embed to match the canvas area
-    streamEmbed.style.width = displayW + 'px';
-    streamEmbed.style.height = displayH + 'px';
-    streamEmbed.style.left = ((containerW - displayW) / 2) + 'px';
-    streamEmbed.style.top = ((containerH - displayH) / 2) + 'px';
 
     canvasSizeDisplay.textContent = `${targetWidth} × ${targetHeight} (${Math.round(scale * 100)}%)`;
     canvas.renderAll();
@@ -1648,9 +1778,24 @@
       canvas.hoverCursor = 'crosshair';
     }
 
-    // Toggle panels
+    // Toggle panels based on active tool
     textOptions.style.display = (tool === 'text') ? 'block' : 'none';
     imageOptions.style.display = (tool === 'image') ? 'block' : 'none';
+
+    // Color palette: draw, line, rect, circle, text
+    const showColor = ['draw', 'line', 'rect', 'circle', 'text'].includes(tool);
+    document.getElementById('color-section').style.display = showColor ? '' : 'none';
+
+    // Brush/stroke settings: draw, line, rect, circle
+    const showBrush = ['draw', 'line', 'rect', 'circle'].includes(tool);
+    document.getElementById('brush-section').style.display = showBrush ? '' : 'none';
+
+    // Fill option: rect, circle only
+    const showFill = ['rect', 'circle'].includes(tool);
+    const fillRow = document.getElementById('fill-option-row');
+    if (fillRow) fillRow.style.display = showFill ? '' : 'none';
+    const fillColorRow = document.getElementById('fill-color-row');
+    if (fillColorRow) fillColorRow.style.display = (showFill && document.getElementById('toggle-fill').checked) ? '' : 'none';
 
     // Make objects non-selectable when not in select mode
     canvas.getObjects().forEach(obj => {
@@ -1690,9 +1835,12 @@
       if (activeShape) {
         activeShape._firebaseId = generateId();
         activeShape._zIndex = ++zIndexCounter;
-        isSyncing = true;
+        activeShape._visibility = VIS_EDITOR;
+        activeShape._userOpacity = brushOpacity;
+        activeShape._layerName = generateLayerName(activeShape.type);
+        isSyncing++;
         canvas.add(activeShape);
-        isSyncing = false;
+        isSyncing--;
       }
     } else if (currentTool === 'text') {
       const pointer = canvas.getPointer(opt.e);
@@ -1707,14 +1855,17 @@
         fill: currentColor,
         opacity: brushOpacity,
         selectable: true,
-        editable: true,
+        editable: false, // Disabled by default so drag works; double-click to edit
       });
       text._firebaseId = generateId();
       text._zIndex = ++zIndexCounter;
       canvas.add(text);
-      canvas.setActiveObject(text);
       setTool('select');
-      updateObjectList();
+      requestAnimationFrame(() => {
+        canvas.setActiveObject(text);
+        canvas.renderAll();
+        updateObjectList();
+      });
     } else if (currentTool === 'eraser') {
       const target = canvas.findTarget(opt.e);
       if (target) {
@@ -1754,65 +1905,108 @@
 
   function onMouseUp() {
     if (isDrawingShape && activeShape) {
+      activeShape.set({ selectable: true, evented: true });
       activeShape.setCoords();
+      applyVisualOpacity(activeShape);
+      canvas.renderAll();
       syncObject(activeShape);
+      pushUndo({ type: 'add', fbId: activeShape._firebaseId, name: getLayerName(activeShape) });
       updateObjectList();
+      if (document.getElementById('history-panel').style.display !== 'none') renderHistoryList();
     }
     isDrawingShape = false;
     activeShape = null;
   }
 
   // ─── Image handling ───
-  const imageDropZone = document.getElementById('image-drop-zone');
+  const uploadStatus = document.getElementById('upload-status');
   const imageFileInput = document.getElementById('image-file');
 
-  imageDropZone.addEventListener('click', () => imageFileInput.click());
-  imageDropZone.addEventListener('dragover', (e) => { e.preventDefault(); imageDropZone.classList.add('dragging'); });
-  imageDropZone.addEventListener('dragleave', () => imageDropZone.classList.remove('dragging'));
-  imageDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    imageDropZone.classList.remove('dragging');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) addImageFromFile(file);
-  });
-
-  imageFileInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) addImageFromFile(e.target.files[0]);
-  });
-
+  // URL add
   document.getElementById('add-image-btn').addEventListener('click', () => {
     const url = document.getElementById('image-url').value.trim();
     if (url) addImageFromUrl(url);
   });
+  document.getElementById('image-url').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const url = e.target.value.trim();
+      if (url) addImageFromUrl(url);
+    }
+  });
 
-  function addImageFromFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => addImageFromUrl(e.target.result);
-    reader.readAsDataURL(file);
+  // File upload via Catbox.moe (no API key required)
+  document.getElementById('upload-image-btn').addEventListener('click', () => imageFileInput.click());
+  imageFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      uploadToCatbox(file);
+    }
+    e.target.value = '';
+  });
+
+  async function uploadToCatbox(file) {
+    uploadStatus.style.display = 'block';
+    uploadStatus.textContent = 'Uploading...';
+    uploadStatus.style.color = 'var(--yellow)';
+
+    try {
+      const formData = new FormData();
+      formData.append('reqtype', 'fileupload');
+      formData.append('time', '72h');
+      formData.append('fileToUpload', file);
+
+      const resp = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const url = (await resp.text()).trim();
+
+      if (url && url.startsWith('https://litter.catbox.moe/')) {
+        uploadStatus.textContent = 'Upload complete! (expires in 72h)';
+        uploadStatus.style.color = 'var(--green)';
+        addImageFromUrl(url);
+        setTimeout(() => { uploadStatus.style.display = 'none'; }, 3000);
+      } else {
+        throw new Error(url || 'Unexpected response');
+      }
+    } catch (err) {
+      console.error('Litterbox upload error:', err);
+      uploadStatus.textContent = `Upload failed: ${err.message}`;
+      uploadStatus.style.color = 'var(--red)';
+      setTimeout(() => { uploadStatus.style.display = 'none'; }, 5000);
+    }
   }
 
   function addImageFromUrl(url) {
+    if (url.startsWith('data:')) {
+      alert('Data URLs are not supported. Please use a direct image link or upload a file.');
+      return;
+    }
     fabric.Image.fromURL(url, (img) => {
       if (!img || !img.width) {
-        alert('Failed to load image. Try a different URL or file.');
+        alert('Failed to load image. Make sure the URL points directly to an image and the server allows cross-origin requests.');
         return;
       }
-      // Scale to fit
-      const maxW = canvas.width * 0.4;
-      const maxH = canvas.height * 0.4;
+      const maxW = targetWidth * 0.4;
+      const maxH = targetHeight * 0.4;
       const scale = Math.min(maxW / img.width, maxH / img.height, 1);
       img.set({
-        left: canvas.width / 2 - (img.width * scale) / 2,
-        top: canvas.height / 2 - (img.height * scale) / 2,
+        left: targetWidth / 2 - (img.width * scale) / 2,
+        top: targetHeight / 2 - (img.height * scale) / 2,
         scaleX: scale,
         scaleY: scale,
       });
       img._firebaseId = generateId();
       img._zIndex = ++zIndexCounter;
       canvas.add(img);
-      canvas.setActiveObject(img);
       setTool('select');
-      updateObjectList();
+      requestAnimationFrame(() => {
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        updateObjectList();
+      });
+      document.getElementById('image-url').value = '';
     }, { crossOrigin: 'anonymous' });
   }
 
@@ -1831,6 +2025,9 @@
       case 't': setTool('text'); break;
       case 'i': setTool('image'); break;
       case 'e': setTool('eraser'); break;
+      case 'h':
+        document.getElementById('btn-history').click();
+        break;
       case 'delete':
       case 'backspace':
         const active = canvas.getActiveObject();
@@ -1850,17 +2047,160 @@
     }
   });
 
-  // ─── Undo (simple: remove last object) ───
-  document.getElementById('btn-undo').addEventListener('click', handleUndo);
-  function handleUndo() {
-    const objects = canvas.getObjects();
-    if (objects.length > 0) {
-      const last = objects[objects.length - 1];
-      const fbId = last._firebaseId;
-      canvas.remove(last);
-      if (fbId) removeObjectFromFirebase(fbId);
-      updateObjectList();
+  // ─── Comprehensive Undo System ───
+  const undoStack = [];
+  const MAX_UNDO = 50;
+  let _undoInProgress = false;
+
+  // Unique layer naming - scans existing canvas objects
+  const _typeBaseNames = {
+    path: 'Drawing', rect: 'Rectangle', ellipse: 'Ellipse',
+    line: 'Line', 'i-text': 'Text', text: 'Text', image: 'Image',
+  };
+  function generateLayerName(baseType) {
+    const base = _typeBaseNames[baseType] || 'Object';
+    const existing = new Set();
+    if (canvas) {
+      canvas.getObjects().forEach(o => { if (o._layerName) existing.add(o._layerName); });
     }
+    if (!existing.has(base)) return base;
+    for (let n = 2; n < 9999; n++) {
+      if (!existing.has(base + ' ' + n)) return base + ' ' + n;
+    }
+    return base + ' ' + Date.now();
+  }
+  function getLayerName(obj) {
+    if (obj._layerName) return obj._layerName;
+    if (obj.type === 'i-text' || obj.type === 'text') {
+      return obj.text ? obj.text.substring(0, 20) : 'Text';
+    }
+    return obj.type || 'Object';
+  }
+
+  function pushUndo(action) {
+    if (_undoInProgress) return;
+    undoStack.push(action);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    // Auto-refresh history panel if visible
+    if (document.getElementById('history-panel') && document.getElementById('history-panel').style.display !== 'none') {
+      requestAnimationFrame(renderHistoryList);
+    }
+  }
+
+  // Track transform state before move/scale/rotate
+  // (canvas event bindings are inside initCanvas)
+
+  // History panel toggle
+  document.getElementById('btn-history').addEventListener('click', () => {
+    const panel = document.getElementById('history-panel');
+    const btn = document.getElementById('btn-history');
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    btn.classList.toggle('active', !isVisible);
+    if (!isVisible) renderHistoryList();
+  });
+  document.getElementById('btn-undo-action').addEventListener('click', handleUndo);
+  function renderHistoryList() {
+    const list = document.getElementById('history-list');
+    if (!list) return;
+    if (undoStack.length === 0) {
+      list.innerHTML = '<div style="padding:6px 0; color:var(--text-muted); font-style:italic;">No actions yet</div>';
+      return;
+    }
+    const actionMeta = {
+      add:      { icon: '\u2795', label: 'Created', color: 'var(--green)' },
+      remove:   { icon: '\u274C', label: 'Deleted', color: 'var(--red)' },
+      modify:   { icon: '\u2194\uFE0F', label: 'Moved', color: 'var(--yellow)' },
+      textEdit: { icon: '\u270F\uFE0F', label: 'Edited', color: 'var(--cyan)' },
+      rename:   { icon: '\uD83C\uDFF7\uFE0F', label: 'Renamed', color: 'var(--text-secondary)' },
+    };
+    let html = '';
+    for (let i = undoStack.length - 1; i >= 0; i--) {
+      const a = undoStack[i];
+      const meta = actionMeta[a.type] || { icon: '\u2022', label: a.type, color: 'var(--text-secondary)' };
+      const name = a.name || '?';
+      const isMostRecent = (i === undoStack.length - 1);
+      const bg = isMostRecent ? 'background:rgba(249,90,31,0.08);' : '';
+      html += '<div style="display:flex; align-items:center; gap:6px; padding:4px 6px; border-bottom:1px solid var(--border);' + bg + '">'
+        + '<span style="flex-shrink:0; font-size:12px;">' + meta.icon + '</span>'
+        + '<span style="font-size:10px; color:' + meta.color + '; min-width:48px;">' + meta.label + '</span>'
+        + '<span style="font-size:11px; color:var(--text-primary); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + name + '</span>'
+        + '</div>';
+    }
+    list.innerHTML = html;
+  }
+
+  function handleUndo() {
+    if (undoStack.length === 0) return;
+    _undoInProgress = true;
+    const action = undoStack.pop();
+
+    if (action.type === 'add') {
+      // Undo add = remove the object
+      const obj = canvas.getObjects().find(o => o._firebaseId === action.fbId);
+      if (obj) {
+        isSyncing++;
+        canvas.remove(obj);
+        isSyncing--;
+        removeObjectFromFirebase(action.fbId);
+        layerOrder = layerOrder.filter(id => id !== action.fbId);
+        removeFromAllFolders(action.fbId);
+        syncLayerOrder();
+        syncFolders();
+        updateObjectList();
+      }
+    } else if (action.type === 'remove') {
+      // Undo remove = re-add the object from saved data
+      isSyncing++;
+      fabric.util.enlivenObjects([action.fabricData], (objects) => {
+        objects.forEach(obj => {
+          obj._firebaseId = action.fbId;
+          obj._zIndex = action.zIndex;
+          obj._visibility = action.visibility;
+          obj._userOpacity = action.userOpacity;
+          obj._createdBy = action.createdBy || '';
+          if (action.name) obj._layerName = action.name;
+          if (obj.type === 'i-text') obj.set('editable', false);
+          applyVisualOpacity(obj);
+          canvas.add(obj);
+          syncObject(obj);
+          ensureInLayerOrder(action.fbId);
+          syncLayerOrder();
+        });
+        canvas.renderAll();
+        updateObjectList();
+        isSyncing--;
+        _undoInProgress = false;
+      });
+      return; // async — _undoInProgress cleared in callback
+    } else if (action.type === 'modify') {
+      // Undo move/scale/rotate
+      const obj = canvas.getObjects().find(o => o._firebaseId === action.fbId);
+      if (obj) {
+        obj.set(action.before);
+        obj.setCoords();
+        canvas.renderAll();
+        syncObject(obj);
+      }
+    } else if (action.type === 'rename') {
+      const rnObj = canvas.getObjects().find(o => o._firebaseId === action.fbId);
+      if (rnObj) {
+        rnObj._layerName = action.oldName;
+        syncObject(rnObj);
+        updateObjectList();
+      }
+    } else if (action.type === 'textEdit') {
+      // Undo text change
+      const obj = canvas.getObjects().find(o => o._firebaseId === action.fbId);
+      if (obj && obj.type === 'i-text') {
+        obj.set('text', action.oldText);
+        canvas.renderAll();
+        syncObject(obj);
+        updateObjectList();
+      }
+    }
+    _undoInProgress = false;
+    renderHistoryList();
   }
 
   // ─── Clear all ───
@@ -2032,13 +2372,13 @@
 
   function getObjInfo(obj) {
     let icon = '◽';
-    let name = 'Object';
-    if (obj.type === 'path') { icon = '✏️'; name = 'Drawing'; }
-    else if (obj.type === 'rect') { icon = '⬜'; name = 'Rectangle'; }
-    else if (obj.type === 'ellipse') { icon = '⭕'; name = 'Ellipse'; }
-    else if (obj.type === 'line') { icon = '📏'; name = 'Line'; }
-    else if (obj.type === 'i-text' || obj.type === 'text') { icon = '📝'; name = obj.text?.substring(0, 14) || 'Text'; }
-    else if (obj.type === 'image') { icon = '🖼'; name = 'Image'; }
+    let name = obj._layerName || 'Object';
+    if (obj.type === 'path') { icon = '✏️'; if (!obj._layerName) name = 'Drawing'; }
+    else if (obj.type === 'rect') { icon = '⬜'; if (!obj._layerName) name = 'Rectangle'; }
+    else if (obj.type === 'ellipse') { icon = '⭕'; if (!obj._layerName) name = 'Ellipse'; }
+    else if (obj.type === 'line') { icon = '📏'; if (!obj._layerName) name = 'Line'; }
+    else if (obj.type === 'i-text' || obj.type === 'text') { icon = '📝'; name = obj.text?.substring(0, 20) || obj._layerName || 'Text'; }
+    else if (obj.type === 'image') { icon = '🖼'; if (!obj._layerName) name = 'Image'; }
     return { icon, name };
   }
 
@@ -2079,6 +2419,7 @@
       <span class="layer-icon">${icon}</span>
       <span class="layer-name">${name}</span>
       <input type="range" class="layer-opacity-slider" min="0.05" max="1" step="0.05" value="${userOp}" title="Layer opacity: ${Math.round(userOp * 100)}%">
+      <button class="layer-rename-btn" title="Rename">✎</button>
       <button class="layer-delete-btn" title="Delete">✕</button>
     `;
 
@@ -2154,6 +2495,39 @@
     });
 
     // ─ Delete
+    div.querySelector('.layer-rename-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nameSpan = div.querySelector('.layer-name');
+      if (!nameSpan) return;
+      const currentName = obj._layerName || name;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'layer-rename-input';
+      input.value = currentName;
+      nameSpan.style.display = 'none';
+      nameSpan.parentNode.insertBefore(input, nameSpan.nextSibling);
+      input.focus();
+      input.select();
+      let committed = false;
+      function commitRename() {
+        if (committed) return;
+        committed = true;
+        const val = input.value.trim();
+        if (val && val !== currentName) {
+          obj._layerName = val;
+          syncObject(obj);
+          pushUndo({ type: 'rename', fbId: obj._firebaseId, oldName: currentName, name: val });
+        }
+        updateObjectList();
+      }
+      input.addEventListener('blur', commitRename);
+      input.addEventListener('keydown', (ke) => {
+        ke.stopPropagation();
+        if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+        if (ke.key === 'Escape') { committed = true; updateObjectList(); }
+      });
+    });
+
     div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       const fbId = obj._firebaseId;
@@ -2598,7 +2972,7 @@
     const existing = canvas.getObjects().find(o => o._firebaseId === key);
     if (existing) return;
 
-    isSyncing = true;
+    isSyncing++;
     fabric.util.enlivenObjects([data.fabricData], (objects) => {
       objects.forEach(obj => {
         obj._firebaseId = key;
@@ -2615,13 +2989,18 @@
             obj.set('fill', 'rgba(0,0,0,0)');
           }
         }
+        if (obj.type === 'i-text') obj.set('editable', false);
+        if (data.fabricData && data.fabricData._layerName) {
+          obj._layerName = data.fabricData._layerName;
+        }
+        if (!obj._layerName) obj._layerName = generateLayerName(obj.type);
         applyVisualOpacity(obj);
         canvas.add(obj);
         delete obj._fromRemote;
       });
       canvas.renderAll();
       updateObjectList();
-      isSyncing = false;
+      isSyncing--;
     });
   }
 
@@ -2630,10 +3009,14 @@
     if (!data || !data.fabricData) return;
     const key = snap.key;
 
+    // Skip changes that we ourselves just wrote — prevents destroying
+    // objects mid-drag when our own syncObject triggers a remote change event
+    if (authUid && data.updatedByUid === authUid) return;
+
     const existing = canvas.getObjects().find(o => o._firebaseId === key);
     if (!existing) return;
 
-    isSyncing = true;
+    isSyncing++;
     const wasActive = canvas.getActiveObject() === existing;
     canvas.remove(existing);
 
@@ -2653,6 +3036,10 @@
             obj.set('fill', 'rgba(0,0,0,0)');
           }
         }
+        if (obj.type === 'i-text') obj.set('editable', false);
+        if (data.fabricData && data.fabricData._layerName) {
+          obj._layerName = data.fabricData._layerName;
+        }
         applyVisualOpacity(obj);
         canvas.add(obj);
         if (wasActive) canvas.setActiveObject(obj);
@@ -2660,7 +3047,7 @@
       });
       canvas.renderAll();
       updateObjectList();
-      isSyncing = false;
+      isSyncing--;
     });
   }
 
@@ -2668,17 +3055,17 @@
     const key = snap.key;
     const existing = canvas.getObjects().find(o => o._firebaseId === key);
     if (existing) {
-      isSyncing = true;
+      isSyncing++;
       canvas.remove(existing);
       canvas.renderAll();
       updateObjectList();
-      isSyncing = false;
+      isSyncing--;
     }
   }
 
   function syncObject(obj) {
     if (!roomRef || !obj._firebaseId) return;
-    const data = obj.toObject(['_firebaseId']);
+    const data = obj.toObject(['_firebaseId', '_layerName']);
     delete data._firebaseId;
     if (data.type === 'path' && (!data.fill || data.fill === '' || data.fill === 'black' || data.fill === '#000000')) {
       data.fill = 'rgba(0,0,0,0)';
@@ -2693,6 +3080,7 @@
       userOpacity: obj._userOpacity !== undefined ? obj._userOpacity : 1,
       createdBy: obj._createdBy,
       updatedBy: userName,
+      updatedByUid: authUid || '',
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
     });
   }
@@ -2752,6 +3140,45 @@
     clearTimeout(layerTooltipTimer);
     if (layerTooltipEl) layerTooltipEl.style.display = 'none';
   }
+
+  // ─── Stream edit modal ───
+  (() => {
+    const overlay = document.createElement('div');
+    overlay.id = 'stream-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:10000;display:none;';
+    overlay.innerHTML = `
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:440px;width:90%;">
+        <h2 style="margin:0 0 16px;font-size:16px;font-family:var(--font-sans);color:var(--text-primary);">Edit Stream Preview</h2>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block;">Stream URL</label>
+          <input type="text" class="text-input" id="stream-modal-url" placeholder="https://twitch.tv/channel or YouTube link..." style="width:100%;box-sizing:border-box;">
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;">Supports Twitch and YouTube. Leave blank and save to remove the preview.</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" id="stream-modal-cancel">Cancel</button>
+          <button class="btn primary" id="stream-modal-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const closeModal = () => { overlay.style.display = 'none'; };
+    document.getElementById('stream-modal-cancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+    document.getElementById('stream-modal-url').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('stream-modal-save').click();
+      if (e.key === 'Escape') closeModal();
+    });
+    document.getElementById('stream-modal-save').addEventListener('click', () => {
+      const url = document.getElementById('stream-modal-url').value.trim();
+      if (!url) {
+        clearStreamEmbed();
+      } else {
+        setupStreamEmbed(url);
+        writeSettingsToUrl({ room: roomId, name: userName, stream: url, w: String(targetWidth), h: String(targetHeight) });
+      }
+      closeModal();
+    });
+  })();
 
   // ─── Utilities ───
   function generateId() {
