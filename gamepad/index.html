@@ -335,7 +335,9 @@ header {
 
 /* ── Settings controls ── */
 .setting-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; max-width: 100%; }
-.setting-row label:first-child { font-size: 11px; color: var(--muted); white-space: nowrap; width: 75px; flex-shrink: 0; }
+.setting-row label:first-child { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 85px; flex-shrink: 0; }
+.tip { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,0.08); color: var(--muted); font-size: 9px; cursor: help; position: relative; flex-shrink: 0; margin-left: -4px; }
+.tip:hover::after { content: attr(data-tip); position: absolute; top: 120%; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #ccc; font-size: 10px; padding: 5px 8px; border-radius: 4px; white-space: normal; width: 160px; z-index: 100; border: 1px solid rgba(255,255,255,0.1); pointer-events: none; font-family: sans-serif; line-height: 1.3; }
 .setting-row input[type="range"] {
   flex: 1 1 0; min-width: 0; width: 0; height: 4px;
   accent-color: var(--accent);
@@ -547,10 +549,17 @@ header {
 <div class="app">
   <div class="left-panel" id="leftPanel">
     <div class="ctrl-group"><h3>Controller Settings</h3>
-      <div class="setting-row"><label>Opacity</label><input type="range" id="ctrlOpacity" min="0" max="100" step="1" value="100"><span class="setting-val" id="ctrlOpacityVal">100%</span></div>
-      <div class="setting-row"><label>Deadzone</label><input type="range" id="stickDZ" min="0" max="100" step="1" value="15"><span class="setting-val" id="stickDZVal">15%</span></div>
-      <div class="setting-row"><label>Stick Offset</label><input type="range" id="stickSO" min="0" max="100" step="1" value="22"><span class="setting-val" id="stickSOVal">22px</span></div>
-      <div class="setting-row"><label>Stick Curving</label><label class="toggle"><input type="checkbox" id="stickCurve" checked><span class="toggle-slider"></span></label></div>
+      <div class="setting-row"><label>Opacity</label><span class="tip" data-tip="Controls the transparency of the controller overlay. Lower values make it more see-through.">?</span><input type="range" id="ctrlOpacity" min="0" max="100" step="1" value="100"><span class="setting-val" id="ctrlOpacityVal">100%</span></div>
+      <div class="setting-row"><label>Deadzone</label><span class="tip" data-tip="Minimum stick movement before input is registered. Increase to ignore stick drift.">?</span><input type="range" id="stickDZ" min="0" max="100" step="1" value="15"><span class="setting-val" id="stickDZVal">15%</span></div>
+      <div class="setting-row"><label>Advanced Deadzone</label><span class="tip" data-tip="Set separate deadzones for each stick axis. Useful if one axis has more drift than another.">?</span><label class="toggle"><input type="checkbox" id="advDZToggle"><span class="toggle-slider"></span></label></div>
+      <div id="advDZPanel" style="display:none">
+        <div class="setting-row"><label>L Stick X</label><span class="tip" data-tip="Left stick horizontal axis deadzone.">?</span><input type="range" id="dzLX" min="0" max="100" step="1" value="15"><span class="setting-val" id="dzLXVal">15%</span></div>
+        <div class="setting-row"><label>L Stick Y</label><span class="tip" data-tip="Left stick vertical axis deadzone.">?</span><input type="range" id="dzLY" min="0" max="100" step="1" value="15"><span class="setting-val" id="dzLYVal">15%</span></div>
+        <div class="setting-row"><label>R Stick X</label><span class="tip" data-tip="Right stick horizontal axis deadzone.">?</span><input type="range" id="dzRX" min="0" max="100" step="1" value="15"><span class="setting-val" id="dzRXVal">15%</span></div>
+        <div class="setting-row"><label>R Stick Y</label><span class="tip" data-tip="Right stick vertical axis deadzone.">?</span><input type="range" id="dzRY" min="0" max="100" step="1" value="15"><span class="setting-val" id="dzRYVal">15%</span></div>
+      </div>
+      <div class="setting-row"><label>Stick Offset</label><span class="tip" data-tip="How far the stick moves visually from center when fully tilted.">?</span><input type="range" id="stickSO" min="0" max="100" step="1" value="22"><span class="setting-val" id="stickSOVal">22px</span></div>
+      <div class="setting-row"><label>Stick Curving</label><span class="tip" data-tip="Adds a 3D tilt effect to the sticks as they move.">?</span><label class="toggle"><input type="checkbox" id="stickCurve" checked><span class="toggle-slider"></span></label></div>
       <button class="btn-reset" id="btnResetSettings">Reset to Defaults</button>
     </div>
   </div>
@@ -1265,7 +1274,9 @@ document.addEventListener('mousedown', e => { if(!e.target.closest('.transform-b
 // ===========================================================================
 // GAMEPAD API — with pressed-only bg swapping
 // ===========================================================================
-let stickOffset=22, stickDeadzone=0.15, stickCurving=true, controllerOpacity=100;
+let stickOffset=22, stickCurving=true, controllerOpacity=100;
+// Per-axis deadzones: independent threshold per stick per axis
+let dzLX=0.15, dzLY=0.15, dzRX=0.15, dzRY=0.15;
 const BT=0.25;let gpConn=false;
 function gpStatus(c){const e=document.getElementById('gpStatus');if(e){e.className='gamepad-status '+(c?'connected':'disconnected');e.innerHTML=c?'&#9679; Controller Connected':'&#9679; No Controller Detected';}gpConn=c;}
 
@@ -1322,7 +1333,7 @@ function pollGP(){
   if(gp.buttons[17]){const el=ctrl.querySelector('[data-name="touch-pad"]');if(el)el.classList.toggle('pressed',gp.buttons[17].value>BT);}
   if(gp.buttons[16]){const el=ctrl.querySelector('[data-name="button-meta"]');if(el)el.classList.toggle('pressed',gp.buttons[16].value>BT);}
   [[6,'button-left-shoulder-bottom'],[7,'button-right-shoulder-bottom']].forEach(([i,n])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');const b=gp.buttons[i];if(!el||!b)return;const v=typeof b==='object'?b.value:b;el.style.opacity=1;el.style.clipPath='inset('+((-1+v)*-1*100-0.00001)+'% 0px 0px 0px)';});
-  [[0,1,'stick-1'],[2,3,'stick-2']].forEach(([ah,av,n])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');if(!el)return;const h=gp.axes[ah]||0,v=gp.axes[av]||0;if(Math.sqrt(h*h+v*v)>=stickDeadzone){el.style.marginLeft=(h*stickOffset)+'px';el.style.marginTop=(v*stickOffset)+'px';el.style.transform=stickCurving?'rotateX('+(v*-stickOffset)+'deg) rotateY('+(h*stickOffset)+'deg)':'';}else{el.style.marginLeft=el.style.marginTop='0px';el.style.transform='';}});
+  [[0,1,'stick-1',dzLX,dzLY],[2,3,'stick-2',dzRX,dzRY]].forEach(([ah,av,n,dzx,dzy])=>{const el=ctrl.querySelector('[data-name="'+n+'"]');if(!el)return;const rh=gp.axes[ah]||0,rv=gp.axes[av]||0;const h=Math.abs(rh)>=dzx?rh:0,v=Math.abs(rv)>=dzy?rv:0;if(h||v){el.style.marginLeft=(h*stickOffset)+'px';el.style.marginTop=(v*stickOffset)+'px';el.style.transform=stickCurving?'rotateX('+(v*-stickOffset)+'deg) rotateY('+(h*stickOffset)+'deg)':'';}else{el.style.marginLeft=el.style.marginTop='0px';el.style.transform='';}});
   // Track composite overlay state (bumpers, dpad) for DS4
   if (activeType === 'ds4') {
     const newPS = {};
@@ -1407,8 +1418,24 @@ async function init() {
     document.getElementById('controller').style.opacity = controllerOpacity / 100;
   });
   document.getElementById('stickDZ').addEventListener('input', e => {
-    stickDeadzone = parseInt(e.target.value) / 100;
+    const v = parseInt(e.target.value) / 100;
+    dzLX = dzLY = dzRX = dzRY = v;
     document.getElementById('stickDZVal').textContent = parseInt(e.target.value) + '%';
+    // Sync advanced sliders if visible
+    ['dzLX','dzLY','dzRX','dzRY'].forEach(id => {
+      const sl = document.getElementById(id); if(sl) { sl.value = parseInt(e.target.value); document.getElementById(id+'Val').textContent = parseInt(e.target.value)+'%'; }
+    });
+  });
+  document.getElementById('advDZToggle').addEventListener('change', e => {
+    document.getElementById('advDZPanel').style.display = e.target.checked ? '' : 'none';
+    document.getElementById('stickDZ').closest('.setting-row').style.display = e.target.checked ? 'none' : '';
+  });
+  ['dzLX','dzLY','dzRX','dzRY'].forEach(id => {
+    document.getElementById(id).addEventListener('input', e => {
+      const v = parseInt(e.target.value);
+      if (id==='dzLX') dzLX=v/100; else if (id==='dzLY') dzLY=v/100; else if (id==='dzRX') dzRX=v/100; else dzRY=v/100;
+      document.getElementById(id+'Val').textContent = v+'%';
+    });
   });
   document.getElementById('stickSO').addEventListener('input', e => {
     stickOffset = parseInt(e.target.value);
@@ -1418,9 +1445,15 @@ async function init() {
     stickCurving = e.target.checked;
   });
   document.getElementById('btnResetSettings').addEventListener('click', () => {
-    stickDeadzone = 0.15; stickOffset = 22; stickCurving = true; controllerOpacity = 100;
+    dzLX = dzLY = dzRX = dzRY = 0.15; stickOffset = 22; stickCurving = true; controllerOpacity = 100;
     document.getElementById('stickDZ').value = 15;
     document.getElementById('stickDZVal').textContent = '15%';
+    ['dzLX','dzLY','dzRX','dzRY'].forEach(id => {
+      document.getElementById(id).value = 15; document.getElementById(id+'Val').textContent = '15%';
+    });
+    document.getElementById('advDZToggle').checked = false;
+    document.getElementById('advDZPanel').style.display = 'none';
+    document.getElementById('stickDZ').closest('.setting-row').style.display = '';
     document.getElementById('stickSO').value = 22;
     document.getElementById('stickSOVal').textContent = '22px';
     document.getElementById('stickCurve').checked = true;
@@ -1465,7 +1498,17 @@ function serializeState() {
     if (!state.img.length) delete state.img;
   }
   // Store settings (only non-default)
-  if (stickDeadzone !== 0.15) state.dz = Math.round(stickDeadzone * 100);
+  // Deadzone: if all 4 are the same, store as legacy 'dz' for compactness
+  // Otherwise store individual per-axis values
+  const allSame = dzLX === dzLY && dzLY === dzRX && dzRX === dzRY;
+  if (allSame) {
+    if (dzLX !== 0.15) state.dz = Math.round(dzLX * 100);
+  } else {
+    if (dzLX !== 0.15) state.dzlx = Math.round(dzLX * 100);
+    if (dzLY !== 0.15) state.dzly = Math.round(dzLY * 100);
+    if (dzRX !== 0.15) state.dzrx = Math.round(dzRX * 100);
+    if (dzRY !== 0.15) state.dzry = Math.round(dzRY * 100);
+  }
   if (stickOffset !== 22) state.so = stickOffset;
   if (!stickCurving) state.nc = 1;
   if (controllerOpacity !== 100) state.op = controllerOpacity;
@@ -1480,7 +1523,11 @@ function deserializeState(state) {
     images: (state.img || []).map(i => ({
       url: i.u, x: i.x, y: i.y, w: i.w, h: i.h, rot: i.r || 0, opacity: i.o || 100
     })),
-    deadzone: state.dz !== undefined ? state.dz / 100 : 0.15,
+    // Deadzone: per-axis keys override legacy 'dz', which overrides default 0.15
+    dzLX: (state.dzlx !== undefined ? state.dzlx : state.dz !== undefined ? state.dz : 15) / 100,
+    dzLY: (state.dzly !== undefined ? state.dzly : state.dz !== undefined ? state.dz : 15) / 100,
+    dzRX: (state.dzrx !== undefined ? state.dzrx : state.dz !== undefined ? state.dz : 15) / 100,
+    dzRY: (state.dzry !== undefined ? state.dzry : state.dz !== undefined ? state.dz : 15) / 100,
     stickOffset: state.so !== undefined ? state.so : 22,
     noCurve: !!state.nc,
     opacity: state.op !== undefined ? state.op : 100
@@ -1548,7 +1595,7 @@ async function importOBSLink() {
     buildColorUI(); clearCache(); applyAllColors();
 
     // 3. Apply settings
-    stickDeadzone = state.deadzone;
+    dzLX = state.dzLX; dzLY = state.dzLY; dzRX = state.dzRX; dzRY = state.dzRY;
     stickOffset = state.stickOffset;
     stickCurving = !state.noCurve;
     controllerOpacity = state.opacity;
@@ -1556,8 +1603,17 @@ async function importOBSLink() {
     // Update UI controls
     document.getElementById('ctrlOpacity').value = controllerOpacity;
     document.getElementById('ctrlOpacityVal').textContent = controllerOpacity + '%';
-    document.getElementById('stickDZ').value = Math.round(stickDeadzone * 100);
-    document.getElementById('stickDZVal').textContent = Math.round(stickDeadzone * 100) + '%';
+    const allSameDZ = dzLX === dzLY && dzLY === dzRX && dzRX === dzRY;
+    document.getElementById('stickDZ').value = Math.round(dzLX * 100);
+    document.getElementById('stickDZVal').textContent = Math.round(dzLX * 100) + '%';
+    document.getElementById('advDZToggle').checked = !allSameDZ;
+    document.getElementById('advDZPanel').style.display = allSameDZ ? 'none' : '';
+    document.getElementById('stickDZ').closest('.setting-row').style.display = allSameDZ ? '' : 'none';
+    ['dzLX','dzLY','dzRX','dzRY'].forEach(id => {
+      const v = id==='dzLX'?dzLX:id==='dzLY'?dzLY:id==='dzRX'?dzRX:dzRY;
+      document.getElementById(id).value = Math.round(v*100);
+      document.getElementById(id+'Val').textContent = Math.round(v*100)+'%';
+    });
     document.getElementById('stickSO').value = stickOffset;
     document.getElementById('stickSOVal').textContent = stickOffset + 'px';
     document.getElementById('stickCurve').checked = stickCurving;
@@ -1669,7 +1725,7 @@ async function enterOverlayMode(encoded) {
     for (const [k,v] of Object.entries(state.colors)) colors[k] = v;
 
     // Apply stick settings
-    stickDeadzone = state.deadzone;
+    dzLX = state.dzLX; dzLY = state.dzLY; dzRX = state.dzRX; dzRY = state.dzRY;
     stickOffset = state.stickOffset;
     stickCurving = !state.noCurve;
     controllerOpacity = state.opacity;
